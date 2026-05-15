@@ -1,0 +1,30 @@
+pre-commit:
+  parallel: true
+  commands:
+    prettier:
+      root: "apps/web"
+      run: npx prettier --check "src/**/*.{ts,tsx,css}"
+    eslint:
+      root: "apps/web"
+      run: npx eslint src/
+    go-fmt:
+      root: "apps/api"
+      run: test -z "$(gofmt -l ./...)"
+    go-vet:
+      root: "apps/api"
+      run: go vet ./...
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- commitlint --edit {1}
+
+pre-push:
+  parallel: true
+  commands:
+    go-test:
+      root: "apps/api"
+      run: go test ./...
+    web-typecheck:
+      root: "apps/web"
+      run: npx tsc --noEmit

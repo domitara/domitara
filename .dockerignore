@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.git
+**/.env
+apps/api/tmp
+apps/api/bin
+apps/api/internal/web/dist
+apps/web/node_modules

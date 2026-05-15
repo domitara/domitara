@@ -1,0 +1,22 @@
+{
+  "name": "monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19",
+    "@commitlint/config-conventional": "^19",
+    "lefthook": "^1",
+    "prettier": "^3",
+    "semantic-release": "^24",
+    "@semantic-release/changelog": "^6",
+    "@semantic-release/github": "^10",
+    "turbo": "latest"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

@@ -1,0 +1,19 @@
+# Go
+apps/api/tmp/
+apps/api/bin/
+apps/api/*.env
+tmp/
+
+# Node
+node_modules/
+.next/
+dist/
+.turbo/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store

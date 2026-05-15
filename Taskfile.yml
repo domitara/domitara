@@ -1,0 +1,88 @@
+version: '3'
+
+tasks:
+  dev:
+    desc: "Start everything (Go API + frontend)"
+    deps: [dev:api, dev:web]
+
+  dev:api:
+    desc: "Go API with hot reload (air)"
+    dir: apps/api
+    cmd: air
+
+  dev:web:
+    desc: "Frontend via Turborepo"
+    cmd: pnpm turbo run dev
+
+  build:
+    desc: "Build frontend then Go binary (single deployable)"
+    cmds:
+      - task: build:web
+      - task: build:api
+
+  build:api:
+    desc: "Build Go binary (embeds pre-built frontend)"
+    dir: apps/api
+    cmd: go build -o bin/server ./cmd/server
+
+  build:web:
+    desc: "Build Vite frontend into apps/api/internal/web/dist"
+    dir: apps/web
+    cmd: pnpm build
+
+  test:
+    desc: "Run all tests"
+    deps: [test:api, test:web]
+
+  test:api:
+    desc: "Run Go tests"
+    dir: apps/api
+    cmd: go test ./...
+
+  test:web:
+    desc: "Run frontend tests via Turborepo"
+    cmd: pnpm turbo run test
+
+  lint:
+    desc: "Lint everything"
+    deps: [lint:api, lint:web]
+
+  lint:api:
+    dir: apps/api
+    cmd: golangci-lint run ./...
+
+  lint:web:
+    cmd: pnpm turbo run lint
+
+  db:up:
+    desc: "Start dev postgres container"
+    cmd: docker compose -f docker-compose.dev.yml up -d
+
+  db:down:
+    desc: "Stop dev postgres container"
+    cmd: docker compose -f docker-compose.dev.yml down
+
+  db:wipe:
+    desc: "Wipe all data (stop container and delete volume)"
+    cmd: docker compose -f docker-compose.dev.yml down -v
+
+  db:migrate:
+    desc: "Run database migrations"
+    dir: apps/api
+    cmd: go run ./scripts/migrate up
+
+  db:migrate:down:
+    desc: "Roll back last migration"
+    dir: apps/api
+    cmd: go run ./scripts/migrate down
+
+  db:generate:
+    desc: "Regenerate sqlc query code"
+    dir: apps/api
+    cmd: sqlc generate
+
+  setup:
+    desc: "Install all dependencies"
+    cmds:
+      - pnpm install
+      - cd apps/api && go mod tidy
