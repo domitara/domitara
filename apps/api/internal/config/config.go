@@ -12,6 +12,7 @@ type Config struct {
 	JWTSecret      string
 	AllowedOrigins string
 	ShowAPIDocs    bool
+	SecureCookies  bool
 }
 
 func Load() (*Config, error) {
@@ -28,6 +29,13 @@ func Load() (*Config, error) {
 	if dbURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
+	secureCookies := env == "production"
+	if v := os.Getenv("SECURE_COOKIES"); v == "true" {
+		secureCookies = true
+	} else if v == "false" {
+		secureCookies = false
+	}
+
 	return &Config{
 		DatabaseURL:    dbURL,
 		Port:           port,
@@ -35,6 +43,7 @@ func Load() (*Config, error) {
 		JWTSecret:      secret,
 		AllowedOrigins: os.Getenv("ALLOWED_ORIGINS"),
 		ShowAPIDocs:    os.Getenv("SHOW_API_DOCS") == "true",
+		SecureCookies:  secureCookies,
 	}, nil
 }
 

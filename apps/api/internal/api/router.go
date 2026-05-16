@@ -24,7 +24,7 @@ var bearerAuth = []map[string][]string{{"bearer": {}}}
 
 func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	q := store.New(pool)
-	h := handler.New(q, pool, cfg.JWTSecret, cfg.Env == "production")
+	h := handler.New(q, pool, cfg.JWTSecret, cfg.SecureCookies)
 
 	r := chi.NewRouter()
 
