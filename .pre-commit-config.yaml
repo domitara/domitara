@@ -1,0 +1,54 @@
+repos:
+  - repo: local
+    hooks:
+      # pre-commit
+      - id: prettier
+        name: Prettier
+        language: system
+        entry: bash -c 'cd apps/web && npx prettier --write "src/**/*.{ts,tsx,css}"'
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: eslint
+        name: ESLint
+        language: system
+        entry: bash -c 'cd apps/web && npx eslint src/'
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: go-fmt
+        name: Go fmt
+        language: system
+        entry: bash -c 'cd apps/api && test -z "$(gofmt -l ./...)"'
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: go-vet
+        name: Go vet
+        language: system
+        entry: bash -c 'cd apps/api && go vet ./...'
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # commit-msg
+      - id: commitlint
+        name: Commitlint
+        language: system
+        entry: npx --no -- commitlint --edit
+        pass_filenames: false
+        stages: [commit-msg]
+
+      # pre-push
+      - id: go-test
+        name: Go tests
+        language: system
+        entry: bash -c 'cd apps/api && go test ./...'
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: web-typecheck
+        name: TypeScript typecheck
+        language: system
+        entry: bash -c 'cd apps/web && npx tsc --noEmit'
+        pass_filenames: false
+        stages: [pre-push]
