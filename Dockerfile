@@ -7,7 +7,6 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
 COPY apps/docs/package.json ./apps/docs/
-COPY packages/ui/package.json ./packages/ui/
 RUN pnpm install --frozen-lockfile
 
 # Build — Vite outputs to apps/api/internal/web/dist per vite.config.ts
