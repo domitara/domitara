@@ -14,7 +14,7 @@ COPY apps/web/ ./apps/web/
 RUN pnpm --filter @app/web build
 
 # ---- Stage 2: Go API ----
-FROM golang:1.23-alpine AS api-builder
+FROM golang:1.25-alpine AS api-builder
 WORKDIR /app
 
 COPY apps/api/go.mod apps/api/go.sum ./
