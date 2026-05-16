@@ -1,18 +1,17 @@
 const BASE = '/api/v1';
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('domitara_token');
   const resp = await fetch(BASE + path, {
     ...opts,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...opts?.headers,
     },
   });
 
   if (resp.status === 401) {
-    localStorage.removeItem('domitara_token');
+    await fetch(BASE + '/auth/logout', { method: 'POST', credentials: 'include' });
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }

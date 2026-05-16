@@ -2,17 +2,25 @@
    Domitara — global & layout styles
    ============================================================= */
 
-*, *::before, *::after { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
 /* Blueprint background texture (default) */
 .dt-main-area {
   background-color: var(--dt-bg-muted);
   background-image:
-    linear-gradient(to right,  var(--dt-tex-ink-2) 1px, transparent 1px),
+    linear-gradient(to right, var(--dt-tex-ink-2) 1px, transparent 1px),
     linear-gradient(to bottom, var(--dt-tex-ink-2) 1px, transparent 1px),
-    linear-gradient(to right,  var(--dt-tex-ink)   1px, transparent 1px),
-    linear-gradient(to bottom, var(--dt-tex-ink)   1px, transparent 1px);
-  background-size: 96px 96px, 96px 96px, 16px 16px, 16px 16px;
+    linear-gradient(to right, var(--dt-tex-ink) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--dt-tex-ink) 1px, transparent 1px);
+  background-size:
+    96px 96px,
+    96px 96px,
+    16px 16px,
+    16px 16px;
   min-height: calc(100vh - var(--app-shell-header-height, 56px));
 }
 
@@ -24,11 +32,15 @@
   justify-content: center;
   background-color: var(--dt-bg-muted);
   background-image:
-    linear-gradient(to right,  var(--dt-tex-ink-2) 1px, transparent 1px),
+    linear-gradient(to right, var(--dt-tex-ink-2) 1px, transparent 1px),
     linear-gradient(to bottom, var(--dt-tex-ink-2) 1px, transparent 1px),
-    linear-gradient(to right,  var(--dt-tex-ink)   1px, transparent 1px),
-    linear-gradient(to bottom, var(--dt-tex-ink)   1px, transparent 1px);
-  background-size: 96px 96px, 96px 96px, 16px 16px, 16px 16px;
+    linear-gradient(to right, var(--dt-tex-ink) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--dt-tex-ink) 1px, transparent 1px);
+  background-size:
+    96px 96px,
+    96px 96px,
+    16px 16px,
+    16px 16px;
 }
 
 /* Item cards */
@@ -58,14 +70,30 @@
 }
 
 /* Photo placeholder gradients */
-.ph-1 { background: linear-gradient(135deg,#ffd8a8,#ffa94d); }
-.ph-2 { background: linear-gradient(135deg,#a5d8ff,#4dabf7); }
-.ph-3 { background: linear-gradient(135deg,#d8f5a2,#94d82d); }
-.ph-4 { background: linear-gradient(135deg,#fcc2d7,#f06595); }
-.ph-5 { background: linear-gradient(135deg,#e6e6e6,#adb5bd); }
-.ph-6 { background: linear-gradient(135deg,#c5f6fa,#3bc9db); }
-.ph-7 { background: linear-gradient(135deg,#e599f7,#ae3ec9); }
-.ph-8 { background: linear-gradient(135deg,#fff3bf,#fcc419); }
+.ph-1 {
+  background: linear-gradient(135deg, #ffd8a8, #ffa94d);
+}
+.ph-2 {
+  background: linear-gradient(135deg, #a5d8ff, #4dabf7);
+}
+.ph-3 {
+  background: linear-gradient(135deg, #d8f5a2, #94d82d);
+}
+.ph-4 {
+  background: linear-gradient(135deg, #fcc2d7, #f06595);
+}
+.ph-5 {
+  background: linear-gradient(135deg, #e6e6e6, #adb5bd);
+}
+.ph-6 {
+  background: linear-gradient(135deg, #c5f6fa, #3bc9db);
+}
+.ph-7 {
+  background: linear-gradient(135deg, #e599f7, #ae3ec9);
+}
+.ph-8 {
+  background: linear-gradient(135deg, #fff3bf, #fcc419);
+}
 
 /* Row thumb */
 .row-thumb {
@@ -79,7 +107,9 @@
 }
 
 /* Mono text */
-.mono { font-family: var(--dt-font-mono) !important; }
+.mono {
+  font-family: var(--dt-font-mono) !important;
+}
 
 /* Search trigger */
 .search-trigger {
@@ -150,7 +180,10 @@
 }
 
 /* Tree */
-.tree-node { display: flex; flex-direction: column; }
+.tree-node {
+  display: flex;
+  flex-direction: column;
+}
 
 /* Bulk action bar */
 .bulk-bar {
@@ -172,7 +205,7 @@
 .spotlight-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.45);
+  background: rgba(0, 0, 0, 0.45);
   z-index: 300;
   display: flex;
   align-items: flex-start;
@@ -228,5 +261,5 @@
   color: var(--dt-fg-3);
   padding: 8px 12px 4px;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: 0.06em;
 }

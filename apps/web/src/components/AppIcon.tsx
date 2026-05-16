@@ -13,15 +13,15 @@ export function AppIcon({ size = 28, className }: AppIconProps) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      <rect width="32" height="32" rx="7" fill="#2563eb"/>
+      <rect width="32" height="32" rx="7" fill="#2563eb" />
       {/* House silhouette */}
-      <path d="M16 5L4 14.5h3V27h18V14.5h3L16 5z" fill="white" opacity="0.95"/>
+      <path d="M16 5L4 14.5h3V27h18V14.5h3L16 5z" fill="white" opacity="0.95" />
       {/* Door */}
-      <rect x="13" y="19" width="6" height="8" rx="1" fill="#2563eb"/>
+      <rect x="13" y="19" width="6" height="8" rx="1" fill="#2563eb" />
       {/* Left window */}
-      <rect x="7" y="16" width="4" height="4" rx="0.75" fill="#2563eb" opacity="0.65"/>
+      <rect x="7" y="16" width="4" height="4" rx="0.75" fill="#2563eb" opacity="0.65" />
       {/* Right window */}
-      <rect x="21" y="16" width="4" height="4" rx="0.75" fill="#2563eb" opacity="0.65"/>
+      <rect x="21" y="16" width="4" height="4" rx="0.75" fill="#2563eb" opacity="0.65" />
     </svg>
   );
 }

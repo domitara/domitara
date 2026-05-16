@@ -8,7 +8,7 @@ export const Route = createFileRoute('/_auth')({
   },
   component: () => (
     <DomitaraShell>
-      <Outlet/>
+      <Outlet />
     </DomitaraShell>
   ),
 });

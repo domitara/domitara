@@ -7,7 +7,7 @@ export const Route = createFileRoute('/login')({
     try {
       const resp = await fetch('/api/v1/system/status');
       if (resp.ok) {
-        const data = await resp.json() as { setup_complete: boolean };
+        const data = (await resp.json()) as { setup_complete: boolean };
         if (!data.setup_complete) throw redirect({ to: '/setup' });
       }
     } catch (e) {
@@ -21,12 +21,5 @@ export const Route = createFileRoute('/login')({
 
 function LoginRoute() {
   const navigate = useNavigate();
-  return (
-    <LoginScreen
-      onLogin={token => {
-        auth.setToken(token);
-        navigate({ to: '/dashboard' });
-      }}
-    />
-  );
+  return <LoginScreen onLogin={() => navigate({ to: '/dashboard' })} />;
 }

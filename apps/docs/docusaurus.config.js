@@ -7,10 +7,9 @@ const config = {
   tagline: 'Self-hosted home inventory & management',
   favicon: 'img/favicon.ico',
 
-  // TODO: update these when the GitHub repo is set up
-  url: 'https://your-org.github.io',
+  url: 'https://domitara.github.io',
   baseUrl: '/domitara/',
-  organizationName: 'your-org',
+  organizationName: 'domitara',
   projectName: 'domitara',
 
   onBrokenLinks: 'throw',
@@ -51,7 +50,7 @@ const config = {
             label: 'Docs',
           },
           {
-            href: 'https://github.com/your-org/domitara',
+            href: 'https://github.com/domitara/domitara',
             label: 'GitHub',
             position: 'right',
           },

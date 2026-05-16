@@ -7,5 +7,5 @@ export const Route = createFileRoute('/_auth/labels/$labelId')({
 
 function LabelRoute() {
   const { labelId } = Route.useParams();
-  return <AllItemsScreen filterLabelId={labelId}/>;
+  return <AllItemsScreen filterLabelId={labelId} />;
 }

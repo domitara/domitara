@@ -7,7 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	apimw "github.com/your-org/monorepo/apps/api/internal/api/middleware"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 )
 
 type LocationRow struct {

@@ -11,15 +11,18 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/your-org/monorepo/apps/api/internal/api"
-	"github.com/your-org/monorepo/apps/api/internal/config"
-	"github.com/your-org/monorepo/apps/api/internal/db"
+	"github.com/domitara/domitara/apps/api/internal/api"
+	"github.com/domitara/domitara/apps/api/internal/config"
+	"github.com/domitara/domitara/apps/api/internal/db"
 )
 
 func main() {
 	_ = godotenv.Load()
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
 
 	pool, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {

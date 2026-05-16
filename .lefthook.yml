@@ -3,7 +3,7 @@ pre-commit:
   commands:
     prettier:
       root: "apps/web"
-      run: npx prettier --check "src/**/*.{ts,tsx,css}"
+      run: npx prettier --write "src/**/*.{ts,tsx,css}"
     eslint:
       root: "apps/web"
       run: npx eslint src/

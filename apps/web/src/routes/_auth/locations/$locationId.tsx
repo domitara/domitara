@@ -7,5 +7,5 @@ export const Route = createFileRoute('/_auth/locations/$locationId')({
 
 function LocationRoute() {
   const { locationId } = Route.useParams();
-  return <AllItemsScreen filterLocationId={locationId}/>;
+  return <AllItemsScreen filterLocationId={locationId} />;
 }

@@ -9,6 +9,7 @@ node_modules/
 .next/
 dist/
 .turbo/
+apps/docs/build/
 
 # Env files
 .env

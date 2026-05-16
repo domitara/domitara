@@ -1,13 +1,11 @@
 package service
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"strings"
+	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
@@ -24,43 +22,40 @@ type Claims struct {
 	Iat   int64  `json:"iat"`
 }
 
+// Implement jwt.Claims interface so golang-jwt handles validation.
+func (c Claims) GetExpirationTime() (*jwt.NumericDate, error) {
+	return jwt.NewNumericDate(time.Unix(c.Exp, 0)), nil
+}
+func (c Claims) GetIssuedAt() (*jwt.NumericDate, error) {
+	return jwt.NewNumericDate(time.Unix(c.Iat, 0)), nil
+}
+func (c Claims) GetNotBefore() (*jwt.NumericDate, error) { return nil, nil }
+func (c Claims) GetIssuer() (string, error)              { return "", nil }
+func (c Claims) GetSubject() (string, error)             { return strconv.FormatInt(c.Sub, 10), nil }
+func (c Claims) GetAudience() (jwt.ClaimStrings, error)  { return nil, nil }
+
 func SignToken(claims Claims, secret string) (string, error) {
-	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
-	payload, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
-	}
-	body := header + "." + base64.RawURLEncoding.EncodeToString(payload)
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(body))
-	return body + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
 }
 
-func VerifyToken(token, secret string) (Claims, error) {
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 {
-		return Claims{}, ErrInvalidToken
-	}
-	body := parts[0] + "." + parts[1]
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(body))
-	expected := mac.Sum(nil)
-	provided, err := base64.RawURLEncoding.DecodeString(parts[2])
-	if err != nil || !hmac.Equal(expected, provided) {
-		return Claims{}, ErrInvalidToken
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+func VerifyToken(tokenStr, secret string) (Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrInvalidToken
+		}
+		return []byte(secret), nil
+	})
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return Claims{}, ErrExpiredToken
+		}
 		return Claims{}, ErrInvalidToken
 	}
-	var c Claims
-	if err := json.Unmarshal(raw, &c); err != nil {
+	c, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
 		return Claims{}, ErrInvalidToken
 	}
-	if time.Now().Unix() > c.Exp {
-		return Claims{}, ErrExpiredToken
-	}
-	return c, nil
+	return *c, nil
 }
 
 func TokenExpiry() int64 {

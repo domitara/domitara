@@ -7,7 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	apimw "github.com/your-org/monorepo/apps/api/internal/api/middleware"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 )
 
 type MaintenanceLogRow struct {
@@ -25,7 +25,7 @@ type MaintenanceLogsOutput struct{ Body []MaintenanceLogRow }
 type MaintenanceLogOutput struct{ Body MaintenanceLogRow }
 
 type ListMaintenanceInput struct {
-	ItemID *string `query:"item_id"`
+	ItemID string `query:"item_id"`
 }
 
 type MaintenanceIDInput struct {
@@ -52,9 +52,9 @@ func (h *Handler) ListMaintenance(ctx context.Context, input *ListMaintenanceInp
 		FROM maintenance_logs ml
 		LEFT JOIN items i ON i.id = ml.item_id`
 	args := []any{}
-	if input.ItemID != nil {
+	if input.ItemID != "" {
 		query += ` WHERE ml.item_id = $1`
-		args = append(args, *input.ItemID)
+		args = append(args, input.ItemID)
 	}
 	query += ` ORDER BY ml.performed_at DESC, ml.created_at DESC`
 

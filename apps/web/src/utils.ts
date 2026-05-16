@@ -2,10 +2,10 @@ import type { Location } from './api/types';
 
 export function getLocationChain(locations: Location[], locId: string): Location[] {
   const chain: Location[] = [];
-  let cur: Location | undefined = locations.find(l => l.id === locId);
+  let cur: Location | undefined = locations.find((l) => l.id === locId);
   while (cur) {
     chain.unshift(cur);
-    cur = cur.parent_id ? locations.find(l => l.id === cur!.parent_id) : undefined;
+    cur = cur.parent_id ? locations.find((l) => l.id === cur!.parent_id) : undefined;
   }
   return chain;
 }
@@ -31,6 +31,8 @@ export function formatCurrency(value: number | null | undefined): string {
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 }

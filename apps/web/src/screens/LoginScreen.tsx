@@ -4,7 +4,7 @@ import { IconUser, IconLock, IconAlertCircle } from '@tabler/icons-react';
 import { AppIcon } from '../components/AppIcon';
 
 interface LoginScreenProps {
-  onLogin: (token: string) => void;
+  onLogin: () => void;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -20,6 +20,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     try {
       const resp = await fetch('/api/v1/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -28,8 +29,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         setError(data.error ?? 'Login failed.');
         return;
       }
-      const data = await resp.json() as { token: string };
-      onLogin(data.token);
+      onLogin();
     } catch {
       setError('Network error. Is the server running?');
     } finally {
@@ -48,15 +48,19 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         style={{ borderTop: '4px solid var(--dt-blue-6)' }}
       >
         <Stack align="center" mb={22} gap={8}>
-          <AppIcon size={40}/>
-          <Title order={2} ta="center">Welcome to Domitara</Title>
-          <Text c="dimmed" size="sm">Sign in to your inventory</Text>
+          <AppIcon size={40} />
+          <Title order={2} ta="center">
+            Welcome to Domitara
+          </Title>
+          <Text c="dimmed" size="sm">
+            Sign in to your inventory
+          </Text>
         </Stack>
 
         <form onSubmit={handleSubmit}>
           <Stack gap={14}>
             {error && (
-              <Alert icon={<IconAlertCircle size={16}/>} color="red" variant="light" p={10}>
+              <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light" p={10}>
                 {error}
               </Alert>
             )}
@@ -64,15 +68,15 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               label="Email"
               type="email"
               value={email}
-              onChange={e => setEmail(e.currentTarget.value)}
-              leftSection={<IconUser size={16}/>}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+              leftSection={<IconUser size={16} />}
               required
             />
             <PasswordInput
               label="Password"
               value={password}
-              onChange={e => setPassword(e.currentTarget.value)}
-              leftSection={<IconLock size={16}/>}
+              onChange={(e) => setPassword(e.currentTarget.value)}
+              leftSection={<IconLock size={16} />}
               required
             />
             <Button type="submit" fullWidth mt={4} loading={loading}>

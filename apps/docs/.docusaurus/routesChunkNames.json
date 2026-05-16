@@ -1,0 +1,31 @@
+{
+  "/domitara/-676": {
+    "__comp": "5e95c892",
+    "__context": {
+      "plugin": "aba21aa0"
+    }
+  },
+  "/domitara/-74e": {
+    "__comp": "a7bd4aaa",
+    "__props": "52d034a1"
+  },
+  "/domitara/-12f": {
+    "__comp": "a94703ab"
+  },
+  "/domitara/api/overview-129": {
+    "__comp": "17896441",
+    "content": "65df3d35"
+  },
+  "/domitara/getting-started/configuration-439": {
+    "__comp": "17896441",
+    "content": "009f1e98"
+  },
+  "/domitara/getting-started/installation-635": {
+    "__comp": "17896441",
+    "content": "54f44165"
+  },
+  "/domitara/-0e4": {
+    "__comp": "17896441",
+    "content": "0e384e19"
+  }
+}

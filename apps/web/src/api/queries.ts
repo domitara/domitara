@@ -1,8 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
-  Location, Label, Item, MaintenanceLog, DashboardStats,
-  SystemStatus, User, CreateItemInput, CreateLocationInput, CreateLabelInput,
+  Location,
+  Label,
+  Item,
+  MaintenanceLog,
+  DashboardStats,
+  SystemStatus,
+  User,
+  CreateItemInput,
+  CreateLocationInput,
+  CreateLabelInput,
 } from './types';
 
 // --- System ---
@@ -94,8 +102,7 @@ export function useDeleteLabel() {
 // --- Items ---
 export const itemKeys = {
   all: ['items'] as const,
-  filtered: (params: { locationId?: string; labelId?: string }) =>
-    ['items', params] as const,
+  filtered: (params: { locationId?: string; labelId?: string }) => ['items', params] as const,
   byId: (id: string) => ['items', id] as const,
 };
 
@@ -179,8 +186,7 @@ export function useMe() {
 export function useUpdateMe() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name?: string; password?: string }) =>
-      api.patch<User>('/auth/me', body),
+    mutationFn: (body: { name?: string; password?: string }) => api.patch<User>('/auth/me', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: meKeys.me }),
   });
 }

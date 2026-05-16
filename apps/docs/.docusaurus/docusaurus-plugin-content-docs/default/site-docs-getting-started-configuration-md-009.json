@@ -1,0 +1,26 @@
+{
+  "id": "getting-started/configuration",
+  "title": "Configuration",
+  "description": "Domitara is configured entirely via environment variables. Copy .env.example to .env for local development, or set these as environment variables / Docker secrets in production.",
+  "source": "@site/docs/getting-started/configuration.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/configuration",
+  "permalink": "/domitara/getting-started/configuration",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Installation",
+    "permalink": "/domitara/getting-started/installation"
+  },
+  "next": {
+    "title": "API Overview",
+    "permalink": "/domitara/api/overview"
+  }
+}

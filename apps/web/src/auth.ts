@@ -1,44 +1,19 @@
-const TOKEN_KEY = 'domitara_token';
+// Token is stored in an httpOnly cookie (set by the server) — JS cannot read it.
+// The "logged_in" cookie (non-httpOnly) carries the user's role so the UI can
+// gate routes and nav items without an extra API call.
 
-interface JwtPayload {
-  sub: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'member';
-  exp: number;
-  iat: number;
-}
-
-function parseJwt(token: string): JwtPayload | null {
-  try {
-    const [, payload] = token.split('.');
-    const padded = payload.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(padded)) as JwtPayload;
-  } catch {
-    return null;
-  }
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(
+    new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export const auth = {
-  getToken: () => localStorage.getItem(TOKEN_KEY),
-  setToken: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  isAuthenticated: () => getCookie('logged_in') !== null,
+  isAdmin: () => getCookie('logged_in') === 'admin',
 
-  isAuthenticated: (): boolean => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return false;
-    const payload = parseJwt(token);
-    if (!payload) return false;
-    return Date.now() / 1000 < payload.exp;
+  logout: async () => {
+    await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
   },
-
-  getUser: (): JwtPayload | null => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return null;
-    const payload = parseJwt(token);
-    if (!payload || Date.now() / 1000 >= payload.exp) return null;
-    return payload;
-  },
-
-  isAdmin: (): boolean => auth.getUser()?.role === 'admin',
 };

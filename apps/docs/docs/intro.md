@@ -25,7 +25,7 @@ docker run -d \
   -e DATABASE_URL=postgres://... \
   -e JWT_SECRET=your-secret \
   -p 8080:8080 \
-  ghcr.io/your-org/domitara:latest
+  ghcr.io/domitara/domitara:latest
 ```
 
 See [Installation](./getting-started/installation) for the full setup guide.

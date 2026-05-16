@@ -7,8 +7,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
 
-	apimw "github.com/your-org/monorepo/apps/api/internal/api/middleware"
-	store "github.com/your-org/monorepo/apps/api/internal/db/sqlc"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
 type DashboardOutput struct {
@@ -80,8 +80,12 @@ func (h *Handler) AdminUpdateUser(ctx context.Context, input *AdminUpdateUserInp
 }
 
 func (h *Handler) AdminDeleteUser(ctx context.Context, input *AdminUserIDInput) (*struct{}, error) {
-	if _, err := apimw.RequireAdmin(ctx); err != nil {
+	claims, err := apimw.RequireAdmin(ctx)
+	if err != nil {
 		return nil, err
+	}
+	if input.ID == claims.Sub {
+		return nil, huma.NewError(http.StatusBadRequest, "cannot delete your own account")
 	}
 	if err := h.q.DeleteUser(ctx, input.ID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete user")

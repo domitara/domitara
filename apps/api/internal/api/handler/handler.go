@@ -1,20 +1,52 @@
 package handler
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	store "github.com/your-org/monorepo/apps/api/internal/db/sqlc"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+const cookieMaxAge = 86400 // 24 hours, matches JWT expiry
+
 type Handler struct {
-	q         *store.Queries
-	pool      *pgxpool.Pool
-	jwtSecret string
+	q             *store.Queries
+	pool          *pgxpool.Pool
+	jwtSecret     string
+	secureCookies bool
 }
 
-func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string) *Handler {
-	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret}
+func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string, secureCookies bool) *Handler {
+	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret, secureCookies: secureCookies}
+}
+
+func (h *Handler) setAuthCookies(w http.ResponseWriter, token string, role string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   cookieMaxAge,
+	})
+	// logged_in is readable by JS to detect session state and role without
+	// exposing the actual token.
+	http.SetCookie(w, &http.Cookie{
+		Name:     "logged_in",
+		Value:    role,
+		HttpOnly: false,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   cookieMaxAge,
+	})
+}
+
+func (h *Handler) clearAuthCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{Name: "token", Value: "", MaxAge: -1, Path: "/"})
+	http.SetCookie(w, &http.Cookie{Name: "logged_in", Value: "", MaxAge: -1, Path: "/"})
 }
 
 // UserResponse omits sensitive fields.

@@ -8,8 +8,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/crypto/bcrypt"
 
-	store "github.com/your-org/monorepo/apps/api/internal/db/sqlc"
-	"github.com/your-org/monorepo/apps/api/internal/service"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
+	"github.com/domitara/domitara/apps/api/internal/service"
 )
 
 type SystemStatusOutput struct {
@@ -35,19 +36,25 @@ type SetupInput struct {
 }
 
 func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, error) {
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to start transaction")
+	}
+	defer tx.Rollback(ctx)
+
 	var setupComplete bool
-	h.pool.QueryRow(ctx, `SELECT setup_complete FROM system_settings LIMIT 1`).Scan(&setupComplete)
+	tx.QueryRow(ctx, `SELECT setup_complete FROM system_settings LIMIT 1 FOR UPDATE`).Scan(&setupComplete)
 	if setupComplete {
 		return nil, huma.NewError(http.StatusForbidden, "setup already complete")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.Body.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Body.Password), 12)
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to hash password")
 	}
 
 	var user store.User
-	err = h.pool.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`INSERT INTO users (email, name, password_hash, role)
 		 VALUES ($1, $2, $3, 'admin')
 		 RETURNING id, email, name, password_hash, role, created_at, updated_at`,
@@ -57,8 +64,12 @@ func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, er
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to create admin user")
 	}
 
-	if _, err = h.pool.Exec(ctx, `UPDATE system_settings SET setup_complete = TRUE`); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE system_settings SET setup_complete = TRUE`); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to complete setup")
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to commit setup")
 	}
 
 	token, err := service.SignToken(service.Claims{
@@ -69,8 +80,8 @@ func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, er
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to sign token")
 	}
 
-	out := &AuthOutput{}
-	out.Body.Token = token
-	out.Body.User = userResponse(user)
-	return out, nil
+	if w := apimw.GetResponseWriter(ctx); w != nil {
+		h.setAuthCookies(w, token, user.Role)
+	}
+	return &AuthOutput{Body: userResponse(user)}, nil
 }

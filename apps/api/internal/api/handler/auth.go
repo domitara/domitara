@@ -8,15 +8,12 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/crypto/bcrypt"
 
-	apimw "github.com/your-org/monorepo/apps/api/internal/api/middleware"
-	"github.com/your-org/monorepo/apps/api/internal/service"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	"github.com/domitara/domitara/apps/api/internal/service"
 )
 
 type AuthOutput struct {
-	Body struct {
-		Token string       `json:"token"`
-		User  UserResponse `json:"user"`
-	}
+	Body UserResponse
 }
 
 type LoginInput struct {
@@ -52,10 +49,17 @@ func (h *Handler) Login(ctx context.Context, input *LoginInput) (*AuthOutput, er
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to sign token")
 	}
-	out := &AuthOutput{}
-	out.Body.Token = token
-	out.Body.User = userResponse(user)
-	return out, nil
+	if w := apimw.GetResponseWriter(ctx); w != nil {
+		h.setAuthCookies(w, token, user.Role)
+	}
+	return &AuthOutput{Body: userResponse(user)}, nil
+}
+
+func (h *Handler) Logout(ctx context.Context, _ *struct{}) (*struct{}, error) {
+	if w := apimw.GetResponseWriter(ctx); w != nil {
+		h.clearAuthCookies(w)
+	}
+	return nil, nil
 }
 
 func (h *Handler) Me(ctx context.Context, _ *struct{}) (*MeOutput, error) {
@@ -79,7 +83,7 @@ func (h *Handler) UpdateMe(ctx context.Context, input *UpdateMeInput) (*MeOutput
 		if len(*p) < 8 {
 			return nil, huma.NewError(http.StatusUnprocessableEntity, "password must be at least 8 characters")
 		}
-		hash, err := bcrypt.GenerateFromPassword([]byte(*p), bcrypt.DefaultCost)
+		hash, err := bcrypt.GenerateFromPassword([]byte(*p), 12)
 		if err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to hash password")
 		}

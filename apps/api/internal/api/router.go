@@ -2,35 +2,79 @@ package api
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/your-org/monorepo/apps/api/internal/api/handler"
-	apimw "github.com/your-org/monorepo/apps/api/internal/api/middleware"
-	"github.com/your-org/monorepo/apps/api/internal/config"
-	store "github.com/your-org/monorepo/apps/api/internal/db/sqlc"
-	"github.com/your-org/monorepo/apps/api/internal/web"
+	"github.com/domitara/domitara/apps/api/internal/api/handler"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	"github.com/domitara/domitara/apps/api/internal/config"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
+	"github.com/domitara/domitara/apps/api/internal/web"
 )
 
 var bearerAuth = []map[string][]string{{"bearer": {}}}
 
 func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	q := store.New(pool)
-	h := handler.New(q, pool, cfg.JWTSecret)
+	h := handler.New(q, pool, cfg.JWTSecret, cfg.Env == "production")
 
 	r := chi.NewRouter()
+
+	// CORS — must be first
+	allowedOrigins := []string{"http://localhost:5173", "http://localhost:8080"}
+	if cfg.AllowedOrigins != "" {
+		allowedOrigins = append(allowedOrigins, strings.Split(cfg.AllowedOrigins, ",")...)
+	}
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
 	r.Use(chimw.Logger)
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.RequestID)
+
+	// Limit request body size to 1 MB
+	r.Use(func(next http.Handler) http.Handler {
+		return http.MaxBytesHandler(next, 1<<20)
+	})
+
+	// Rate limit: 100 req/min per IP globally; login gets a tighter 5/min window
+	r.Use(httprate.LimitByIP(100, time.Minute))
+	loginLimiter := httprate.LimitByIP(5, time.Minute)
+	r.Use(func(next http.Handler) http.Handler {
+		limited := loginLimiter(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost && r.URL.Path == "/api/v1/auth/login" {
+				limited.ServeHTTP(w, r)
+			} else {
+				next.ServeHTTP(w, r)
+			}
+		})
+	})
+
+	r.Use(apimw.WithResponseWriter)
 	r.Use(apimw.OptionalAuth(cfg.JWTSecret))
 
 	apiConfig := huma.DefaultConfig("Domitara API", "1.0.0")
 	apiConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"bearer": {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
+	}
+	// Disable docs and schema endpoints in production unless explicitly enabled
+	if cfg.Env == "production" && !cfg.ShowAPIDocs {
+		apiConfig.OpenAPIPath = ""
+		apiConfig.DocsPath = ""
 	}
 	api := humachi.New(r, apiConfig)
 
@@ -49,8 +93,11 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 
 	// Auth
 	huma.Register(api, huma.Operation{
-		Method: http.MethodPost, Path: "/api/v1/auth/login", Summary: "Login",
+		Method: http.MethodPost, Path: "/api/v1/auth/login", Summary: "Login", DefaultStatus: 200,
 	}, h.Login)
+	huma.Register(api, huma.Operation{
+		Method: http.MethodPost, Path: "/api/v1/auth/logout", Summary: "Logout", DefaultStatus: 204,
+	}, h.Logout)
 	huma.Register(api, huma.Operation{
 		Method: http.MethodGet, Path: "/api/v1/auth/me", Summary: "Current user", Security: bearerAuth,
 	}, h.Me)
@@ -98,6 +145,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 
 	return r
 }
+
 
 func spaHandler(fs http.FileSystem) http.Handler {
 	fileServer := http.FileServer(fs)

@@ -9,7 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
 
-	apimw "github.com/your-org/monorepo/apps/api/internal/api/middleware"
+	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 )
 
 type ItemRow struct {
@@ -36,8 +36,8 @@ type ItemsOutput struct{ Body []ItemRow }
 type ItemOutput struct{ Body ItemRow }
 
 type ListItemsInput struct {
-	LocationID *string `query:"location_id"`
-	LabelID    *string `query:"label_id"`
+	LocationID string `query:"location_id"`
+	LabelID    string `query:"label_id"`
 }
 
 type ItemIDInput struct {
@@ -96,13 +96,13 @@ func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsO
 	query := itemSelectSQL
 	args := []any{}
 	n := 1
-	if input.LocationID != nil {
+	if input.LocationID != "" {
 		query += ` WHERE i.location_id = $` + strconv.Itoa(n)
-		args = append(args, *input.LocationID)
+		args = append(args, input.LocationID)
 		n++
-	} else if input.LabelID != nil {
+	} else if input.LabelID != "" {
 		query += ` WHERE i.id IN (SELECT item_id FROM item_labels WHERE label_id = $` + strconv.Itoa(n) + `)`
-		args = append(args, *input.LabelID)
+		args = append(args, input.LabelID)
 		n++
 	}
 	query += ` GROUP BY i.id ORDER BY i.created_at DESC`

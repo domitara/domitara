@@ -1,10 +1,20 @@
 import { useState } from 'react';
-import { Paper, Title, Text, TextInput, PasswordInput, Button, Stack, Stepper, Alert } from '@mantine/core';
+import {
+  Paper,
+  Title,
+  Text,
+  TextInput,
+  PasswordInput,
+  Button,
+  Stack,
+  Stepper,
+  Alert,
+} from '@mantine/core';
 import { IconUser, IconLock, IconMail, IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { AppIcon } from '../components/AppIcon';
 
 interface SetupScreenProps {
-  onComplete: (token: string) => void;
+  onComplete: () => void;
 }
 
 export function SetupScreen({ onComplete }: SetupScreenProps) {
@@ -31,6 +41,7 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
     try {
       const resp = await fetch('/api/v1/system/setup', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       });
@@ -39,9 +50,8 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
         setError(data.error ?? 'Setup failed.');
         return;
       }
-      const data = await resp.json() as { token: string };
       setActive(1);
-      setTimeout(() => onComplete(data.token), 800);
+      setTimeout(() => onComplete(), 800);
     } catch {
       setError('Network error. Is the server running?');
     } finally {
@@ -60,23 +70,25 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
         style={{ borderTop: '4px solid var(--dt-blue-6)' }}
       >
         <Stack align="center" mb={28} gap={8}>
-          <AppIcon size={48}/>
-          <Title order={2} ta="center">Welcome to Domitara</Title>
+          <AppIcon size={48} />
+          <Title order={2} ta="center">
+            Welcome to Domitara
+          </Title>
           <Text c="dimmed" size="sm" ta="center">
             Let's set up your instance. This only happens once.
           </Text>
         </Stack>
 
         <Stepper active={active} size="sm" mb={28}>
-          <Stepper.Step label="Admin account" description="Create your account"/>
-          <Stepper.Step label="Done" description="Setup complete" icon={<IconCheck size={16}/>}/>
+          <Stepper.Step label="Admin account" description="Create your account" />
+          <Stepper.Step label="Done" description="Setup complete" icon={<IconCheck size={16} />} />
         </Stepper>
 
         {active === 0 && (
           <form onSubmit={handleSubmit}>
             <Stack gap={14}>
               {error && (
-                <Alert icon={<IconAlertCircle size={16}/>} color="red" variant="light" p={10}>
+                <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light" p={10}>
                   {error}
                 </Alert>
               )}
@@ -84,8 +96,8 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
                 label="Your name"
                 placeholder="Alex Reeves"
                 value={name}
-                onChange={e => setName(e.currentTarget.value)}
-                leftSection={<IconUser size={16}/>}
+                onChange={(e) => setName(e.currentTarget.value)}
+                leftSection={<IconUser size={16} />}
                 required
               />
               <TextInput
@@ -93,24 +105,24 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={e => setEmail(e.currentTarget.value)}
-                leftSection={<IconMail size={16}/>}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+                leftSection={<IconMail size={16} />}
                 required
               />
               <PasswordInput
                 label="Password"
                 placeholder="At least 8 characters"
                 value={password}
-                onChange={e => setPassword(e.currentTarget.value)}
-                leftSection={<IconLock size={16}/>}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                leftSection={<IconLock size={16} />}
                 required
               />
               <PasswordInput
                 label="Confirm password"
                 placeholder="Repeat password"
                 value={confirm}
-                onChange={e => setConfirm(e.currentTarget.value)}
-                leftSection={<IconLock size={16}/>}
+                onChange={(e) => setConfirm(e.currentTarget.value)}
+                leftSection={<IconLock size={16} />}
                 required
               />
               <Button type="submit" fullWidth mt={4} loading={loading}>
@@ -122,7 +134,9 @@ export function SetupScreen({ onComplete }: SetupScreenProps) {
 
         {active === 1 && (
           <Stack align="center" gap={8} py={16}>
-            <Text fw={600} c="green">Setup complete! Redirecting…</Text>
+            <Text fw={600} c="green">
+              Setup complete! Redirecting…
+            </Text>
           </Stack>
         )}
       </Paper>
