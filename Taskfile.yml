@@ -2,8 +2,8 @@ version: '3'
 
 tasks:
   dev:
-    desc: "Start everything (Go API + frontend)"
-    deps: [dev:api, dev:web]
+    desc: "Start everything (Go API + frontend + mobile)"
+    deps: [dev:api, dev:web, dev:mobile]
 
   dev:api:
     desc: "Go API with hot reload (air)"
@@ -13,6 +13,15 @@ tasks:
   dev:web:
     desc: "Frontend via Turborepo"
     cmd: pnpm turbo run dev
+
+  dev:mobile:
+    desc: "Expo dev server (tunnel mode for WSL)"
+    dir: apps/mobile
+    cmd: npx expo start --tunnel
+
+  dev:api-tunnel:
+    desc: "ngrok tunnel for Go API (port 8080) — use the URL as Server URL in the mobile app"
+    cmd: ngrok http 8080
 
   build:
     desc: "Build frontend then Go binary (single deployable)"
