@@ -24,6 +24,10 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
+	if err := db.Migrate(cfg.DatabaseURL); err != nil {
+		log.Fatalf("db migrate: %v", err)
+	}
+
 	pool, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("db connect: %v", err)
