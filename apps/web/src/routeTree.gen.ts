@@ -8,150 +8,186 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthSettingsRouteImport } from './routes/_auth/settings'
-import { Route as AuthMaintenanceRouteImport } from './routes/_auth/maintenance'
-import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
-import { Route as AuthProfileIndexRouteImport } from './routes/_auth/profile/index'
-import { Route as AuthLocationsIndexRouteImport } from './routes/_auth/locations/index'
-import { Route as AuthLabelsIndexRouteImport } from './routes/_auth/labels/index'
-import { Route as AuthItemsIndexRouteImport } from './routes/_auth/items/index'
-import { Route as AuthAssetIdsIndexRouteImport } from './routes/_auth/asset-ids/index'
-import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth/locations/$locationId'
-import { Route as AuthLabelsLabelIdRouteImport } from './routes/_auth/labels/$labelId'
-import { Route as AuthItemsItemIdRouteImport } from './routes/_auth/items/$itemId'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as SetupRouteImport } from './routes/setup';
+import { Route as LoginRouteImport } from './routes/login';
+import { Route as AuthRouteImport } from './routes/_auth';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as AuthSettingsRouteImport } from './routes/_auth/settings';
+import { Route as AuthMaintenanceRouteImport } from './routes/_auth/maintenance';
+import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard';
+import { Route as AuthProfileIndexRouteImport } from './routes/_auth/profile/index';
+import { Route as AuthLocationsIndexRouteImport } from './routes/_auth/locations/index';
+import { Route as AuthLabelsIndexRouteImport } from './routes/_auth/labels/index';
+import { Route as AuthItemsIndexRouteImport } from './routes/_auth/items/index';
+import { Route as AuthHomeIndexRouteImport } from './routes/_auth/home/index';
+import { Route as AuthAssetIdsIndexRouteImport } from './routes/_auth/asset-ids/index';
+import { Route as AuthLocationsLocationIdRouteImport } from './routes/_auth/locations/$locationId';
+import { Route as AuthLabelsLabelIdRouteImport } from './routes/_auth/labels/$labelId';
+import { Route as AuthItemsNewRouteImport } from './routes/_auth/items/new';
+import { Route as AuthItemsItemIdRouteImport } from './routes/_auth/items/$itemId';
+import { Route as AuthHomeNewRouteImport } from './routes/_auth/home/new';
+import { Route as AuthItemsItemIdEditRouteImport } from './routes/_auth/items/$itemId_.edit';
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthSettingsRoute = AuthSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthMaintenanceRoute = AuthMaintenanceRouteImport.update({
   id: '/maintenance',
   path: '/maintenance',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthDashboardRoute = AuthDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthProfileIndexRoute = AuthProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthLocationsIndexRoute = AuthLocationsIndexRouteImport.update({
   id: '/locations/',
   path: '/locations/',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthLabelsIndexRoute = AuthLabelsIndexRouteImport.update({
   id: '/labels/',
   path: '/labels/',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthItemsIndexRoute = AuthItemsIndexRouteImport.update({
   id: '/items/',
   path: '/items/',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
+const AuthHomeIndexRoute = AuthHomeIndexRouteImport.update({
+  id: '/home/',
+  path: '/home/',
+  getParentRoute: () => AuthRoute,
+} as any);
 const AuthAssetIdsIndexRoute = AuthAssetIdsIndexRouteImport.update({
   id: '/asset-ids/',
   path: '/asset-ids/',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthLocationsLocationIdRoute = AuthLocationsLocationIdRouteImport.update({
   id: '/locations/$locationId',
   path: '/locations/$locationId',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthLabelsLabelIdRoute = AuthLabelsLabelIdRouteImport.update({
   id: '/labels/$labelId',
   path: '/labels/$labelId',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
+const AuthItemsNewRoute = AuthItemsNewRouteImport.update({
+  id: '/items/new',
+  path: '/items/new',
+  getParentRoute: () => AuthRoute,
+} as any);
 const AuthItemsItemIdRoute = AuthItemsItemIdRouteImport.update({
   id: '/items/$itemId',
   path: '/items/$itemId',
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
+const AuthHomeNewRoute = AuthHomeNewRouteImport.update({
+  id: '/home/new',
+  path: '/home/new',
+  getParentRoute: () => AuthRoute,
+} as any);
+const AuthItemsItemIdEditRoute = AuthItemsItemIdEditRouteImport.update({
+  id: '/items/$itemId_/edit',
+  path: '/items/$itemId/edit',
+  getParentRoute: () => AuthRoute,
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/setup': typeof SetupRoute
-  '/dashboard': typeof AuthDashboardRoute
-  '/maintenance': typeof AuthMaintenanceRoute
-  '/settings': typeof AuthSettingsRoute
-  '/items/$itemId': typeof AuthItemsItemIdRoute
-  '/labels/$labelId': typeof AuthLabelsLabelIdRoute
-  '/locations/$locationId': typeof AuthLocationsLocationIdRoute
-  '/asset-ids/': typeof AuthAssetIdsIndexRoute
-  '/items/': typeof AuthItemsIndexRoute
-  '/labels/': typeof AuthLabelsIndexRoute
-  '/locations/': typeof AuthLocationsIndexRoute
-  '/profile/': typeof AuthProfileIndexRoute
+  '/': typeof IndexRoute;
+  '/login': typeof LoginRoute;
+  '/setup': typeof SetupRoute;
+  '/dashboard': typeof AuthDashboardRoute;
+  '/maintenance': typeof AuthMaintenanceRoute;
+  '/settings': typeof AuthSettingsRoute;
+  '/home/new': typeof AuthHomeNewRoute;
+  '/items/$itemId': typeof AuthItemsItemIdRoute;
+  '/items/new': typeof AuthItemsNewRoute;
+  '/labels/$labelId': typeof AuthLabelsLabelIdRoute;
+  '/locations/$locationId': typeof AuthLocationsLocationIdRoute;
+  '/asset-ids/': typeof AuthAssetIdsIndexRoute;
+  '/home/': typeof AuthHomeIndexRoute;
+  '/items/': typeof AuthItemsIndexRoute;
+  '/labels/': typeof AuthLabelsIndexRoute;
+  '/locations/': typeof AuthLocationsIndexRoute;
+  '/profile/': typeof AuthProfileIndexRoute;
+  '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/setup': typeof SetupRoute
-  '/dashboard': typeof AuthDashboardRoute
-  '/maintenance': typeof AuthMaintenanceRoute
-  '/settings': typeof AuthSettingsRoute
-  '/items/$itemId': typeof AuthItemsItemIdRoute
-  '/labels/$labelId': typeof AuthLabelsLabelIdRoute
-  '/locations/$locationId': typeof AuthLocationsLocationIdRoute
-  '/asset-ids': typeof AuthAssetIdsIndexRoute
-  '/items': typeof AuthItemsIndexRoute
-  '/labels': typeof AuthLabelsIndexRoute
-  '/locations': typeof AuthLocationsIndexRoute
-  '/profile': typeof AuthProfileIndexRoute
+  '/': typeof IndexRoute;
+  '/login': typeof LoginRoute;
+  '/setup': typeof SetupRoute;
+  '/dashboard': typeof AuthDashboardRoute;
+  '/maintenance': typeof AuthMaintenanceRoute;
+  '/settings': typeof AuthSettingsRoute;
+  '/home/new': typeof AuthHomeNewRoute;
+  '/items/$itemId': typeof AuthItemsItemIdRoute;
+  '/items/new': typeof AuthItemsNewRoute;
+  '/labels/$labelId': typeof AuthLabelsLabelIdRoute;
+  '/locations/$locationId': typeof AuthLocationsLocationIdRoute;
+  '/asset-ids': typeof AuthAssetIdsIndexRoute;
+  '/home': typeof AuthHomeIndexRoute;
+  '/items': typeof AuthItemsIndexRoute;
+  '/labels': typeof AuthLabelsIndexRoute;
+  '/locations': typeof AuthLocationsIndexRoute;
+  '/profile': typeof AuthProfileIndexRoute;
+  '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/_auth': typeof AuthRouteWithChildren
-  '/login': typeof LoginRoute
-  '/setup': typeof SetupRoute
-  '/_auth/dashboard': typeof AuthDashboardRoute
-  '/_auth/maintenance': typeof AuthMaintenanceRoute
-  '/_auth/settings': typeof AuthSettingsRoute
-  '/_auth/items/$itemId': typeof AuthItemsItemIdRoute
-  '/_auth/labels/$labelId': typeof AuthLabelsLabelIdRoute
-  '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRoute
-  '/_auth/asset-ids/': typeof AuthAssetIdsIndexRoute
-  '/_auth/items/': typeof AuthItemsIndexRoute
-  '/_auth/labels/': typeof AuthLabelsIndexRoute
-  '/_auth/locations/': typeof AuthLocationsIndexRoute
-  '/_auth/profile/': typeof AuthProfileIndexRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/_auth': typeof AuthRouteWithChildren;
+  '/login': typeof LoginRoute;
+  '/setup': typeof SetupRoute;
+  '/_auth/dashboard': typeof AuthDashboardRoute;
+  '/_auth/maintenance': typeof AuthMaintenanceRoute;
+  '/_auth/settings': typeof AuthSettingsRoute;
+  '/_auth/home/new': typeof AuthHomeNewRoute;
+  '/_auth/items/$itemId': typeof AuthItemsItemIdRoute;
+  '/_auth/items/new': typeof AuthItemsNewRoute;
+  '/_auth/labels/$labelId': typeof AuthLabelsLabelIdRoute;
+  '/_auth/locations/$locationId': typeof AuthLocationsLocationIdRoute;
+  '/_auth/asset-ids/': typeof AuthAssetIdsIndexRoute;
+  '/_auth/home/': typeof AuthHomeIndexRoute;
+  '/_auth/items/': typeof AuthItemsIndexRoute;
+  '/_auth/labels/': typeof AuthLabelsIndexRoute;
+  '/_auth/locations/': typeof AuthLocationsIndexRoute;
+  '/_auth/profile/': typeof AuthProfileIndexRoute;
+  '/_auth/items/$itemId_/edit': typeof AuthItemsItemIdEditRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/login'
@@ -159,15 +195,19 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/maintenance'
     | '/settings'
+    | '/home/new'
     | '/items/$itemId'
+    | '/items/new'
     | '/labels/$labelId'
     | '/locations/$locationId'
     | '/asset-ids/'
+    | '/home/'
     | '/items/'
     | '/labels/'
     | '/locations/'
     | '/profile/'
-  fileRoutesByTo: FileRoutesByTo
+    | '/items/$itemId/edit';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
     | '/login'
@@ -175,14 +215,18 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/maintenance'
     | '/settings'
+    | '/home/new'
     | '/items/$itemId'
+    | '/items/new'
     | '/labels/$labelId'
     | '/locations/$locationId'
     | '/asset-ids'
+    | '/home'
     | '/items'
     | '/labels'
     | '/locations'
     | '/profile'
+    | '/items/$itemId/edit';
   id:
     | '__root__'
     | '/'
@@ -192,169 +236,209 @@ export interface FileRouteTypes {
     | '/_auth/dashboard'
     | '/_auth/maintenance'
     | '/_auth/settings'
+    | '/_auth/home/new'
     | '/_auth/items/$itemId'
+    | '/_auth/items/new'
     | '/_auth/labels/$labelId'
     | '/_auth/locations/$locationId'
     | '/_auth/asset-ids/'
+    | '/_auth/home/'
     | '/_auth/items/'
     | '/_auth/labels/'
     | '/_auth/locations/'
     | '/_auth/profile/'
-  fileRoutesById: FileRoutesById
+    | '/_auth/items/$itemId_/edit';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AuthRoute: typeof AuthRouteWithChildren
-  LoginRoute: typeof LoginRoute
-  SetupRoute: typeof SetupRoute
+  IndexRoute: typeof IndexRoute;
+  AuthRoute: typeof AuthRouteWithChildren;
+  LoginRoute: typeof LoginRoute;
+  SetupRoute: typeof SetupRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/setup';
+      path: '/setup';
+      fullPath: '/setup';
+      preLoaderRoute: typeof SetupRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/login';
+      path: '/login';
+      fullPath: '/login';
+      preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/_auth';
+      path: '';
+      fullPath: '/';
+      preLoaderRoute: typeof AuthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_auth/settings': {
-      id: '/_auth/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthSettingsRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/settings';
+      path: '/settings';
+      fullPath: '/settings';
+      preLoaderRoute: typeof AuthSettingsRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/maintenance': {
-      id: '/_auth/maintenance'
-      path: '/maintenance'
-      fullPath: '/maintenance'
-      preLoaderRoute: typeof AuthMaintenanceRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/maintenance';
+      path: '/maintenance';
+      fullPath: '/maintenance';
+      preLoaderRoute: typeof AuthMaintenanceRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/dashboard': {
-      id: '/_auth/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthDashboardRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/dashboard';
+      path: '/dashboard';
+      fullPath: '/dashboard';
+      preLoaderRoute: typeof AuthDashboardRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/profile/': {
-      id: '/_auth/profile/'
-      path: '/profile'
-      fullPath: '/profile/'
-      preLoaderRoute: typeof AuthProfileIndexRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/profile/';
+      path: '/profile';
+      fullPath: '/profile/';
+      preLoaderRoute: typeof AuthProfileIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/locations/': {
-      id: '/_auth/locations/'
-      path: '/locations'
-      fullPath: '/locations/'
-      preLoaderRoute: typeof AuthLocationsIndexRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/locations/';
+      path: '/locations';
+      fullPath: '/locations/';
+      preLoaderRoute: typeof AuthLocationsIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/labels/': {
-      id: '/_auth/labels/'
-      path: '/labels'
-      fullPath: '/labels/'
-      preLoaderRoute: typeof AuthLabelsIndexRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/labels/';
+      path: '/labels';
+      fullPath: '/labels/';
+      preLoaderRoute: typeof AuthLabelsIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/items/': {
-      id: '/_auth/items/'
-      path: '/items'
-      fullPath: '/items/'
-      preLoaderRoute: typeof AuthItemsIndexRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/items/';
+      path: '/items';
+      fullPath: '/items/';
+      preLoaderRoute: typeof AuthItemsIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    '/_auth/home/': {
+      id: '/_auth/home/';
+      path: '/home';
+      fullPath: '/home/';
+      preLoaderRoute: typeof AuthHomeIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/asset-ids/': {
-      id: '/_auth/asset-ids/'
-      path: '/asset-ids'
-      fullPath: '/asset-ids/'
-      preLoaderRoute: typeof AuthAssetIdsIndexRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/asset-ids/';
+      path: '/asset-ids';
+      fullPath: '/asset-ids/';
+      preLoaderRoute: typeof AuthAssetIdsIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/locations/$locationId': {
-      id: '/_auth/locations/$locationId'
-      path: '/locations/$locationId'
-      fullPath: '/locations/$locationId'
-      preLoaderRoute: typeof AuthLocationsLocationIdRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/locations/$locationId';
+      path: '/locations/$locationId';
+      fullPath: '/locations/$locationId';
+      preLoaderRoute: typeof AuthLocationsLocationIdRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/labels/$labelId': {
-      id: '/_auth/labels/$labelId'
-      path: '/labels/$labelId'
-      fullPath: '/labels/$labelId'
-      preLoaderRoute: typeof AuthLabelsLabelIdRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/labels/$labelId';
+      path: '/labels/$labelId';
+      fullPath: '/labels/$labelId';
+      preLoaderRoute: typeof AuthLabelsLabelIdRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    '/_auth/items/new': {
+      id: '/_auth/items/new';
+      path: '/items/new';
+      fullPath: '/items/new';
+      preLoaderRoute: typeof AuthItemsNewRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
     '/_auth/items/$itemId': {
-      id: '/_auth/items/$itemId'
-      path: '/items/$itemId'
-      fullPath: '/items/$itemId'
-      preLoaderRoute: typeof AuthItemsItemIdRouteImport
-      parentRoute: typeof AuthRoute
-    }
+      id: '/_auth/items/$itemId';
+      path: '/items/$itemId';
+      fullPath: '/items/$itemId';
+      preLoaderRoute: typeof AuthItemsItemIdRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    '/_auth/home/new': {
+      id: '/_auth/home/new';
+      path: '/home/new';
+      fullPath: '/home/new';
+      preLoaderRoute: typeof AuthHomeNewRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    '/_auth/items/$itemId_/edit': {
+      id: '/_auth/items/$itemId_/edit';
+      path: '/items/$itemId/edit';
+      fullPath: '/items/$itemId/edit';
+      preLoaderRoute: typeof AuthItemsItemIdEditRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
   }
 }
 
 interface AuthRouteChildren {
-  AuthDashboardRoute: typeof AuthDashboardRoute
-  AuthMaintenanceRoute: typeof AuthMaintenanceRoute
-  AuthSettingsRoute: typeof AuthSettingsRoute
-  AuthItemsItemIdRoute: typeof AuthItemsItemIdRoute
-  AuthLabelsLabelIdRoute: typeof AuthLabelsLabelIdRoute
-  AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRoute
-  AuthAssetIdsIndexRoute: typeof AuthAssetIdsIndexRoute
-  AuthItemsIndexRoute: typeof AuthItemsIndexRoute
-  AuthLabelsIndexRoute: typeof AuthLabelsIndexRoute
-  AuthLocationsIndexRoute: typeof AuthLocationsIndexRoute
-  AuthProfileIndexRoute: typeof AuthProfileIndexRoute
+  AuthDashboardRoute: typeof AuthDashboardRoute;
+  AuthMaintenanceRoute: typeof AuthMaintenanceRoute;
+  AuthSettingsRoute: typeof AuthSettingsRoute;
+  AuthHomeNewRoute: typeof AuthHomeNewRoute;
+  AuthItemsItemIdRoute: typeof AuthItemsItemIdRoute;
+  AuthItemsNewRoute: typeof AuthItemsNewRoute;
+  AuthLabelsLabelIdRoute: typeof AuthLabelsLabelIdRoute;
+  AuthLocationsLocationIdRoute: typeof AuthLocationsLocationIdRoute;
+  AuthAssetIdsIndexRoute: typeof AuthAssetIdsIndexRoute;
+  AuthHomeIndexRoute: typeof AuthHomeIndexRoute;
+  AuthItemsIndexRoute: typeof AuthItemsIndexRoute;
+  AuthLabelsIndexRoute: typeof AuthLabelsIndexRoute;
+  AuthLocationsIndexRoute: typeof AuthLocationsIndexRoute;
+  AuthProfileIndexRoute: typeof AuthProfileIndexRoute;
+  AuthItemsItemIdEditRoute: typeof AuthItemsItemIdEditRoute;
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthDashboardRoute: AuthDashboardRoute,
   AuthMaintenanceRoute: AuthMaintenanceRoute,
   AuthSettingsRoute: AuthSettingsRoute,
+  AuthHomeNewRoute: AuthHomeNewRoute,
   AuthItemsItemIdRoute: AuthItemsItemIdRoute,
+  AuthItemsNewRoute: AuthItemsNewRoute,
   AuthLabelsLabelIdRoute: AuthLabelsLabelIdRoute,
   AuthLocationsLocationIdRoute: AuthLocationsLocationIdRoute,
   AuthAssetIdsIndexRoute: AuthAssetIdsIndexRoute,
+  AuthHomeIndexRoute: AuthHomeIndexRoute,
   AuthItemsIndexRoute: AuthItemsIndexRoute,
   AuthLabelsIndexRoute: AuthLabelsIndexRoute,
   AuthLocationsIndexRoute: AuthLocationsIndexRoute,
   AuthProfileIndexRoute: AuthProfileIndexRoute,
-}
+  AuthItemsItemIdEditRoute: AuthItemsItemIdEditRoute,
+};
 
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   LoginRoute: LoginRoute,
   SetupRoute: SetupRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

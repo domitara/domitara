@@ -8,22 +8,25 @@ import {
   Stack,
   Tabs,
   TextInput,
+  PasswordInput,
+  Select,
   Badge,
   ActionIcon,
   Alert,
   Loader,
   Center,
+  Modal,
 } from '@mantine/core';
 import {
   IconSettings,
   IconUsers,
-  IconKey,
   IconAlertTriangle,
   IconDotsVertical,
   IconTrash,
   IconAlertCircle,
+  IconUserPlus,
 } from '@tabler/icons-react';
-import { useAdminUsers, useAdminDeleteUser, useMe } from '../api/queries';
+import { useAdminUsers, useAdminDeleteUser, useAdminCreateUser, useMe } from '../api/queries';
 
 export function AdminSettingsScreen() {
   return (
@@ -41,9 +44,6 @@ export function AdminSettingsScreen() {
           </Tabs.Tab>
           <Tabs.Tab value="users" leftSection={<IconUsers size={15} />}>
             Users
-          </Tabs.Tab>
-          <Tabs.Tab value="tokens" leftSection={<IconKey size={15} />}>
-            API Tokens
           </Tabs.Tab>
           <Tabs.Tab value="danger" leftSection={<IconAlertTriangle size={15} />}>
             Danger Zone
@@ -83,21 +83,6 @@ export function AdminSettingsScreen() {
           <UsersTab />
         </Tabs.Panel>
 
-        <Tabs.Panel value="tokens">
-          <Paper withBorder p={24} radius="md">
-            <Stack align="center" gap={8} py={32}>
-              <IconKey size={32} color="var(--dt-gray-5)" />
-              <Text fw={600}>API Tokens</Text>
-              <Text size="sm" c="dimmed">
-                Create API tokens to access Domitara programmatically.
-              </Text>
-              <Button leftSection={<IconKey size={14} />} mt={4}>
-                Generate token
-              </Button>
-            </Stack>
-          </Paper>
-        </Tabs.Panel>
-
         <Tabs.Panel value="danger">
           <Paper withBorder p={24} radius="md" style={{ borderColor: 'var(--dt-danger)' }}>
             <Stack gap={16} maw={480}>
@@ -126,12 +111,112 @@ export function AdminSettingsScreen() {
   );
 }
 
+function CreateUserModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+  const createUser = useAdminCreateUser();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'member'>('member');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const reset = () => {
+    setName('');
+    setEmail('');
+    setPassword('');
+    setRole('member');
+    setErrors({});
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = 'Name is required';
+    if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Valid email required';
+    if (password.length < 8) e.password = 'Password must be at least 8 characters';
+    return e;
+  };
+
+  const handleSubmit = (ev: React.SyntheticEvent) => {
+    ev.preventDefault();
+    const e = validate();
+    if (Object.keys(e).length) {
+      setErrors(e);
+      return;
+    }
+    createUser.mutate(
+      { name, email, password, role },
+      {
+        onSuccess: () => {
+          reset();
+          onClose();
+        },
+      }
+    );
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  return (
+    <Modal opened={opened} onClose={handleClose} title="Create user" size="sm">
+      <form onSubmit={handleSubmit}>
+        <Stack gap={12}>
+          <TextInput
+            label="Name"
+            placeholder="Jane Smith"
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            error={errors.name}
+          />
+          <TextInput
+            label="Email"
+            placeholder="jane@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            error={errors.email}
+          />
+          <PasswordInput
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.currentTarget.value)}
+            error={errors.password}
+          />
+          <Select
+            label="Role"
+            value={role}
+            onChange={(v) => setRole((v ?? 'member') as 'admin' | 'member')}
+            data={[
+              { value: 'member', label: 'Member' },
+              { value: 'admin', label: 'Admin' },
+            ]}
+          />
+          {createUser.isError && (
+            <Alert color="red" variant="light">
+              {(createUser.error as Error)?.message ?? 'Failed to create user'}
+            </Alert>
+          )}
+          <Group justify="flex-end" mt={4}>
+            <Button variant="default" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={createUser.isPending}>
+              Create user
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
 function UsersTab() {
   const { data: users = [], isLoading } = useAdminUsers();
   const deleteUser = useAdminDeleteUser();
   const { data: me } = useMe();
   const currentUserId = me?.id;
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   if (isLoading)
     return (
@@ -141,91 +226,102 @@ function UsersTab() {
     );
 
   return (
-    <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
-      <Group justify="space-between" p={16} style={{ borderBottom: '1px solid var(--dt-border)' }}>
-        <Title order={3} style={{ fontSize: '1.125rem' }}>
-          Users
-        </Title>
-        <Button size="sm" leftSection={<IconUsers size={14} />}>
-          Invite user
-        </Button>
-      </Group>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.5fr 1fr 100px 60px',
-          gap: 12,
-          padding: '6px 16px',
-          background: 'var(--dt-gray-1)',
-          borderBottom: '1px solid var(--dt-border)',
-          fontSize: 11,
-          textTransform: 'uppercase',
-          fontWeight: 700,
-          color: 'var(--dt-fg-3)',
-          letterSpacing: '.04em',
-        }}
-      >
-        <span>Name / Email</span>
-        <span>Email</span>
-        <span>Role</span>
-        <span />
-      </div>
-      {users.map((u) => (
+    <>
+      <CreateUserModal opened={createOpen} onClose={() => setCreateOpen(false)} />
+      <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+        <Group
+          justify="space-between"
+          p={16}
+          style={{ borderBottom: '1px solid var(--dt-border)' }}
+        >
+          <Title order={3} style={{ fontSize: '1.125rem' }}>
+            Users
+          </Title>
+          <Button
+            size="sm"
+            leftSection={<IconUserPlus size={14} />}
+            onClick={() => setCreateOpen(true)}
+          >
+            Create user
+          </Button>
+        </Group>
         <div
-          key={u.id}
           style={{
             display: 'grid',
             gridTemplateColumns: '1.5fr 1fr 100px 60px',
             gap: 12,
-            alignItems: 'center',
-            padding: '10px 16px',
-            borderBottom: '1px solid var(--dt-divider)',
-            fontSize: 13,
+            padding: '6px 16px',
+            background: 'var(--dt-gray-1)',
+            borderBottom: '1px solid var(--dt-border)',
+            fontSize: 11,
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            color: 'var(--dt-fg-3)',
+            letterSpacing: '.04em',
           }}
         >
-          <div>
-            <Text size="sm" fw={500}>
-              {u.name}
-            </Text>
-            <Text size="xs" c="dimmed">
+          <span>Name / Email</span>
+          <span>Email</span>
+          <span>Role</span>
+          <span />
+        </div>
+        {users.map((u) => (
+          <div
+            key={u.id}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1.5fr 1fr 100px 60px',
+              gap: 12,
+              alignItems: 'center',
+              padding: '10px 16px',
+              borderBottom: '1px solid var(--dt-divider)',
+              fontSize: 13,
+            }}
+          >
+            <div>
+              <Text size="sm" fw={500}>
+                {u.name}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {u.email}
+              </Text>
+            </div>
+            <Text size="sm" c="dimmed">
               {u.email}
             </Text>
+            <Badge color={u.role === 'admin' ? 'blue' : 'gray'} variant="light" size="sm">
+              {u.role}
+            </Badge>
+            <Group gap={4}>
+              <ActionIcon variant="subtle" color="gray" size="sm">
+                <IconDotsVertical size={16} />
+              </ActionIcon>
+              {u.id !== currentUserId &&
+                (confirmDelete === u.id ? (
+                  <ActionIcon
+                    color="red"
+                    size="sm"
+                    onClick={() => {
+                      deleteUser.mutate(u.id);
+                      setConfirmDelete(null);
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                ) : (
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="sm"
+                    onClick={() => setConfirmDelete(u.id)}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                ))}
+            </Group>
           </div>
-          <Text size="sm" c="dimmed">
-            {u.email}
-          </Text>
-          <Badge color={u.role === 'admin' ? 'blue' : 'gray'} variant="light" size="sm">
-            {u.role}
-          </Badge>
-          <Group gap={4}>
-            <ActionIcon variant="subtle" color="gray" size="sm">
-              <IconDotsVertical size={16} />
-            </ActionIcon>
-            {u.id !== currentUserId &&
-              (confirmDelete === u.id ? (
-                <ActionIcon
-                  color="red"
-                  size="sm"
-                  onClick={() => {
-                    deleteUser.mutate(u.id);
-                    setConfirmDelete(null);
-                  }}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              ) : (
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="sm"
-                  onClick={() => setConfirmDelete(u.id)}
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              ))}
-          </Group>
-        </div>
-      ))}
-    </Paper>
+        ))}
+      </Paper>
+    </>
   );
 }

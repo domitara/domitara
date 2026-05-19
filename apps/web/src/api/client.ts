@@ -1,12 +1,31 @@
 const BASE = '/api/v1';
 
-async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+function getActiveHomeHeader(): Record<string, string> {
+  const id = localStorage.getItem('domitara_activeHomeId');
+  if (!id) return {};
+  // localStorage stores JSON-encoded values when using atomWithStorage
+  try {
+    const parsed = JSON.parse(id);
+    if (typeof parsed === 'string') return { 'X-Active-Home': parsed };
+  } catch {
+    // raw string fallback
+    if (id !== 'null') return { 'X-Active-Home': id };
+  }
+  return {};
+}
+
+async function request<T>(
+  path: string,
+  opts?: RequestInit & { skipContentType?: boolean }
+): Promise<T> {
+  const { skipContentType, ...fetchOpts } = opts ?? {};
   const resp = await fetch(BASE + path, {
-    ...opts,
+    ...fetchOpts,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
-      ...opts?.headers,
+      ...(skipContentType ? {} : { 'Content-Type': 'application/json' }),
+      ...getActiveHomeHeader(),
+      ...fetchOpts.headers,
     },
   });
 
@@ -32,4 +51,6 @@ export const api = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string) => request<void>(path, { method: 'DELETE' }),
+  upload: <T>(path: string, formData: FormData) =>
+    request<T>(path, { method: 'POST', body: formData, skipContentType: true }),
 };

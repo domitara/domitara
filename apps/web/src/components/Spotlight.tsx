@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Text, ActionIcon } from '@mantine/core';
+import { Text, ActionIcon, Loader } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch, IconBox, IconMapPin, IconTag, IconX } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useQueryClient } from '@tanstack/react-query';
-import type { Item, Location, Label } from '../api/types';
+import { useItems, useLocations, useLabels } from '../api/queries';
 
 interface SpotlightProps {
   onClose: () => void;
@@ -11,10 +11,17 @@ interface SpotlightProps {
 
 export function Spotlight({ onClose }: SpotlightProps) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [q, setQ] = useState('');
   const [type, setType] = useState<'all' | 'items' | 'locations' | 'labels'>('all');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [debouncedQ] = useDebouncedValue(q, 200);
+
+  const { data: itemResults = [], isFetching: itemsFetching } = useItems(
+    debouncedQ.length >= 2 ? { q: debouncedQ } : undefined
+  );
+  const { data: locations = [] } = useLocations();
+  const { data: labels = [] } = useLabels();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -25,20 +32,8 @@ export function Spotlight({ onClose }: SpotlightProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const items = queryClient.getQueryData<Item[]>(['items']) ?? [];
-  const locations = queryClient.getQueryData<Location[]>(['locations']) ?? [];
-  const labels = queryClient.getQueryData<Label[]>(['labels']) ?? [];
-
   const ql = q.toLowerCase();
-  const allItems =
-    ql.length >= 2
-      ? items
-          .filter(
-            (i) =>
-              i.name.toLowerCase().includes(ql) || (i.asset_id ?? '').toLowerCase().includes(ql)
-          )
-          .slice(0, 5)
-      : [];
+  const allItems = debouncedQ.length >= 2 ? itemResults.slice(0, 5) : [];
   const allLocs =
     ql.length >= 2 ? locations.filter((l) => l.name.toLowerCase().includes(ql)).slice(0, 3) : [];
   const allLabs =
@@ -47,7 +42,11 @@ export function Spotlight({ onClose }: SpotlightProps) {
   const showItems = type === 'items' || type === 'all' ? allItems : [];
   const showLocs = type === 'locations' || type === 'all' ? allLocs : [];
   const showLabs = type === 'labels' || type === 'all' ? allLabs : [];
-  const noResult = q.length >= 2 && showItems.length + showLocs.length + showLabs.length === 0;
+  const searching = q.length >= 2 && (q !== debouncedQ || itemsFetching);
+  const noResult =
+    debouncedQ.length >= 2 &&
+    !itemsFetching &&
+    showItems.length + showLocs.length + showLabs.length === 0;
 
   return (
     <div className="spotlight-scrim" onClick={onClose}>
@@ -60,6 +59,7 @@ export function Spotlight({ onClose }: SpotlightProps) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
+          {searching && <Loader size={14} color="gray" />}
           <ActionIcon variant="subtle" color="gray" onClick={onClose} size="sm">
             <IconX size={14} />
           </ActionIcon>

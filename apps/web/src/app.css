@@ -2,6 +2,22 @@
    Domitara — global & layout styles
    ============================================================= */
 
+/* ---- Print styles for panel directory ---- */
+.print-portal {
+  display: block;
+}
+@media print {
+  body > *:not(.print-portal) {
+    display: none !important;
+  }
+  .print-portal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}
+
 *,
 *::before,
 *::after {

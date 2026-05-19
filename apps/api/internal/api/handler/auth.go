@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 	"github.com/domitara/domitara/apps/api/internal/service"
 )
 
@@ -87,16 +88,14 @@ func (h *Handler) UpdateMe(ctx context.Context, input *UpdateMeInput) (*MeOutput
 		if err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to hash password")
 		}
-		if _, err = h.pool.Exec(ctx,
-			`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
-			string(hash), claims.Sub); err != nil {
+		if err = h.q.UpdateUserPasswordHash(ctx, store.UpdateUserPasswordHashParams{
+			PasswordHash: string(hash), ID: claims.Sub,
+		}); err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to update password")
 		}
 	}
 	if n := input.Body.Name; n != nil && *n != "" {
-		if _, err := h.pool.Exec(ctx,
-			`UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`,
-			*n, claims.Sub); err != nil {
+		if _, err := h.q.UpdateUser(ctx, store.UpdateUserParams{ID: claims.Sub, Name: *n}); err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to update name")
 		}
 	}

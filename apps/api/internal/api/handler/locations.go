@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
 type LocationRow struct {
@@ -44,28 +45,34 @@ type UpdateLocationInput struct {
 	}
 }
 
-const locationSelectSQL = `
-	SELECT l.id, l.name, l.parent_id, l.description,
-	       COUNT(i.id) AS item_count, l.created_at, l.updated_at
-	FROM locations l
-	LEFT JOIN items i ON i.location_id = l.id`
-
 func (h *Handler) ListLocations(ctx context.Context, _ *struct{}) (*LocationsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	rows, err := h.pool.Query(ctx, locationSelectSQL+` GROUP BY l.id ORDER BY l.name`)
-	if err != nil {
-		return nil, huma.NewError(http.StatusInternalServerError, "failed to list locations")
-	}
-	defer rows.Close()
+	homeID := apimw.GetActiveHome(ctx)
 	locs := []LocationRow{}
-	for rows.Next() {
-		var l LocationRow
-		if err := rows.Scan(&l.ID, &l.Name, &l.ParentID, &l.Description, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt); err != nil {
-			return nil, huma.NewError(http.StatusInternalServerError, "failed to scan location")
+	if homeID != "" {
+		rows, err := h.q.ListLocationsByHome(ctx, homeID)
+		if err != nil {
+			return nil, huma.NewError(http.StatusInternalServerError, "failed to list locations")
 		}
-		locs = append(locs, l)
+		for _, r := range rows {
+			locs = append(locs, LocationRow{
+				ID: r.ID, Name: r.Name, ParentID: r.ParentID, Description: r.Description,
+				ItemCount: r.ItemCount, CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+			})
+		}
+	} else {
+		rows, err := h.q.ListAllLocations(ctx)
+		if err != nil {
+			return nil, huma.NewError(http.StatusInternalServerError, "failed to list locations")
+		}
+		for _, r := range rows {
+			locs = append(locs, LocationRow{
+				ID: r.ID, Name: r.Name, ParentID: r.ParentID, Description: r.Description,
+				ItemCount: r.ItemCount, CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+			})
+		}
 	}
 	return &LocationsOutput{Body: locs}, nil
 }
@@ -74,54 +81,66 @@ func (h *Handler) GetLocation(ctx context.Context, input *LocationIDInput) (*Loc
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	var l LocationRow
-	err := h.pool.QueryRow(ctx, locationSelectSQL+` WHERE l.id = $1 GROUP BY l.id`, input.ID).
-		Scan(&l.ID, &l.Name, &l.ParentID, &l.Description, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt)
+	r, err := h.q.GetLocation(ctx, input.ID)
 	if err != nil {
 		return nil, huma.NewError(http.StatusNotFound, "location not found")
 	}
-	return &LocationOutput{Body: l}, nil
+	return &LocationOutput{Body: LocationRow{
+		ID: r.ID, Name: r.Name, ParentID: r.ParentID, Description: r.Description,
+		ItemCount: r.ItemCount, CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+	}}, nil
 }
 
 func (h *Handler) CreateLocation(ctx context.Context, input *CreateLocationInput) (*LocationOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	var l LocationRow
-	err := h.pool.QueryRow(ctx,
-		`INSERT INTO locations (name, parent_id, description) VALUES ($1, $2, $3)
-		 RETURNING id, name, parent_id, description, 0, created_at, updated_at`,
-		input.Body.Name, input.Body.ParentID, input.Body.Description,
-	).Scan(&l.ID, &l.Name, &l.ParentID, &l.Description, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt)
+	homeID := apimw.GetActiveHome(ctx)
+	if homeID == "" {
+		return nil, huma.NewError(http.StatusBadRequest, "X-Active-Home header required")
+	}
+	r, err := h.q.CreateLocation(ctx, store.CreateLocationParams{
+		Name:        input.Body.Name,
+		ParentID:    input.Body.ParentID,
+		Description: input.Body.Description,
+		HomeID:      homeID,
+	})
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to create location")
 	}
-	return &LocationOutput{Body: l}, nil
+	return &LocationOutput{Body: LocationRow{
+		ID: r.ID, Name: r.Name, ParentID: r.ParentID, Description: r.Description,
+		ItemCount: 0, CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+	}}, nil
 }
 
 func (h *Handler) UpdateLocation(ctx context.Context, input *UpdateLocationInput) (*LocationOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := h.pool.Exec(ctx,
-		`UPDATE locations SET name = $2, parent_id = $3, description = $4, updated_at = NOW() WHERE id = $1`,
-		input.ID, input.Body.Name, input.Body.ParentID, input.Body.Description); err != nil {
+	if err := h.q.UpdateLocation(ctx, store.UpdateLocationParams{
+		ID:          input.ID,
+		Name:        input.Body.Name,
+		ParentID:    input.Body.ParentID,
+		Description: input.Body.Description,
+	}); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to update location")
 	}
-	var l LocationRow
-	err := h.pool.QueryRow(ctx, locationSelectSQL+` WHERE l.id = $1 GROUP BY l.id`, input.ID).
-		Scan(&l.ID, &l.Name, &l.ParentID, &l.Description, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt)
+	r, err := h.q.GetLocation(ctx, input.ID)
 	if err != nil {
 		return nil, huma.NewError(http.StatusNotFound, "location not found")
 	}
-	return &LocationOutput{Body: l}, nil
+	return &LocationOutput{Body: LocationRow{
+		ID: r.ID, Name: r.Name, ParentID: r.ParentID, Description: r.Description,
+		ItemCount: r.ItemCount, CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+	}}, nil
 }
 
 func (h *Handler) DeleteLocation(ctx context.Context, input *LocationIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := h.pool.Exec(ctx, `DELETE FROM locations WHERE id = $1`, input.ID); err != nil {
+	if err := h.q.DeleteLocation(ctx, input.ID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete location")
 	}
 	return nil, nil

@@ -27,12 +27,14 @@ import { useNavigate } from '@tanstack/react-router';
 import { useLocations, useItems } from '../api/queries';
 import { getDescendants } from '../utils';
 import { ItemCard } from './AllItemsScreen';
+import { NewLocationModal } from '../components/NewLocationModal';
 
 export function LocationsScreen() {
   const navigate = useNavigate();
   const { data: locations = [], isLoading } = useLocations();
   const { data: allItems = [] } = useItems();
   const [open, setOpen] = useState(new Set<string>());
+  const [modalOpen, setModalOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
 
   const toggle = (id: string) =>
@@ -145,7 +147,7 @@ export function LocationsScreen() {
           <Button variant="default" size="sm" leftSection={<IconUpload size={14} />}>
             Import CSV
           </Button>
-          <Button size="sm" leftSection={<IconPlus size={14} />}>
+          <Button size="sm" leftSection={<IconPlus size={14} />} onClick={() => setModalOpen(true)}>
             New location
           </Button>
         </Group>
@@ -195,6 +197,9 @@ export function LocationsScreen() {
                       }
                     >
                       View all items
+                    </Button>
+                    <Button size="sm" leftSection={<IconPlus size={14} />}>
+                      Add location
                     </Button>
                     <ActionIcon variant="default" size="lg">
                       <IconEdit size={16} />
@@ -271,6 +276,8 @@ export function LocationsScreen() {
           )}
         </Stack>
       </div>
+
+      <NewLocationModal opened={modalOpen} onClose={() => setModalOpen(false)} />
     </Stack>
   );
 }

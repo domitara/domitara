@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Paper,
   Title,
@@ -8,27 +9,55 @@ import {
   ActionIcon,
   Loader,
   Center,
+  Menu,
 } from '@mantine/core';
-import { IconPlus, IconTool, IconClock, IconShield, IconDotsVertical } from '@tabler/icons-react';
-import { useMaintenance } from '../api/queries';
+import {
+  IconPlus,
+  IconClock,
+  IconDotsVertical,
+  IconX,
+  IconTrash,
+  IconCheck,
+  IconPencil,
+  IconCalendar,
+} from '@tabler/icons-react';
+import {
+  useMaintenance,
+  useSchedules,
+  useReminders,
+  useDismissReminder,
+  useSnoozeReminder,
+  useDeleteMaintenance,
+  useDeleteSchedule,
+} from '../api/queries';
+import type { MaintenanceLog, MaintenanceSchedule, Reminder } from '../api/types';
 import { formatCurrency } from '../utils';
+import { LogMaintenanceModal } from '../components/LogMaintenanceModal';
+import { MaintenanceScheduleModal } from '../components/MaintenanceScheduleModal';
 
-function AttentionRow({
-  icon: Ico,
-  title,
-  sub,
-  tone,
-}: {
-  icon: React.ComponentType<{ size: number; color: string }>;
-  title: string;
-  sub: string;
-  tone: 'warn' | 'danger' | 'info';
-}) {
-  const c = {
-    warn: { text: 'var(--dt-warn)', bg: 'var(--dt-warn-bg)' },
-    danger: { text: 'var(--dt-danger)', bg: 'var(--dt-danger-bg)' },
-    info: { text: 'var(--dt-blue-7)', bg: 'var(--dt-blue-0)' },
-  }[tone];
+function dueStatus(nextDueAt: string): { label: string; color: string } {
+  const due = new Date(nextDueAt);
+  const now = new Date();
+  const days = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (days < 0) return { label: 'Overdue', color: 'red' };
+  if (days <= 7) return { label: 'Due soon', color: 'yellow' };
+  return { label: 'Upcoming', color: 'green' };
+}
+
+function formatFrequency(value: number, unit: string): string {
+  return `Every ${value} ${value === 1 ? unit.replace(/s$/, '') : unit}`;
+}
+
+function ReminderRow({ reminder }: { reminder: Reminder }) {
+  const dismiss = useDismissReminder();
+  const snooze = useSnoozeReminder();
+
+  const colorMap = {
+    info: { text: 'var(--dt-blue-7)', bg: 'var(--dt-blue-0)', border: 'var(--dt-blue-4)' },
+    warn: { text: 'var(--dt-warn)', bg: 'var(--dt-warn-bg)', border: 'var(--dt-warn)' },
+    danger: { text: 'var(--dt-danger)', bg: 'var(--dt-danger-bg)', border: 'var(--dt-danger)' },
+  }[reminder.tone];
+
   return (
     <div
       style={{
@@ -37,25 +66,205 @@ function AttentionRow({
         gap: 10,
         padding: 8,
         borderRadius: 6,
-        background: c.bg,
-        border: `1px solid ${c.text}33`,
+        background: colorMap.bg,
+        border: `1px solid ${colorMap.border}33`,
       }}
     >
-      <Ico size={18} color={c.text} />
       <div style={{ flex: 1 }}>
         <Text size="sm" fw={500}>
-          {title}
+          {reminder.title}
         </Text>
         <Text size="xs" c="dimmed">
-          {sub}
+          {reminder.body}
         </Text>
       </div>
+      <Menu withinPortal position="bottom-end" width={140}>
+        <Menu.Target>
+          <ActionIcon variant="subtle" color="gray" size="sm" title="Snooze">
+            <IconClock size={14} />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>Snooze for</Menu.Label>
+          <Menu.Item onClick={() => snooze.mutate({ id: reminder.id, days: 1 })}>1 day</Menu.Item>
+          <Menu.Item onClick={() => snooze.mutate({ id: reminder.id, days: 3 })}>3 days</Menu.Item>
+          <Menu.Item onClick={() => snooze.mutate({ id: reminder.id, days: 7 })}>1 week</Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="sm"
+        title="Dismiss"
+        onClick={() => dismiss.mutate(reminder.id)}
+      >
+        <IconX size={14} />
+      </ActionIcon>
+    </div>
+  );
+}
+
+interface ScheduleRowProps {
+  schedule: MaintenanceSchedule;
+  onMarkDone: (s: MaintenanceSchedule) => void;
+  onEdit: (s: MaintenanceSchedule) => void;
+}
+
+function ScheduleRow({ schedule, onMarkDone, onEdit }: ScheduleRowProps) {
+  const del = useDeleteSchedule();
+  const status = dueStatus(schedule.next_due_at);
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '100px 1.5fr 1fr 130px 80px',
+        gap: 12,
+        alignItems: 'center',
+        padding: '8px 12px',
+        borderBottom: '1px solid var(--dt-divider)',
+        fontSize: 13,
+      }}
+    >
+      <Badge color={status.color} variant="light" size="sm">
+        {status.label}
+      </Badge>
+      <div>
+        <Text size="sm" fw={500}>
+          {schedule.title}
+        </Text>
+        {schedule.item_name && (
+          <Text size="xs" c="dimmed">
+            {schedule.item_name}
+          </Text>
+        )}
+      </div>
+      <Text size="xs" c="dimmed">
+        {formatFrequency(schedule.frequency_value, schedule.frequency_unit)}
+      </Text>
+      <Text size="xs" className="mono" c="dimmed">
+        Due {schedule.next_due_at}
+      </Text>
+      <Group gap={4} justify="flex-end">
+        <ActionIcon
+          variant="subtle"
+          color="green"
+          size="sm"
+          title="Mark done"
+          onClick={() => onMarkDone(schedule)}
+        >
+          <IconCheck size={14} />
+        </ActionIcon>
+        <Menu withinPortal position="bottom-end" width={130}>
+          <Menu.Target>
+            <ActionIcon variant="subtle" color="gray" size="sm">
+              <IconDotsVertical size={16} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => onEdit(schedule)}>
+              Edit
+            </Menu.Item>
+            <Menu.Item
+              color="red"
+              leftSection={<IconTrash size={14} />}
+              onClick={() => del.mutate(schedule.id)}
+            >
+              Delete
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+    </div>
+  );
+}
+
+function LogRow({ log }: { log: MaintenanceLog }) {
+  const del = useDeleteMaintenance();
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '90px 1.5fr 1fr 90px 40px',
+        gap: 12,
+        alignItems: 'center',
+        padding: '8px 12px',
+        borderBottom: '1px solid var(--dt-divider)',
+        fontSize: 13,
+      }}
+    >
+      <Text size="xs" className="mono" c="dimmed">
+        {log.performed_at}
+      </Text>
+      <Text size="sm" fw={500}>
+        {log.title}
+      </Text>
+      <Text size="sm" c="dimmed">
+        {log.item_name ?? '—'}
+      </Text>
+      <Text size="xs" className="mono">
+        {formatCurrency(log.cost)}
+      </Text>
+      <Menu withinPortal position="bottom-end" width={130}>
+        <Menu.Target>
+          <ActionIcon variant="subtle" color="gray" size="sm">
+            <IconDotsVertical size={16} />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            color="red"
+            leftSection={<IconTrash size={14} />}
+            onClick={() => del.mutate(log.id)}
+          >
+            Delete
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
     </div>
   );
 }
 
 export function MaintenanceScreen() {
-  const { data: logs = [], isLoading } = useMaintenance();
+  const { data: logs = [], isLoading: logsLoading } = useMaintenance();
+  const { data: schedules = [], isLoading: schedulesLoading } = useSchedules();
+  const { data: reminders = [] } = useReminders();
+
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [logModalDefaults, setLogModalDefaults] = useState<{
+    title?: string;
+    itemId?: string;
+    scheduleId?: string;
+  }>({});
+
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<MaintenanceSchedule | undefined>();
+
+  const openLogModal = () => {
+    setLogModalDefaults({});
+    setLogModalOpen(true);
+  };
+
+  const markDone = (s: MaintenanceSchedule) => {
+    setLogModalDefaults({
+      title: s.title,
+      itemId: s.item_id ?? undefined,
+      scheduleId: s.id,
+    });
+    setLogModalOpen(true);
+  };
+
+  const openNewSchedule = () => {
+    setEditingSchedule(undefined);
+    setScheduleModalOpen(true);
+  };
+
+  const openEditSchedule = (s: MaintenanceSchedule) => {
+    setEditingSchedule(s);
+    setScheduleModalOpen(true);
+  };
+
+  const isLoading = logsLoading || schedulesLoading;
 
   if (isLoading)
     return (
@@ -65,122 +274,182 @@ export function MaintenanceScreen() {
     );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Group justify="space-between">
-        <Title order={1} style={{ fontSize: '1.75rem' }}>
-          Maintenance
-        </Title>
-        <Button size="sm" leftSection={<IconPlus size={14} />}>
-          Log maintenance
-        </Button>
-      </Group>
+    <>
+      <LogMaintenanceModal
+        opened={logModalOpen}
+        onClose={() => setLogModalOpen(false)}
+        defaultTitle={logModalDefaults.title}
+        defaultItemId={logModalDefaults.itemId}
+        scheduleId={logModalDefaults.scheduleId}
+      />
+      <MaintenanceScheduleModal
+        opened={scheduleModalOpen}
+        onClose={() => setScheduleModalOpen(false)}
+        editing={editingSchedule}
+      />
 
-      <Paper withBorder p={16} radius="md">
-        <Group gap={8} mb={14}>
-          <Badge color="yellow" variant="light">
-            soon
-          </Badge>
-          <Title order={3} style={{ fontSize: '1.125rem', marginLeft: 4 }}>
-            Reminders
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Group justify="space-between">
+          <Title order={1} style={{ fontSize: '1.75rem' }}>
+            Maintenance
           </Title>
-        </Group>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <AttentionRow
-            icon={IconShield}
-            title="Set up maintenance schedules"
-            sub="Log your first maintenance to start tracking"
-            tone="info"
-          />
-          <AttentionRow
-            icon={IconTool}
-            title="Add items to track"
-            sub="Maintenance logs are linked to inventory items"
-            tone="info"
-          />
-        </div>
-
-        <Group gap={8} mt={22} mb={14}>
-          <Badge color="green" variant="light">
-            done
-          </Badge>
-          <Title order={3} style={{ fontSize: '1.125rem', marginLeft: 4 }}>
-            Recent logs
-          </Title>
+          <Group gap={8}>
+            <Button
+              size="sm"
+              variant="default"
+              leftSection={<IconCalendar size={14} />}
+              onClick={openNewSchedule}
+            >
+              Add schedule
+            </Button>
+            <Button size="sm" leftSection={<IconPlus size={14} />} onClick={openLogModal}>
+              Log maintenance
+            </Button>
+          </Group>
         </Group>
 
-        {logs.length === 0 ? (
-          <div
-            style={{
-              padding: 32,
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <IconClock size={32} color="var(--dt-gray-5)" />
-            <Text fw={600}>No maintenance logs yet</Text>
-            <Text size="sm" c="dimmed">
-              Log your first maintenance event to start tracking.
-            </Text>
-          </div>
-        ) : (
-          <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+        {reminders.length > 0 && (
+          <Paper withBorder p={16} radius="md">
+            <Group gap={8} mb={14}>
+              <Badge color="yellow" variant="light">
+                soon
+              </Badge>
+              <Title order={3} style={{ fontSize: '1.125rem', marginLeft: 4 }}>
+                Reminders
+              </Title>
+            </Group>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {reminders.map((r) => (
+                <ReminderRow key={r.id} reminder={r} />
+              ))}
+            </div>
+          </Paper>
+        )}
+
+        <Paper withBorder p={16} radius="md">
+          <Group justify="space-between" mb={14}>
+            <Group gap={8}>
+              <Badge color="blue" variant="light">
+                scheduled
+              </Badge>
+              <Title order={3} style={{ fontSize: '1.125rem', marginLeft: 4 }}>
+                Schedules
+              </Title>
+            </Group>
+          </Group>
+
+          {schedules.length === 0 ? (
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '90px 1.5fr 1fr 90px 40px',
-                gap: 12,
-                padding: '6px 12px',
-                background: 'var(--dt-gray-1)',
-                borderBottom: '1px solid var(--dt-border)',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                fontWeight: 700,
-                color: 'var(--dt-fg-3)',
-                letterSpacing: '.04em',
+                padding: 24,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
               }}
             >
-              <span>Date</span>
-              <span>What</span>
-              <span>Item</span>
-              <span>Cost</span>
-              <span />
+              <IconCalendar size={28} color="var(--dt-gray-5)" />
+              <Text fw={600}>No schedules yet</Text>
+              <Text size="sm" c="dimmed">
+                Add a schedule to track recurring maintenance tasks.
+              </Text>
+              <Button size="xs" variant="light" mt={4} onClick={openNewSchedule}>
+                Add your first schedule
+              </Button>
             </div>
-            {logs.map((l) => (
+          ) : (
+            <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
               <div
-                key={l.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '100px 1.5fr 1fr 130px 80px',
+                  gap: 12,
+                  padding: '6px 12px',
+                  background: 'var(--dt-gray-1)',
+                  borderBottom: '1px solid var(--dt-border)',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: 'var(--dt-fg-3)',
+                  letterSpacing: '.04em',
+                }}
+              >
+                <span>Status</span>
+                <span>Task</span>
+                <span>Frequency</span>
+                <span>Next due</span>
+                <span />
+              </div>
+              {schedules.map((s) => (
+                <ScheduleRow
+                  key={s.id}
+                  schedule={s}
+                  onMarkDone={markDone}
+                  onEdit={openEditSchedule}
+                />
+              ))}
+            </Paper>
+          )}
+        </Paper>
+
+        <Paper withBorder p={16} radius="md">
+          <Group gap={8} mb={14}>
+            <Badge color="green" variant="light">
+              done
+            </Badge>
+            <Title order={3} style={{ fontSize: '1.125rem', marginLeft: 4 }}>
+              Recent logs
+            </Title>
+          </Group>
+
+          {logs.length === 0 ? (
+            <div
+              style={{
+                padding: 32,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <IconClock size={32} color="var(--dt-gray-5)" />
+              <Text fw={600}>No maintenance logs yet</Text>
+              <Text size="sm" c="dimmed">
+                Log your first maintenance event to start tracking.
+              </Text>
+            </div>
+          ) : (
+            <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+              <div
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '90px 1.5fr 1fr 90px 40px',
                   gap: 12,
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  borderBottom: '1px solid var(--dt-divider)',
-                  fontSize: 13,
+                  padding: '6px 12px',
+                  background: 'var(--dt-gray-1)',
+                  borderBottom: '1px solid var(--dt-border)',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: 'var(--dt-fg-3)',
+                  letterSpacing: '.04em',
                 }}
               >
-                <Text size="xs" className="mono" c="dimmed">
-                  {l.performed_at}
-                </Text>
-                <Text size="sm" fw={500}>
-                  {l.title}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {l.item_name ?? '—'}
-                </Text>
-                <Text size="xs" className="mono">
-                  {formatCurrency(l.cost)}
-                </Text>
-                <ActionIcon variant="subtle" color="gray" size="sm">
-                  <IconDotsVertical size={16} />
-                </ActionIcon>
+                <span>Date</span>
+                <span>What</span>
+                <span>Item</span>
+                <span>Cost</span>
+                <span />
               </div>
-            ))}
-          </Paper>
-        )}
-      </Paper>
-    </div>
+              {logs.map((l) => (
+                <LogRow key={l.id} log={l} />
+              ))}
+            </Paper>
+          )}
+        </Paper>
+      </div>
+    </>
   );
 }

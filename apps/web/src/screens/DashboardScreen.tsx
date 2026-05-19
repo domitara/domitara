@@ -1,23 +1,98 @@
-import { Paper, Title, Text, Button, Group, Stack, Avatar, Loader, Center } from '@mantine/core';
+import {
+  Paper,
+  Title,
+  Text,
+  Button,
+  Group,
+  Stack,
+  Avatar,
+  Loader,
+  Center,
+  Menu,
+  ActionIcon,
+} from '@mantine/core';
 import {
   IconPlus,
   IconCalendar,
   IconClock,
   IconTool,
   IconChevronRight,
-  IconCamera,
-  IconShield,
   IconHistory,
+  IconX,
 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useDashboard, useItems } from '../api/queries';
+import {
+  useDashboard,
+  useItems,
+  useReminders,
+  useDismissReminder,
+  useSnoozeReminder,
+} from '../api/queries';
+import type { Reminder } from '../api/types';
 import { formatCurrency } from '../utils';
 import { ItemCard } from './AllItemsScreen';
+
+function ReminderRow({ reminder }: { reminder: Reminder }) {
+  const dismiss = useDismissReminder();
+  const snooze = useSnoozeReminder();
+
+  const colorMap = {
+    info: { text: 'var(--dt-blue-7)', bg: 'var(--dt-blue-0)', border: 'var(--dt-blue-4)' },
+    warn: { text: 'var(--dt-warn)', bg: 'var(--dt-warn-bg)', border: 'var(--dt-warn)' },
+    danger: { text: 'var(--dt-danger)', bg: 'var(--dt-danger-bg)', border: 'var(--dt-danger)' },
+  }[reminder.tone];
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: 8,
+        borderRadius: 6,
+        background: colorMap.bg,
+        border: `1px solid ${colorMap.border}33`,
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <Text size="sm" fw={500}>
+          {reminder.title}
+        </Text>
+        <Text size="xs" c="dimmed">
+          {reminder.body}
+        </Text>
+      </div>
+      <Menu withinPortal position="bottom-end" width={140}>
+        <Menu.Target>
+          <ActionIcon variant="subtle" color="gray" size="sm" title="Snooze">
+            <IconClock size={14} />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>Snooze for</Menu.Label>
+          <Menu.Item onClick={() => snooze.mutate({ id: reminder.id, days: 1 })}>1 day</Menu.Item>
+          <Menu.Item onClick={() => snooze.mutate({ id: reminder.id, days: 3 })}>3 days</Menu.Item>
+          <Menu.Item onClick={() => snooze.mutate({ id: reminder.id, days: 7 })}>1 week</Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="sm"
+        title="Dismiss"
+        onClick={() => dismiss.mutate(reminder.id)}
+      >
+        <IconX size={14} />
+      </ActionIcon>
+    </div>
+  );
+}
 
 export function DashboardScreen() {
   const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading } = useDashboard();
   const { data: items = [], isLoading: itemsLoading } = useItems();
+  const { data: reminders = [] } = useReminders();
 
   const statCards = stats
     ? [
@@ -38,7 +113,11 @@ export function DashboardScreen() {
           <Button variant="default" size="sm" leftSection={<IconCalendar size={14} />}>
             Last 30 days
           </Button>
-          <Button size="sm" leftSection={<IconPlus size={14} />}>
+          <Button
+            size="sm"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => navigate({ to: '/items/new' })}
+          >
             Add item
           </Button>
         </Group>
@@ -107,7 +186,7 @@ export function DashboardScreen() {
 
       {/* Lower row */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
-        {/* Needs attention placeholder */}
+        {/* Needs attention */}
         <Paper withBorder p={16} radius="md">
           <Group justify="space-between" mb={12}>
             <Group gap={8}>
@@ -120,23 +199,20 @@ export function DashboardScreen() {
               View all
             </Button>
           </Group>
-          <Stack gap={8}>
-            <AttentionRow
-              icon={IconCamera}
-              title="Add photos to your items"
-              sub="Items with photos are easier to identify"
-              tone="info"
-            />
-            <AttentionRow
-              icon={IconShield}
-              title="Mark high-value items insured"
-              sub="Track insurance for expensive possessions"
-              tone="warn"
-            />
-          </Stack>
+          {reminders.length === 0 ? (
+            <Text size="sm" c="dimmed" ta="center" py={16}>
+              All clear — no reminders right now.
+            </Text>
+          ) : (
+            <Stack gap={8}>
+              {reminders.map((r) => (
+                <ReminderRow key={r.id} reminder={r} />
+              ))}
+            </Stack>
+          )}
         </Paper>
 
-        {/* Activity placeholder */}
+        {/* Activity */}
         <Paper withBorder p={16} radius="md">
           <Group gap={8} mb={12}>
             <IconHistory size={20} color="var(--dt-fg-2)" />
@@ -167,46 +243,5 @@ export function DashboardScreen() {
         </Paper>
       </div>
     </Stack>
-  );
-}
-
-function AttentionRow({
-  icon: Ico,
-  title,
-  sub,
-  tone,
-}: {
-  icon: React.ComponentType<{ size: number; color: string }>;
-  title: string;
-  sub: string;
-  tone: 'warn' | 'danger' | 'info';
-}) {
-  const colorMap = {
-    warn: { text: 'var(--dt-warn)', bg: 'var(--dt-warn-bg)', border: 'var(--dt-warn)' },
-    danger: { text: 'var(--dt-danger)', bg: 'var(--dt-danger-bg)', border: 'var(--dt-danger)' },
-    info: { text: 'var(--dt-blue-7)', bg: 'var(--dt-blue-0)', border: 'var(--dt-blue-4)' },
-  }[tone];
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: 8,
-        borderRadius: 6,
-        background: colorMap.bg,
-        border: `1px solid ${colorMap.border}33`,
-      }}
-    >
-      <Ico size={18} color={colorMap.text} />
-      <div style={{ flex: 1 }}>
-        <Text size="sm" fw={500}>
-          {title}
-        </Text>
-        <Text size="xs" c="dimmed">
-          {sub}
-        </Text>
-      </div>
-    </div>
   );
 }

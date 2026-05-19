@@ -1,7 +1,9 @@
 # Go
 apps/api/tmp/
 apps/api/bin/
+apps/api/data/uploads
 apps/api/*.env
+apps/web/coverage
 tmp/
 
 # Node

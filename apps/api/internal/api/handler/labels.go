@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
 type LabelRow struct {
@@ -41,27 +42,34 @@ type UpdateLabelInput struct {
 	}
 }
 
-const labelSelectSQL = `
-	SELECT lb.id, lb.name, lb.color, COUNT(il.item_id) AS item_count, lb.created_at, lb.updated_at
-	FROM labels lb
-	LEFT JOIN item_labels il ON il.label_id = lb.id`
-
 func (h *Handler) ListLabels(ctx context.Context, _ *struct{}) (*LabelsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	rows, err := h.pool.Query(ctx, labelSelectSQL+` GROUP BY lb.id ORDER BY lb.name`)
-	if err != nil {
-		return nil, huma.NewError(http.StatusInternalServerError, "failed to list labels")
-	}
-	defer rows.Close()
+	homeID := apimw.GetActiveHome(ctx)
 	labels := []LabelRow{}
-	for rows.Next() {
-		var l LabelRow
-		if err := rows.Scan(&l.ID, &l.Name, &l.Color, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt); err != nil {
-			return nil, huma.NewError(http.StatusInternalServerError, "failed to scan label")
+	if homeID != "" {
+		rows, err := h.q.ListLabelsByHome(ctx, homeID)
+		if err != nil {
+			return nil, huma.NewError(http.StatusInternalServerError, "failed to list labels")
 		}
-		labels = append(labels, l)
+		for _, r := range rows {
+			labels = append(labels, LabelRow{
+				ID: r.ID, Name: r.Name, Color: r.Color, ItemCount: r.ItemCount,
+				CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+			})
+		}
+	} else {
+		rows, err := h.q.ListAllLabels(ctx)
+		if err != nil {
+			return nil, huma.NewError(http.StatusInternalServerError, "failed to list labels")
+		}
+		for _, r := range rows {
+			labels = append(labels, LabelRow{
+				ID: r.ID, Name: r.Name, Color: r.Color, ItemCount: r.ItemCount,
+				CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+			})
+		}
 	}
 	return &LabelsOutput{Body: labels}, nil
 }
@@ -70,44 +78,57 @@ func (h *Handler) CreateLabel(ctx context.Context, input *CreateLabelInput) (*La
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
+	homeID := apimw.GetActiveHome(ctx)
+	if homeID == "" {
+		return nil, huma.NewError(http.StatusBadRequest, "X-Active-Home header required")
+	}
 	color := "#3b82f6"
 	if input.Body.Color != nil && *input.Body.Color != "" {
 		color = *input.Body.Color
 	}
-	var l LabelRow
-	err := h.pool.QueryRow(ctx,
-		`INSERT INTO labels (name, color) VALUES ($1, $2) RETURNING id, name, color, 0, created_at, updated_at`,
-		input.Body.Name, color,
-	).Scan(&l.ID, &l.Name, &l.Color, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt)
+	r, err := h.q.CreateLabel(ctx, store.CreateLabelParams{
+		Name:   input.Body.Name,
+		Color:  color,
+		HomeID: homeID,
+	})
 	if err != nil {
+		if isUniqueViolation(err, "labels_home_name_key") {
+			return nil, huma.NewError(http.StatusConflict, "a label with that name already exists in this home")
+		}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to create label")
 	}
-	return &LabelOutput{Body: l}, nil
+	return &LabelOutput{Body: LabelRow{
+		ID: r.ID, Name: r.Name, Color: r.Color, ItemCount: 0,
+		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+	}}, nil
 }
 
 func (h *Handler) UpdateLabel(ctx context.Context, input *UpdateLabelInput) (*LabelOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := h.pool.Exec(ctx,
-		`UPDATE labels SET name = $2, color = $3, updated_at = NOW() WHERE id = $1`,
-		input.ID, input.Body.Name, input.Body.Color); err != nil {
+	if err := h.q.UpdateLabel(ctx, store.UpdateLabelParams{
+		ID:    input.ID,
+		Name:  input.Body.Name,
+		Color: input.Body.Color,
+	}); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to update label")
 	}
-	var l LabelRow
-	err := h.pool.QueryRow(ctx, labelSelectSQL+` WHERE lb.id = $1 GROUP BY lb.id`, input.ID).
-		Scan(&l.ID, &l.Name, &l.Color, &l.ItemCount, &l.CreatedAt, &l.UpdatedAt)
+	r, err := h.q.GetLabel(ctx, input.ID)
 	if err != nil {
 		return nil, huma.NewError(http.StatusNotFound, "label not found")
 	}
-	return &LabelOutput{Body: l}, nil
+	return &LabelOutput{Body: LabelRow{
+		ID: r.ID, Name: r.Name, Color: r.Color, ItemCount: r.ItemCount,
+		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+	}}, nil
 }
 
 func (h *Handler) DeleteLabel(ctx context.Context, input *LabelIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := h.pool.Exec(ctx, `DELETE FROM labels WHERE id = $1`, input.ID); err != nil {
+	if err := h.q.DeleteLabel(ctx, input.ID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete label")
 	}
 	return nil, nil

@@ -49,22 +49,19 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
     new Set<string>(filterLabelId ? [filterLabelId] : [])
   );
 
-  const { data: allItems = [], isLoading } = useItems(
-    filterLocationId
-      ? { locationId: filterLocationId }
-      : filterLabelId
-        ? { labelId: filterLabelId }
-        : undefined
-  );
+  const { data: allItems = [], isLoading } = useItems({
+    ...(filterLocationId ? { locationId: filterLocationId } : {}),
+    ...(filterLabelId ? { labelId: filterLabelId } : {}),
+    ...(search ? { q: search } : {}),
+  });
   const { data: locations = [] } = useLocations();
   const { data: labels = [] } = useLabels();
 
   const items = useMemo(() => {
     let xs = allItems;
-    if (search) xs = xs.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()));
     if (activeLabels.size > 0) xs = xs.filter((i) => i.label_ids.some((l) => activeLabels.has(l)));
     return xs;
-  }, [allItems, search, activeLabels]);
+  }, [allItems, activeLabels]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -164,7 +161,11 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           <Button variant="default" size="sm" leftSection={<IconPrinter size={14} />}>
             Print labels
           </Button>
-          <Button size="sm" leftSection={<IconPlus size={14} />}>
+          <Button
+            size="sm"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => navigate({ to: '/items/new' })}
+          >
             Add item
           </Button>
         </Group>
@@ -289,7 +290,12 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
               ? 'Try clearing filters.'
               : 'Add your first item to get started.'}
           </Text>
-          <Button size="sm" leftSection={<IconPlus size={14} />} mt={4}>
+          <Button
+            size="sm"
+            leftSection={<IconPlus size={14} />}
+            mt={4}
+            onClick={() => navigate({ to: '/items/new' })}
+          >
             Add item
           </Button>
         </Paper>
