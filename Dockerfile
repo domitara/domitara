@@ -7,10 +7,12 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
 COPY apps/docs/package.json ./apps/docs/
+COPY packages/panel-core/package.json ./packages/panel-core/
 RUN pnpm install --frozen-lockfile
 
 # Build — Vite outputs to apps/api/internal/web/dist per vite.config.ts
 COPY apps/web/ ./apps/web/
+COPY packages/panel-core/ ./packages/panel-core/
 RUN pnpm --filter @app/web build
 
 # ---- Stage 2: Go API ----
