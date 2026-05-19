@@ -77,6 +77,8 @@ function RootLayoutNav() {
             animation: 'slide_from_left',
           }}
         />
+        <Stack.Screen name="home-detail" options={{ title: 'Home' }} />
+        <Stack.Screen name="item-detail" options={{ title: 'Item' }} />
         <Stack.Screen name="maintenance" options={{ title: 'Maintenance' }} />
         <Stack.Screen name="asset-ids" options={{ title: 'Asset IDs' }} />
         <Stack.Screen name="electrical-panels" options={{ title: 'Electrical Panels' }} />

@@ -42,6 +42,7 @@ export function AddHomeScreen() {
   const [country, setCountry] = useState('');
   const [yearBuilt, setYearBuilt] = useState<number | string>('');
   const [sqft, setSqft] = useState<number | string>('');
+  const [acreage, setAcreage] = useState<number | string>('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
@@ -63,6 +64,7 @@ export function AddHomeScreen() {
         address_country: country || undefined,
         year_built: yearBuilt ? Number(yearBuilt) : undefined,
         sqft: sqft ? Number(sqft) : undefined,
+        acreage: acreage ? Number(acreage) : undefined,
         notes: notes || undefined,
       });
       setActiveHomeId(home.id);
@@ -132,7 +134,7 @@ export function AddHomeScreen() {
               />
             </SimpleGrid>
 
-            <SimpleGrid cols={2} spacing="md">
+            <SimpleGrid cols={3} spacing="md">
               <NumberInput
                 label="Year built"
                 placeholder="1990"
@@ -147,6 +149,14 @@ export function AddHomeScreen() {
                 min={0}
                 value={sqft}
                 onChange={setSqft}
+              />
+              <NumberInput
+                label="Acreage"
+                placeholder="0.25"
+                min={0}
+                decimalScale={4}
+                value={acreage}
+                onChange={setAcreage}
               />
             </SimpleGrid>
 

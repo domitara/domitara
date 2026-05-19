@@ -19,6 +19,7 @@ Domitara is configured entirely via environment variables. Copy `.env.example` t
 |----------|---------|-------------|
 | `PORT` | `8080` | Port the HTTP server listens on |
 | `ENV` | `development` | Set to `production` to enable secure cookies and hide API docs |
+| `UPLOAD_DIR` | `./data/uploads` | Directory where uploaded photos and documents are stored. **Must be backed by a persistent volume in Docker** — container restarts will wipe any uploads stored on the ephemeral container filesystem. |
 | `ALLOWED_ORIGINS` | *(empty)* | Comma-separated list of additional CORS origins to allow (e.g. `https://home.example.com`) |
 | `SHOW_API_DOCS` | `false` | Set to `true` to expose `/openapi.json` and `/docs` in production |
 
@@ -26,6 +27,7 @@ Domitara is configured entirely via environment variables. Copy `.env.example` t
 
 - Use a strong, randomly generated `JWT_SECRET` (at least 32 chars).
 - Set `ENV=production` — this enables `Secure` on auth cookies and hides the OpenAPI schema endpoint.
+- Mount a persistent volume at `UPLOAD_DIR` (default `/data/uploads`) so photos and documents survive container restarts and re-deploys.
 - Run Postgres with a dedicated user that has only `SELECT`, `INSERT`, `UPDATE`, `DELETE` on the `domitara` database.
 - Put the app behind a reverse proxy (nginx, Caddy, Traefik) that terminates TLS.
 - Set `ALLOWED_ORIGINS` to your public domain so the CORS policy is tight.

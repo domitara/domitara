@@ -225,6 +225,7 @@ export interface Home {
   property_type: PropertyType | null;
   year_built: number | null;
   sqft: number | null;
+  acreage: number | null;
   notes: string | null;
   purchase_price: number | null;
   purchased_at: string | null;
@@ -278,6 +279,7 @@ export interface CreateHomeInput {
   property_type?: PropertyType;
   year_built?: number;
   sqft?: number;
+  acreage?: number;
   notes?: string;
   purchase_price?: number;
   purchased_at?: string;

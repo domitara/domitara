@@ -1,0 +1,1 @@
+ALTER TABLE homes ADD COLUMN acreage NUMERIC(10,4);

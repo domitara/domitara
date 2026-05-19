@@ -31,6 +31,7 @@ type HomeRow struct {
 	PropertyType   *string   `json:"property_type"`
 	YearBuilt      *int      `json:"year_built"`
 	Sqft           *float64  `json:"sqft"`
+	Acreage        *float64  `json:"acreage"`
 	Notes          *string   `json:"notes"`
 	PurchasePrice  *float64  `json:"purchase_price"`
 	PurchasedAt    *string   `json:"purchased_at"`
@@ -99,6 +100,7 @@ type HomeBody struct {
 	PropertyType   *string  `json:"property_type,omitempty"`
 	YearBuilt      *int     `json:"year_built,omitempty"`
 	Sqft           *float64 `json:"sqft,omitempty"`
+	Acreage        *float64 `json:"acreage,omitempty"`
 	Notes          *string  `json:"notes,omitempty"`
 	PurchasePrice  *float64 `json:"purchase_price,omitempty"`
 	PurchasedAt    *string  `json:"purchased_at,omitempty"`
@@ -154,6 +156,7 @@ type UpdateHomeDocFloorLevelInput struct {
 func homeParamsFromBody(b HomeBody) (
 	yearBuilt pgtype.Int4,
 	sqft pgtype.Numeric,
+	acreage pgtype.Numeric,
 	purchasePrice pgtype.Numeric,
 	purchasedAt *time.Time,
 	estimatedValue pgtype.Numeric,
@@ -161,6 +164,7 @@ func homeParamsFromBody(b HomeBody) (
 ) {
 	yearBuilt = toNullInt4(b.YearBuilt)
 	sqft = toNullNumeric(b.Sqft)
+	acreage = toNullNumeric(b.Acreage)
 	purchasePrice = toNullNumeric(b.PurchasePrice)
 	purchasedAt = parseDatePtr(b.PurchasedAt)
 	estimatedValue = toNullNumeric(b.EstimatedValue)
@@ -175,6 +179,7 @@ func homeRowFromFields(
 	propType *string,
 	yearBuilt pgtype.Int4,
 	sqft pgtype.Numeric,
+	acreage pgtype.Numeric,
 	notes *string,
 	purchasePrice pgtype.Numeric,
 	purchasedAt *time.Time,
@@ -196,6 +201,7 @@ func homeRowFromFields(
 		PropertyType:   propType,
 		YearBuilt:      fromNullInt4(yearBuilt),
 		Sqft:           fromNullNumeric(sqft),
+		Acreage:        fromNullNumeric(acreage),
 		Notes:          notes,
 		PurchasePrice:  fromNullNumeric(purchasePrice),
 		PurchasedAt:    pgNullDateStr(purchasedAt),
@@ -215,7 +221,7 @@ func homeRowFromList(r store.ListHomesForUserRow) HomeRow {
 	return homeRowFromFields(
 		r.ID, r.Name,
 		r.AddressStreet, r.AddressCity, r.AddressState, r.AddressZip, r.AddressCountry,
-		r.PropertyType, r.YearBuilt, r.Sqft, r.Notes,
+		r.PropertyType, r.YearBuilt, r.Sqft, r.Acreage, r.Notes,
 		r.PurchasePrice, r.PurchasedAt, r.EstimatedValue,
 		r.MortgageLender, r.MortgageNotes,
 		r.HoaName, r.HoaContact, r.HoaMonthlyDues,
@@ -227,7 +233,7 @@ func homeRowFromGet(r store.GetHomeForUserRow) HomeRow {
 	return homeRowFromFields(
 		r.ID, r.Name,
 		r.AddressStreet, r.AddressCity, r.AddressState, r.AddressZip, r.AddressCountry,
-		r.PropertyType, r.YearBuilt, r.Sqft, r.Notes,
+		r.PropertyType, r.YearBuilt, r.Sqft, r.Acreage, r.Notes,
 		r.PurchasePrice, r.PurchasedAt, r.EstimatedValue,
 		r.MortgageLender, r.MortgageNotes,
 		r.HoaName, r.HoaContact, r.HoaMonthlyDues,
@@ -280,7 +286,7 @@ func (h *Handler) CreateHome(ctx context.Context, input *CreateHomeInput) (*Home
 		return nil, err
 	}
 	b := input.Body
-	yearBuilt, sqft, purchasePrice, purchasedAt, estimatedValue, hoaMonthlyDues := homeParamsFromBody(b)
+	yearBuilt, sqft, acreage, purchasePrice, purchasedAt, estimatedValue, hoaMonthlyDues := homeParamsFromBody(b)
 
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
@@ -299,6 +305,7 @@ func (h *Handler) CreateHome(ctx context.Context, input *CreateHomeInput) (*Home
 		PropertyType:   b.PropertyType,
 		YearBuilt:      yearBuilt,
 		Sqft:           sqft,
+		Acreage:        acreage,
 		Notes:          b.Notes,
 		PurchasePrice:  purchasePrice,
 		PurchasedAt:    purchasedAt,
@@ -339,7 +346,7 @@ func (h *Handler) UpdateHome(ctx context.Context, input *UpdateHomeInput) (*Home
 		return nil, err
 	}
 	b := input.Body
-	yearBuilt, sqft, purchasePrice, purchasedAt, estimatedValue, hoaMonthlyDues := homeParamsFromBody(b)
+	yearBuilt, sqft, acreage, purchasePrice, purchasedAt, estimatedValue, hoaMonthlyDues := homeParamsFromBody(b)
 
 	if err := h.q.UpdateHome(ctx, store.UpdateHomeParams{
 		ID:             input.ID,
@@ -352,6 +359,7 @@ func (h *Handler) UpdateHome(ctx context.Context, input *UpdateHomeInput) (*Home
 		PropertyType:   b.PropertyType,
 		YearBuilt:      yearBuilt,
 		Sqft:           sqft,
+		Acreage:        acreage,
 		Notes:          b.Notes,
 		PurchasePrice:  purchasePrice,
 		PurchasedAt:    purchasedAt,

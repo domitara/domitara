@@ -7,7 +7,7 @@ sidebar_position: 1
 ## Prerequisites
 
 - A PostgreSQL 15+ database
-- Docker (recommended) **or** Go 1.23+ and Node.js 22+ to build from source
+- Docker (recommended) **or** Go 1.25+ and Node.js 22+ to build from source
 
 ## Docker Compose (recommended)
 
@@ -40,9 +40,12 @@ services:
       ENV: production
     ports:
       - "8080:8080"
+    volumes:
+      - domitara_uploads:/data/uploads
 
 volumes:
   postgres_data:
+  domitara_uploads:
 ```
 
 Then run:
@@ -63,6 +66,7 @@ docker run -d \
   -e DATABASE_URL="postgres://user:password@host:5432/domitara?sslmode=disable" \
   -e JWT_SECRET="replace-with-a-long-random-secret-at-least-32-chars" \
   -e ENV=production \
+  -v domitara_uploads:/data/uploads \
   -p 8080:8080 \
   ghcr.io/domitara/domitara:latest
 ```

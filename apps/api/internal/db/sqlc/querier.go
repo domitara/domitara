@@ -82,7 +82,7 @@ type Querier interface {
 	ListBreakers(ctx context.Context, panelID string) ([]ElectricalBreaker, error)
 	ListFloorPlanAreas(ctx context.Context, homeID string) ([]FloorPlanArea, error)
 	ListFloorPlanShapes(ctx context.Context, homeID string) ([]FloorPlanShape, error)
-	ListHomeDocuments(ctx context.Context, homeID string) ([]ListHomeDocumentsRow, error)
+	ListHomeDocuments(ctx context.Context, homeID string) ([]HomeDocument, error)
 	ListHomeMembers(ctx context.Context, homeID string) ([]ListHomeMembersRow, error)
 	ListHomePhotos(ctx context.Context, homeID string) ([]HomePhoto, error)
 	ListHomesForUser(ctx context.Context, userID int64) ([]ListHomesForUserRow, error)

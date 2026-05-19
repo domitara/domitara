@@ -15,9 +15,9 @@ tasks:
     cmd: pnpm turbo run dev
 
   dev:mobile:
-    desc: "Expo dev server (tunnel mode for WSL)"
+    desc: "Expo dev server (localhost mode for Android emulator)"
     dir: apps/mobile
-    cmd: npx expo start --tunnel
+    cmd: npx expo start --localhost
 
   dev:api-tunnel:
     desc: "ngrok tunnel for Go API (port 8080) — use the URL as Server URL in the mobile app"
@@ -100,6 +100,11 @@ tasks:
     desc: "Roll back last migration"
     dir: apps/api
     cmd: go run ./scripts/migrate down
+
+  db:seed:
+    desc: "Populate DB with fake data and placeholder images for dev/screenshots"
+    dir: apps/api
+    cmd: go run ./cmd/seed
 
   db:generate:
     desc: "Regenerate sqlc query code"

@@ -84,6 +84,7 @@ type Home struct {
 	HoaMonthlyDues pgtype.Numeric     `json:"hoa_monthly_dues"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Acreage        pgtype.Numeric     `json:"acreage"`
 }
 
 type HomeDocument struct {
@@ -94,8 +95,8 @@ type HomeDocument struct {
 	FilePath     string             `json:"file_path"`
 	Size         int64              `json:"size"`
 	DocumentType *string            `json:"document_type"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	FloorLevel   pgtype.Int4        `json:"floor_level"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type HomeMember struct {

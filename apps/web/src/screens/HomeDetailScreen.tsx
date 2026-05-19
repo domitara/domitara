@@ -96,6 +96,7 @@ function DetailsTab({ homeId }: { homeId: string }) {
   const [country, setCountry] = useState('');
   const [yearBuilt, setYearBuilt] = useState<number | string>('');
   const [sqft, setSqft] = useState<number | string>('');
+  const [acreage, setAcreage] = useState<number | string>('');
   const [notes, setNotes] = useState('');
   const [purchasePrice, setPurchasePrice] = useState<number | string>('');
   const [purchasedAt, setPurchasedAt] = useState('');
@@ -118,6 +119,7 @@ function DetailsTab({ homeId }: { homeId: string }) {
     setCountry(home.address_country ?? '');
     setYearBuilt(home.year_built ?? '');
     setSqft(home.sqft ?? '');
+    setAcreage(home.acreage ?? '');
     setNotes(home.notes ?? '');
     setPurchasePrice(home.purchase_price ?? '');
     setPurchasedAt(home.purchased_at ? home.purchased_at.slice(0, 10) : '');
@@ -151,6 +153,7 @@ function DetailsTab({ homeId }: { homeId: string }) {
         address_country: country || undefined,
         year_built: yearBuilt ? Number(yearBuilt) : undefined,
         sqft: sqft ? Number(sqft) : undefined,
+        acreage: acreage ? Number(acreage) : undefined,
         notes: notes || undefined,
         purchase_price: purchasePrice ? Number(purchasePrice) : undefined,
         purchased_at: purchasedAt || undefined,
@@ -209,7 +212,7 @@ function DetailsTab({ homeId }: { homeId: string }) {
               onChange={(e) => setCountry(e.currentTarget.value)}
             />
           </SimpleGrid>
-          <SimpleGrid cols={2} spacing="md">
+          <SimpleGrid cols={3} spacing="md">
             <NumberInput
               label="Year built"
               value={yearBuilt}
@@ -218,6 +221,13 @@ function DetailsTab({ homeId }: { homeId: string }) {
               max={new Date().getFullYear()}
             />
             <NumberInput label="Square footage" value={sqft} onChange={setSqft} min={0} />
+            <NumberInput
+              label="Acreage"
+              value={acreage}
+              onChange={setAcreage}
+              min={0}
+              decimalScale={4}
+            />
           </SimpleGrid>
           <Textarea
             label="Notes"

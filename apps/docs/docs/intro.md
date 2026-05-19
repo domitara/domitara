@@ -14,6 +14,8 @@ Domitara is a self-hosted home inventory and management application — a modern
 - **Labels** — Tag items for quick filtering
 - **Asset IDs** — Generate and print QR code labels for physical items
 - **Maintenance** — Log and schedule maintenance for appliances and equipment
+- **Electrical panels** — Map circuit breakers and document your panel layouts
+- **Mobile app** — Native iOS and Android companion app (Expo / React Native)
 - **Multi-user** — Admin and member roles with per-user access
 
 ## Quick start

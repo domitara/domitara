@@ -28,6 +28,7 @@ export default function MenuScreen() {
         <Text style={styles.appName}>Domitara</Text>
         <View style={styles.divider} />
 
+        <MenuItem icon="home" label="Home" onPress={() => go('/home-detail')} />
         <MenuItem icon="wrench" label="Maintenance" onPress={() => go('/maintenance')} />
         <MenuItem icon="bolt" label="Electrical Panels" onPress={() => go('/electrical-panels')} />
         <MenuItem icon="qrcode" label="Asset IDs" onPress={() => go('/asset-ids')} />
