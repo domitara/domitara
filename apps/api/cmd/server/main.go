@@ -14,6 +14,7 @@ import (
 	"github.com/domitara/domitara/apps/api/internal/api"
 	"github.com/domitara/domitara/apps/api/internal/config"
 	"github.com/domitara/domitara/apps/api/internal/db"
+	"github.com/domitara/domitara/apps/api/internal/scheduler"
 )
 
 func main() {
@@ -33,6 +34,10 @@ func main() {
 		log.Fatalf("db connect: %v", err)
 	}
 	defer pool.Close()
+
+	sched := scheduler.New(pool)
+	sched.Start()
+	defer sched.Stop()
 
 	router := api.NewRouter(pool, cfg)
 

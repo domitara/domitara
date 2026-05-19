@@ -24,7 +24,7 @@ var bearerAuth = []map[string][]string{{"bearer": {}}}
 
 func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	q := store.New(pool)
-	h := handler.New(q, pool, cfg.JWTSecret, cfg.SecureCookies)
+	h := handler.New(q, pool, cfg.JWTSecret, cfg.SecureCookies, cfg.UploadDir)
 
 	r := chi.NewRouter()
 
@@ -36,7 +36,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-Active-Home"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
@@ -45,9 +45,9 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.RequestID)
 
-	// Limit request body size to 1 MB
+	// Limit request body size to 20 MB (accommodates photo uploads; JSON endpoints are far smaller)
 	r.Use(func(next http.Handler) http.Handler {
-		return http.MaxBytesHandler(next, 1<<20)
+		return http.MaxBytesHandler(next, 20<<20)
 	})
 
 	// Rate limit: 100 req/min per IP globally; login gets a tighter 5/min window
@@ -66,6 +66,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 
 	r.Use(apimw.WithResponseWriter)
 	r.Use(apimw.OptionalAuth(cfg.JWTSecret))
+	r.Use(apimw.WithActiveHome)
 
 	apiConfig := huma.DefaultConfig("Domitara API", "1.0.0")
 	apiConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
@@ -130,15 +131,85 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/items/{id}", Summary: "Update item", Security: bearerAuth}, h.UpdateItem)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/items/{id}", Summary: "Delete item", DefaultStatus: 204, Security: bearerAuth}, h.DeleteItem)
 
-	// Maintenance
+	// Maintenance schedules (must come before /maintenance/{id} to avoid path conflicts)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/maintenance/schedules", Summary: "List maintenance schedules", Security: bearerAuth}, h.ListSchedules)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/maintenance/schedules", Summary: "Create maintenance schedule", DefaultStatus: 201, Security: bearerAuth}, h.CreateSchedule)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/maintenance/schedules/{id}", Summary: "Update maintenance schedule", Security: bearerAuth}, h.UpdateSchedule)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/maintenance/schedules/{id}", Summary: "Delete maintenance schedule", DefaultStatus: 204, Security: bearerAuth}, h.DeleteSchedule)
+
+	// Maintenance logs
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/maintenance", Summary: "List maintenance logs", Security: bearerAuth}, h.ListMaintenance)
 	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/maintenance", Summary: "Create maintenance log", DefaultStatus: 201, Security: bearerAuth}, h.CreateMaintenance)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/maintenance/{id}", Summary: "Delete maintenance log", DefaultStatus: 204, Security: bearerAuth}, h.DeleteMaintenance)
 
+	// Reminders
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/reminders", Summary: "List reminders", Security: bearerAuth}, h.ListReminders)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/reminders/{id}/dismiss", Summary: "Dismiss reminder", DefaultStatus: 204, Security: bearerAuth}, h.DismissReminder)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/reminders/{id}/snooze", Summary: "Snooze reminder", DefaultStatus: 204, Security: bearerAuth}, h.SnoozeReminder)
+
 	// Admin
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/admin/users", Summary: "List users (admin)", Security: bearerAuth}, h.AdminListUsers)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/admin/users", Summary: "Create user (admin)", Security: bearerAuth}, h.AdminCreateUser)
 	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/admin/users/{id}", Summary: "Update user (admin)", Security: bearerAuth}, h.AdminUpdateUser)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/admin/users/{id}", Summary: "Delete user (admin)", DefaultStatus: 204, Security: bearerAuth}, h.AdminDeleteUser)
+
+	// Homes
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes", Summary: "List homes", Security: bearerAuth}, h.ListHomes)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/homes", Summary: "Create home", DefaultStatus: 201, Security: bearerAuth}, h.CreateHome)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{id}", Summary: "Get home", Security: bearerAuth}, h.GetHome)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/homes/{id}", Summary: "Update home", Security: bearerAuth}, h.UpdateHome)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/homes/{id}", Summary: "Delete home", DefaultStatus: 204, Security: bearerAuth}, h.DeleteHome)
+
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{id}/members", Summary: "List home members", Security: bearerAuth}, h.ListHomeMembers)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/homes/{id}/members", Summary: "Add home member", DefaultStatus: 201, Security: bearerAuth}, h.AddHomeMember)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/homes/{id}/members/{userId}", Summary: "Remove home member", DefaultStatus: 204, Security: bearerAuth}, h.RemoveHomeMember)
+
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{id}/photos", Summary: "List home photos", Security: bearerAuth}, h.ListHomePhotos)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/homes/{id}/photos/{photoId}", Summary: "Delete home photo", DefaultStatus: 204, Security: bearerAuth}, h.DeleteHomePhoto)
+	r.Post("/api/v1/homes/{id}/photos", h.UploadHomePhoto)
+
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{id}/documents", Summary: "List home documents", Security: bearerAuth}, h.ListHomeDocuments)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/homes/{id}/documents/{docId}", Summary: "Delete home document", DefaultStatus: 204, Security: bearerAuth}, h.DeleteHomeDocument)
+	huma.Register(api, huma.Operation{Method: http.MethodPatch, Path: "/api/v1/homes/{homeId}/documents/{docId}/floor-level", Summary: "Set floor level on document", DefaultStatus: 204, Security: bearerAuth}, h.UpdateHomeDocumentFloorLevel)
+	r.Post("/api/v1/homes/{id}/documents", h.UploadHomeDocument)
+
+	// Item photos — list and delete through HUMA; upload is a raw chi handler (multipart)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/items/{itemId}/photos", Summary: "List item photos", Security: bearerAuth}, h.ListItemPhotos)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/items/{itemId}/photos/{photoId}", Summary: "Delete item photo", DefaultStatus: 204, Security: bearerAuth}, h.DeletePhoto)
+	r.Post("/api/v1/items/{itemId}/photos", h.UploadPhoto)
+
+	// Item documents — same pattern as photos
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/items/{itemId}/documents", Summary: "List item documents", Security: bearerAuth}, h.ListItemDocuments)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/items/{itemId}/documents/{documentId}", Summary: "Delete item document", DefaultStatus: 204, Security: bearerAuth}, h.DeleteDocument)
+	r.Post("/api/v1/items/{itemId}/documents", h.UploadDocument)
+
+	// Floor plan areas
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{homeId}/floor-plan-areas", Summary: "List floor plan areas", Security: bearerAuth}, h.ListFloorPlanAreas)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/homes/{homeId}/floor-plan-areas", Summary: "Create floor plan area", DefaultStatus: 201, Security: bearerAuth}, h.CreateFloorPlanArea)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/floor-plan-areas/{id}", Summary: "Update floor plan area", Security: bearerAuth}, h.UpdateFloorPlanArea)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/floor-plan-areas/{id}", Summary: "Delete floor plan area", DefaultStatus: 204, Security: bearerAuth}, h.DeleteFloorPlanArea)
+
+	// Floor plan shapes
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{homeId}/floor-plan-shapes", Summary: "List floor plan shapes", Security: bearerAuth}, h.ListFloorPlanShapes)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/homes/{homeId}/floor-plan-shapes", Summary: "Create floor plan shape", DefaultStatus: 201, Security: bearerAuth}, h.CreateFloorPlanShape)
+	huma.Register(api, huma.Operation{Method: http.MethodPatch, Path: "/api/v1/floor-plan-shapes/{id}", Summary: "Update floor plan shape", Security: bearerAuth}, h.UpdateFloorPlanShape)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/floor-plan-shapes/{id}", Summary: "Delete floor plan shape", DefaultStatus: 204, Security: bearerAuth}, h.DeleteFloorPlanShape)
+
+	// Electrical panels
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{homeId}/panels", Summary: "List electrical panels", Security: bearerAuth}, h.ListPanels)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/homes/{homeId}/panels", Summary: "Create electrical panel", DefaultStatus: 201, Security: bearerAuth}, h.CreatePanel)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/panels/{id}", Summary: "Get electrical panel", Security: bearerAuth}, h.GetPanel)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/panels/{id}", Summary: "Update electrical panel", Security: bearerAuth}, h.UpdatePanel)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/panels/{id}", Summary: "Delete electrical panel", DefaultStatus: 204, Security: bearerAuth}, h.DeletePanel)
+
+	// Electrical breakers
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/panels/{panelId}/breakers", Summary: "List breakers", Security: bearerAuth}, h.ListBreakers)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/panels/{panelId}/breakers", Summary: "Create breaker", DefaultStatus: 201, Security: bearerAuth}, h.CreateBreaker)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/breakers/{id}", Summary: "Update breaker", Security: bearerAuth}, h.UpdateBreaker)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/breakers/{id}", Summary: "Delete breaker", DefaultStatus: 204, Security: bearerAuth}, h.DeleteBreaker)
+
+	// Serve uploaded files
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir))))
 
 	// SPA catch-all — must be last, not through HUMA
 	r.Handle("/*", spaHandler(web.FS()))

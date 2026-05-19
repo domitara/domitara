@@ -17,7 +17,6 @@ const SECTIONS = [
   'Currency & units',
   'Backups',
   'Integrations',
-  'API tokens',
   'Danger zone',
 ];
 

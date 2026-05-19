@@ -15,6 +15,7 @@ type contextKey struct{ name string }
 var (
 	ctxClaims         = &contextKey{"claims"}
 	ctxResponseWriter = &contextKey{"response-writer"}
+	CtxActiveHome     = &contextKey{"active-home"}
 )
 
 // WithResponseWriter stores the http.ResponseWriter in the request context so
@@ -79,4 +80,20 @@ func RequireAdmin(ctx context.Context) (service.Claims, error) {
 		return c, huma.NewError(http.StatusForbidden, "forbidden")
 	}
 	return c, nil
+}
+
+// WithActiveHome injects the active home ID into the context from the X-Active-Home header.
+func WithActiveHome(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if id := r.Header.Get("X-Active-Home"); id != "" {
+			r = r.WithContext(context.WithValue(r.Context(), CtxActiveHome, id))
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// GetActiveHome returns the active home ID from context (empty string if not set).
+func GetActiveHome(ctx context.Context) string {
+	id, _ := ctx.Value(CtxActiveHome).(string)
+	return id
 }

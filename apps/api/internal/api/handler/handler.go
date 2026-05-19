@@ -15,10 +15,11 @@ type Handler struct {
 	pool          *pgxpool.Pool
 	jwtSecret     string
 	secureCookies bool
+	uploadDir     string
 }
 
-func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string, secureCookies bool) *Handler {
-	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret, secureCookies: secureCookies}
+func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string, secureCookies bool, uploadDir string) *Handler {
+	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret, secureCookies: secureCookies, uploadDir: uploadDir}
 }
 
 func (h *Handler) setAuthCookies(w http.ResponseWriter, token string, role string) {
@@ -65,7 +66,7 @@ func userResponse(u store.User) UserResponse {
 		Email:     u.Email,
 		Name:      u.Name,
 		Role:      u.Role,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
+		CreatedAt: u.CreatedAt.Time,
+		UpdatedAt: u.UpdatedAt.Time,
 	}
 }

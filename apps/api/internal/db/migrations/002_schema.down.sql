@@ -1,8 +1,0 @@
-DROP TABLE IF EXISTS maintenance_logs;
-DROP TABLE IF EXISTS item_labels;
-DROP TABLE IF EXISTS items;
-DROP TABLE IF EXISTS labels;
-DROP TABLE IF EXISTS locations;
-DROP TABLE IF EXISTS system_settings;
-ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
-ALTER TABLE users DROP COLUMN IF EXISTS role;

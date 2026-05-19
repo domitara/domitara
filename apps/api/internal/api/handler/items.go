@@ -2,14 +2,20 @@ package handler
 
 import (
 	"context"
+	crand "crypto/rand"
+	"errors"
+	"fmt"
 	"net/http"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
+	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
 type ItemRow struct {
@@ -38,6 +44,7 @@ type ItemOutput struct{ Body ItemRow }
 type ListItemsInput struct {
 	LocationID string `query:"location_id"`
 	LabelID    string `query:"label_id"`
+	Q          string `query:"q" doc:"Search query — matches name, description, manufacturer, model, serial, notes, asset_id"`
 }
 
 type ItemIDInput struct {
@@ -57,6 +64,7 @@ type ItemBody struct {
 	Warranty      *string  `json:"warranty,omitempty"`
 	Insured       bool     `json:"insured,omitempty"`
 	Notes         *string  `json:"notes,omitempty"`
+	AssetID       *string  `json:"asset_id"`
 	LabelIDs      []string `json:"label_ids,omitempty"`
 }
 
@@ -67,6 +75,7 @@ type UpdateItemInput struct {
 	Body ItemBody
 }
 
+// sqlc not used here: COALESCE(array_agg(...) FILTER (...), '{}') generates interface{} in sqlc pgx/v5 mode
 const itemSelectSQL = `
 	SELECT i.id, i.name, i.description, i.location_id, i.status,
 	       i.manufacturer, i.model, i.serial,
@@ -89,6 +98,7 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 	return it, err
 }
 
+// sqlc not used here: dynamic WHERE clause built at runtime based on optional filters (home_id, q, location_id, label_id)
 func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -96,15 +106,38 @@ func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsO
 	query := itemSelectSQL
 	args := []any{}
 	n := 1
+	conditions := []string{}
+
+	homeID := apimw.GetActiveHome(ctx)
+	if homeID != "" {
+		conditions = append(conditions, fmt.Sprintf(`i.home_id = $%d`, n))
+		args = append(args, homeID)
+		n++
+	}
+
+	if input.Q != "" {
+		like := "%" + input.Q + "%"
+		conditions = append(conditions, fmt.Sprintf(
+			`(i.name ILIKE $%[1]d OR i.description ILIKE $%[1]d OR i.manufacturer ILIKE $%[1]d`+
+				` OR i.model ILIKE $%[1]d OR i.serial ILIKE $%[1]d OR i.notes ILIKE $%[1]d OR i.asset_id ILIKE $%[1]d)`,
+			n,
+		))
+		args = append(args, like)
+		n++
+	}
 	if input.LocationID != "" {
-		query += ` WHERE i.location_id = $` + strconv.Itoa(n)
+		conditions = append(conditions, fmt.Sprintf(`i.location_id = $%d`, n))
 		args = append(args, input.LocationID)
 		n++
 	} else if input.LabelID != "" {
-		query += ` WHERE i.id IN (SELECT item_id FROM item_labels WHERE label_id = $` + strconv.Itoa(n) + `)`
+		conditions = append(conditions, fmt.Sprintf(`i.id IN (SELECT item_id FROM item_labels WHERE label_id = $%d)`, n))
 		args = append(args, input.LabelID)
 		n++
 	}
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
+	}
+	_ = n
 	query += ` GROUP BY i.id ORDER BY i.created_at DESC`
 
 	rows, err := h.pool.Query(ctx, query, args...)
@@ -123,6 +156,7 @@ func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsO
 	return &ItemsOutput{Body: items}, nil
 }
 
+// sqlc not used here: COALESCE(array_agg(...) FILTER (...), '{}') generates interface{} in sqlc pgx/v5 mode
 func (h *Handler) GetItem(ctx context.Context, input *ItemIDInput) (*ItemOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -138,32 +172,51 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
+	homeID := apimw.GetActiveHome(ctx)
+	if homeID == "" {
+		return nil, huma.NewError(http.StatusBadRequest, "X-Active-Home header required")
+	}
 	b := input.Body
 	if b.Status == "" {
 		b.Status = "owned"
+	}
+	if b.AssetID == nil {
+		id := generateAssetID()
+		b.AssetID = &id
 	}
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
 	}
 	defer tx.Rollback(ctx)
+	qtx := h.q.WithTx(tx)
 
-	var itemID string
-	err = tx.QueryRow(ctx,
-		`INSERT INTO items (name, description, location_id, status, manufacturer, model, serial,
-		                    purchase_price, purchased_at, warranty, insured, notes)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10,$11,$12) RETURNING id`,
-		b.Name, b.Description, b.LocationID, b.Status,
-		b.Manufacturer, b.Model, b.Serial,
-		b.PurchasePrice, b.PurchasedAt, b.Warranty, b.Insured, b.Notes,
-	).Scan(&itemID)
+	itemID, err := qtx.CreateItem(ctx, store.CreateItemParams{
+		Name:          b.Name,
+		Description:   b.Description,
+		LocationID:    b.LocationID,
+		Status:        b.Status,
+		Manufacturer:  b.Manufacturer,
+		Model:         b.Model,
+		Serial:        b.Serial,
+		PurchasePrice: toNullNumeric(b.PurchasePrice),
+		PurchasedAt:   parseDatePtr(b.PurchasedAt),
+		Warranty:      b.Warranty,
+		Insured:       b.Insured,
+		Notes:         b.Notes,
+		AssetID:       b.AssetID,
+		HomeID:        homeID,
+	})
 	if err != nil {
+		if isUniqueViolation(err, "items_asset_id_key") {
+			return nil, huma.NewError(http.StatusConflict, "asset ID is already in use")
+		}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to create item")
 	}
 	for _, lid := range b.LabelIDs {
-		if _, err := tx.Exec(ctx,
-			`INSERT INTO item_labels (item_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-			itemID, lid); err != nil {
+		if err := qtx.InsertItemLabel(ctx, store.InsertItemLabelParams{
+			ItemID: itemID, LabelID: lid,
+		}); err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to assign label")
 		}
 	}
@@ -187,26 +240,36 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
 	}
 	defer tx.Rollback(ctx)
+	qtx := h.q.WithTx(tx)
 
-	if _, err := tx.Exec(ctx,
-		`UPDATE items SET name=$2, description=$3, location_id=$4, status=$5,
-		                  manufacturer=$6, model=$7, serial=$8,
-		                  purchase_price=$9, purchased_at=$10::date, warranty=$11,
-		                  insured=$12, notes=$13, updated_at=NOW()
-		 WHERE id=$1`,
-		input.ID, b.Name, b.Description, b.LocationID, b.Status,
-		b.Manufacturer, b.Model, b.Serial,
-		b.PurchasePrice, b.PurchasedAt, b.Warranty, b.Insured, b.Notes,
-	); err != nil {
+	if err := qtx.UpdateItem(ctx, store.UpdateItemParams{
+		ID:            input.ID,
+		Name:          b.Name,
+		Description:   b.Description,
+		LocationID:    b.LocationID,
+		Status:        b.Status,
+		Manufacturer:  b.Manufacturer,
+		Model:         b.Model,
+		Serial:        b.Serial,
+		PurchasePrice: toNullNumeric(b.PurchasePrice),
+		PurchasedAt:   parseDatePtr(b.PurchasedAt),
+		Warranty:      b.Warranty,
+		Insured:       b.Insured,
+		Notes:         b.Notes,
+		AssetID:       b.AssetID,
+	}); err != nil {
+		if isUniqueViolation(err, "items_asset_id_key") {
+			return nil, huma.NewError(http.StatusConflict, "asset ID is already in use")
+		}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to update item")
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM item_labels WHERE item_id = $1`, input.ID); err != nil {
+	if err := qtx.DeleteItemLabels(ctx, input.ID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to clear labels")
 	}
 	for _, lid := range b.LabelIDs {
-		if _, err := tx.Exec(ctx,
-			`INSERT INTO item_labels (item_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-			input.ID, lid); err != nil {
+		if err := qtx.InsertItemLabel(ctx, store.InsertItemLabelParams{
+			ItemID: input.ID, LabelID: lid,
+		}); err != nil {
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to assign label")
 		}
 	}
@@ -224,8 +287,26 @@ func (h *Handler) DeleteItem(ctx context.Context, input *ItemIDInput) (*struct{}
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := h.pool.Exec(ctx, `DELETE FROM items WHERE id = $1`, input.ID); err != nil {
+	if err := h.q.DeleteItem(ctx, input.ID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete item")
 	}
 	return nil, nil
+}
+
+func isUniqueViolation(err error, constraintName string) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == pgerrcode.UniqueViolation && pgErr.ConstraintName == constraintName
+	}
+	return false
+}
+
+func generateAssetID() string {
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 6)
+	_, _ = crand.Read(b)
+	for i, v := range b {
+		b[i] = chars[int(v)%len(chars)]
+	}
+	return "DT-" + string(b)
 }

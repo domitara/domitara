@@ -1,4 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
+import { useAtom, useSetAtom, useAtomValue } from 'jotai';
+import { spotlightOpenAtom, activeHomeIdAtom, homesAtom } from '../store/atoms';
 import {
   AppShell,
   Group,
@@ -10,6 +12,8 @@ import {
   Divider,
   Avatar,
   Button,
+  Menu,
+  useMantineColorScheme,
 } from '@mantine/core';
 import {
   IconHome,
@@ -28,13 +32,18 @@ import {
   IconChevronDown,
   IconFolder,
   IconPlus,
+  IconBuilding,
+  IconCheck,
 } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Spotlight } from './Spotlight';
 import { AppIcon } from './AppIcon';
+import { NewLocationModal } from './NewLocationModal';
+import { NewLabelModal } from './NewLabelModal';
 import { auth } from '../auth';
-import { useLabels, useLocations, useMe } from '../api/queries';
+import { useLabels, useLocations, useMe, useHomes } from '../api/queries';
 
 interface ShellProps {
   children: ReactNode;
@@ -42,12 +51,34 @@ interface ShellProps {
 
 export function DomitaraShell({ children }: ShellProps) {
   const [navOpen, { toggle: toggleNav }] = useDisclosure(true);
-  const [spotlightOpen, setSpotlightOpen] = useState(false);
-  const [dark, setDark] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useAtom(spotlightOpenAtom);
+  const [activeHomeId, setActiveHomeId] = useAtom(activeHomeIdAtom);
+  const setHomes = useSetAtom(homesAtom);
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const dark = colorScheme === 'dark';
+  const navigate = useNavigate();
+  const qc = useQueryClient();
 
+  const { data: homes = [], isSuccess: homesLoaded } = useHomes();
+
+  // Keep homesAtom in sync, clear stale activeHomeId, and auto-select a home if none is active
   useEffect(() => {
-    document.documentElement.setAttribute('data-mantine-color-scheme', dark ? 'dark' : 'light');
-  }, [dark]);
+    if (!homesLoaded) return;
+    setHomes(homes);
+    if (activeHomeId && !homes.some((h) => h.id === activeHomeId)) {
+      setActiveHomeId(null);
+    } else if (homes.length > 0 && !activeHomeId) {
+      setActiveHomeId(homes[0].id);
+    }
+  }, [homes, homesLoaded, activeHomeId, setActiveHomeId, setHomes]);
+
+  const activeHome = homes.find((h) => h.id === activeHomeId) ?? homes[0];
+
+  const handleSwitchHome = (id: string) => {
+    setActiveHomeId(id);
+    // Invalidate all data queries so they re-fetch with the new active home header
+    void qc.invalidateQueries();
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -88,6 +119,42 @@ export function DomitaraShell({ children }: ShellProps) {
               <AppIcon size={22} />
               <Text className="brand-name">Domitara</Text>
             </Group>
+            {homes.length > 0 && (
+              <Menu shadow="md" width={220}>
+                <Menu.Target>
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    size="xs"
+                    leftSection={<IconBuilding size={14} />}
+                    rightSection={<IconChevronDown size={12} />}
+                    styles={{ root: { fontWeight: 500 } }}
+                  >
+                    {activeHome?.name ?? 'Select home'}
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Your homes</Menu.Label>
+                  {homes.map((h) => (
+                    <Menu.Item
+                      key={h.id}
+                      leftSection={<IconBuilding size={14} />}
+                      rightSection={h.id === activeHomeId ? <IconCheck size={14} /> : null}
+                      onClick={() => handleSwitchHome(h.id)}
+                    >
+                      {h.name}
+                    </Menu.Item>
+                  ))}
+                  <Menu.Divider />
+                  <Menu.Item
+                    leftSection={<IconPlus size={14} />}
+                    onClick={() => navigate({ to: '/home/new' })}
+                  >
+                    Add home
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
           </Group>
 
           <button className="search-trigger" onClick={() => setSpotlightOpen(true)}>
@@ -96,7 +163,9 @@ export function DomitaraShell({ children }: ShellProps) {
               Search items, locations, labels…
             </span>
             <span className="kbd-hint">
-              <span className="kbd">⌘</span>
+              <span className="kbd">
+                {/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'}
+              </span>
               <span className="kbd">K</span>
             </span>
           </button>
@@ -113,7 +182,7 @@ export function DomitaraShell({ children }: ShellProps) {
               color="gray"
               size="lg"
               title={dark ? 'Light mode' : 'Dark mode'}
-              onClick={() => setDark((d) => !d)}
+              onClick={() => toggleColorScheme()}
             >
               {dark ? <IconSun size={18} /> : <IconMoon size={18} />}
             </ActionIcon>
@@ -141,11 +210,16 @@ export function DomitaraShell({ children }: ShellProps) {
 function Sidebar() {
   const [locOpen, setLocOpen] = useState(true);
   const [labelOpen, setLabelOpen] = useState(false);
+  const [locModalOpen, setLocModalOpen] = useState(false);
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
   const navigate = useNavigate();
   const { location } = useRouterState();
   const { data: locations = [] } = useLocations();
   const { data: labels = [] } = useLabels();
   const { data: me } = useMe();
+  const activeHomeId = useAtomValue(activeHomeIdAtom);
+  const homes = useAtomValue(homesAtom);
+  const activeHome = homes.find((h) => h.id === activeHomeId) ?? homes[0];
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + '/');
@@ -173,6 +247,14 @@ function Sidebar() {
           active={isActive('/dashboard')}
           onClick={() => navigate({ to: '/dashboard' })}
         />
+        {activeHome && (
+          <NavItem
+            icon={<IconBuilding size={18} />}
+            label={activeHome.name}
+            active={isActive('/home')}
+            onClick={() => navigate({ to: '/home' })}
+          />
+        )}
         <NavItem
           icon={<IconBox size={18} />}
           label="All items"
@@ -227,24 +309,49 @@ function Sidebar() {
                 style={{ borderRadius: 6, padding: '6px 14px 6px 28px', fontSize: 13 }}
               />
             ))}
-            <button
-              onClick={() => navigate({ to: '/locations' })}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '5px 14px 5px 28px',
-                color: 'var(--dt-fg-3)',
-                fontSize: 12,
-                background: 'transparent',
-                border: 0,
-                cursor: 'pointer',
-                width: '100%',
-              }}
-            >
-              <IconPlus size={12} />
-              View all locations
-            </button>
+            <div style={{ display: 'flex', gap: 4, padding: '4px 14px 4px 28px' }}>
+              <button
+                onClick={() => navigate({ to: '/locations' })}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 6px',
+                  color: 'var(--dt-fg-3)',
+                  fontSize: 12,
+                  background: 'transparent',
+                  border: 0,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dt-gray-1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                View all locations
+              </button>
+              <button
+                onClick={() => setLocModalOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 6px',
+                  color: 'var(--dt-fg-3)',
+                  fontSize: 12,
+                  background: 'transparent',
+                  border: 0,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dt-gray-1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <IconPlus size={12} />
+                Add
+              </button>
+            </div>
           </div>
         )}
 
@@ -289,24 +396,49 @@ function Sidebar() {
                 style={{ borderRadius: 6, padding: '6px 14px 6px 28px', fontSize: 13 }}
               />
             ))}
-            <button
-              onClick={() => navigate({ to: '/labels' })}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '5px 14px 5px 28px',
-                color: 'var(--dt-fg-3)',
-                fontSize: 12,
-                background: 'transparent',
-                border: 0,
-                cursor: 'pointer',
-                width: '100%',
-              }}
-            >
-              <IconPlus size={12} />
-              View all labels
-            </button>
+            <div style={{ display: 'flex', gap: 4, padding: '4px 14px 4px 28px' }}>
+              <button
+                onClick={() => navigate({ to: '/labels' })}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 6px',
+                  color: 'var(--dt-fg-3)',
+                  fontSize: 12,
+                  background: 'transparent',
+                  border: 0,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dt-gray-1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                View all labels
+              </button>
+              <button
+                onClick={() => setLabelModalOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 6px',
+                  color: 'var(--dt-fg-3)',
+                  fontSize: 12,
+                  background: 'transparent',
+                  border: 0,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dt-gray-1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <IconPlus size={12} />
+                Add
+              </button>
+            </div>
           </div>
         )}
 
@@ -363,6 +495,9 @@ function Sidebar() {
       <Text size="xs" c="dimmed" ta="center" pb="xs">
         v0.1.0-dev
       </Text>
+
+      <NewLocationModal opened={locModalOpen} onClose={() => setLocModalOpen(false)} />
+      <NewLabelModal opened={labelModalOpen} onClose={() => setLabelModalOpen(false)} />
     </div>
   );
 }

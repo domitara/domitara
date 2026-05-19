@@ -6,6 +6,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
@@ -25,10 +26,20 @@ func (h *Handler) Dashboard(ctx context.Context, _ *struct{}) (*DashboardOutput,
 		return nil, err
 	}
 	out := &DashboardOutput{}
-	h.pool.QueryRow(ctx, `SELECT COUNT(*) FROM items`).Scan(&out.Body.TotalItems)
-	h.pool.QueryRow(ctx, `SELECT COUNT(*) FROM locations`).Scan(&out.Body.TotalLocations)
-	h.pool.QueryRow(ctx, `SELECT COUNT(*) FROM labels`).Scan(&out.Body.TotalLabels)
-	h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE purchase_price IS NOT NULL`).Scan(&out.Body.TotalValue)
+	homeID := apimw.GetActiveHome(ctx)
+	if homeID != "" {
+		// sqlc not used here: COALESCE(SUM(numeric), 0) mixes numeric types and generates interface{} in sqlc pgx/v5 mode
+		out.Body.TotalItems, _ = h.q.CountItemsByHome(ctx, homeID)
+		out.Body.TotalLocations, _ = h.q.CountLocationsByHome(ctx, homeID)
+		out.Body.TotalLabels, _ = h.q.CountLabelsByHome(ctx, homeID)
+		h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE home_id = $1 AND purchase_price IS NOT NULL`, homeID).Scan(&out.Body.TotalValue)
+	} else {
+		// sqlc not used here: COALESCE(SUM(numeric), 0) mixes numeric types and generates interface{} in sqlc pgx/v5 mode
+		out.Body.TotalItems, _ = h.q.CountAllItems(ctx)
+		out.Body.TotalLocations, _ = h.q.CountAllLocations(ctx)
+		out.Body.TotalLabels, _ = h.q.CountAllLabels(ctx)
+		h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE purchase_price IS NOT NULL`).Scan(&out.Body.TotalValue)
+	}
 	return out, nil
 }
 
@@ -47,6 +58,35 @@ func (h *Handler) AdminListUsers(ctx context.Context, _ *struct{}) (*UsersOutput
 		resp[i] = userResponse(u)
 	}
 	return &UsersOutput{Body: resp}, nil
+}
+
+type AdminCreateUserInput struct {
+	Body struct {
+		Name     string `json:"name" minLength:"1"`
+		Email    string `json:"email" format:"email"`
+		Password string `json:"password" minLength:"8"`
+		Role     string `json:"role" enum:"admin,member"`
+	}
+}
+
+func (h *Handler) AdminCreateUser(ctx context.Context, input *AdminCreateUserInput) (*MeOutput, error) {
+	if _, err := apimw.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Body.Password), 12)
+	if err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to hash password")
+	}
+	user, err := h.q.CreateUser(ctx, store.CreateUserParams{
+		Email:        input.Body.Email,
+		Name:         input.Body.Name,
+		PasswordHash: string(hash),
+		Role:         input.Body.Role,
+	})
+	if err != nil {
+		return nil, huma.NewError(http.StatusConflict, "email already in use")
+	}
+	return &MeOutput{Body: userResponse(user)}, nil
 }
 
 type AdminUserIDInput struct {
@@ -72,7 +112,7 @@ func (h *Handler) AdminUpdateUser(ctx context.Context, input *AdminUpdateUserInp
 		}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to update user")
 	}
-	if _, err := h.pool.Exec(ctx, `UPDATE users SET role = $1 WHERE id = $2`, input.Body.Role, input.ID); err != nil {
+	if err := h.q.UpdateUserRole(ctx, store.UpdateUserRoleParams{Role: input.Body.Role, ID: input.ID}); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to update role")
 	}
 	user.Role = input.Body.Role

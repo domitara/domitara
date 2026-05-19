@@ -20,8 +20,7 @@ type SystemStatusOutput struct {
 }
 
 func (h *Handler) SystemStatus(ctx context.Context, _ *struct{}) (*SystemStatusOutput, error) {
-	var setupComplete bool
-	h.pool.QueryRow(ctx, `SELECT setup_complete FROM system_settings LIMIT 1`).Scan(&setupComplete)
+	setupComplete, _ := h.q.GetSystemStatus(ctx)
 	out := &SystemStatusOutput{}
 	out.Body.SetupComplete = setupComplete
 	return out, nil
@@ -32,6 +31,7 @@ type SetupInput struct {
 		Name     string `json:"name" minLength:"1"`
 		Email    string `json:"email" format:"email"`
 		Password string `json:"password" minLength:"8"`
+		HomeName string `json:"home_name,omitempty"`
 	}
 }
 
@@ -41,9 +41,9 @@ func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, er
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to start transaction")
 	}
 	defer tx.Rollback(ctx)
+	qtx := h.q.WithTx(tx)
 
-	var setupComplete bool
-	tx.QueryRow(ctx, `SELECT setup_complete FROM system_settings LIMIT 1 FOR UPDATE`).Scan(&setupComplete)
+	setupComplete, _ := qtx.GetSystemStatusForUpdate(ctx)
 	if setupComplete {
 		return nil, huma.NewError(http.StatusForbidden, "setup already complete")
 	}
@@ -53,18 +53,34 @@ func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, er
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to hash password")
 	}
 
-	var user store.User
-	err = tx.QueryRow(ctx,
-		`INSERT INTO users (email, name, password_hash, role)
-		 VALUES ($1, $2, $3, 'admin')
-		 RETURNING id, email, name, password_hash, role, created_at, updated_at`,
-		input.Body.Email, input.Body.Name, string(hash),
-	).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+	user, err := qtx.CreateUser(ctx, store.CreateUserParams{
+		Email:        input.Body.Email,
+		Name:         input.Body.Name,
+		PasswordHash: string(hash),
+		Role:         "admin",
+	})
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to create admin user")
 	}
 
-	if _, err = tx.Exec(ctx, `UPDATE system_settings SET setup_complete = TRUE`); err != nil {
+	homeName := input.Body.HomeName
+	if homeName == "" {
+		homeName = "My Home"
+	}
+	homeID, err := qtx.CreateFirstHome(ctx, homeName)
+	if err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to create home")
+	}
+
+	if err = qtx.UpsertHomeMember(ctx, store.UpsertHomeMemberParams{
+		HomeID: homeID,
+		UserID: user.ID,
+		Role:   "owner",
+	}); err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to assign home owner")
+	}
+
+	if err = qtx.CompleteSetup(ctx); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to complete setup")
 	}
 

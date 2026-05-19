@@ -52,6 +52,22 @@ tasks:
     desc: "Run frontend tests via Turborepo"
     cmd: pnpm turbo run test
 
+  test:coverage:
+    desc: "Run all tests with coverage"
+    deps: [test:coverage:api, test:coverage:web]
+
+  test:coverage:api:
+    desc: "Go test coverage (text summary + HTML report at apps/api/coverage.html)"
+    dir: apps/api
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+
+  test:coverage:web:
+    desc: "Frontend coverage (text summary + HTML report at apps/web/coverage/)"
+    cmd: pnpm --filter @app/web test:coverage
+
   lint:
     desc: "Lint everything"
     deps: [lint:api, lint:web]

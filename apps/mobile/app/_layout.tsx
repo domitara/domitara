@@ -5,6 +5,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '@/context/auth';
@@ -34,9 +35,11 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -76,6 +79,7 @@ function RootLayoutNav() {
         />
         <Stack.Screen name="maintenance" options={{ title: 'Maintenance' }} />
         <Stack.Screen name="asset-ids" options={{ title: 'Asset IDs' }} />
+        <Stack.Screen name="electrical-panels" options={{ title: 'Electrical Panels' }} />
         <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>

@@ -13,6 +13,7 @@ type Config struct {
 	AllowedOrigins string
 	ShowAPIDocs    bool
 	SecureCookies  bool
+	UploadDir      string
 }
 
 func Load() (*Config, error) {
@@ -44,6 +45,7 @@ func Load() (*Config, error) {
 		AllowedOrigins: os.Getenv("ALLOWED_ORIGINS"),
 		ShowAPIDocs:    os.Getenv("SHOW_API_DOCS") == "true",
 		SecureCookies:  secureCookies,
+		UploadDir:      getEnv("UPLOAD_DIR", "./data/uploads"),
 	}, nil
 }
 
