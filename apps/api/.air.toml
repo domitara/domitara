@@ -1,6 +1,6 @@
 [build]
-  cmd = "go build -o ./tmp/server ./cmd/server"
-  entrypoint = "./tmp/server"
+  cmd = "go build -o ./tmp/server.exe ./cmd/server"
+  bin = "tmp/server.exe"
   include_ext = ["go"]
   exclude_dir = ["tmp", "vendor", "internal/db/sqlc"]
   delay = 1000
