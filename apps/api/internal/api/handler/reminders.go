@@ -11,6 +11,7 @@ import (
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+// ReminderRow is the API representation of a reminder.
 type ReminderRow struct {
 	ID           string     `json:"id"`
 	Key          string     `json:"key"`
@@ -21,12 +22,15 @@ type ReminderRow struct {
 	CreatedAt    time.Time  `json:"created_at"`
 }
 
+// RemindersOutput is the response body listing reminders.
 type RemindersOutput struct{ Body []ReminderRow }
 
+// ReminderIDInput carries a reminder ID path parameter.
 type ReminderIDInput struct {
 	ID string `path:"id"`
 }
 
+// SnoozeReminderInput is the request body for snoozing a reminder.
 type SnoozeReminderInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -34,6 +38,7 @@ type SnoozeReminderInput struct {
 	}
 }
 
+// ListReminders returns the current user's active reminders.
 func (h *Handler) ListReminders(ctx context.Context, _ *struct{}) (*RemindersOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -53,6 +58,7 @@ func (h *Handler) ListReminders(ctx context.Context, _ *struct{}) (*RemindersOut
 	return &RemindersOutput{Body: result}, nil
 }
 
+// DismissReminder marks a reminder as dismissed for the current user.
 func (h *Handler) DismissReminder(ctx context.Context, input *ReminderIDInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -68,6 +74,7 @@ func (h *Handler) DismissReminder(ctx context.Context, input *ReminderIDInput) (
 	return nil, nil
 }
 
+// SnoozeReminder snoozes a reminder for the requested number of days.
 func (h *Handler) SnoozeReminder(ctx context.Context, input *SnoozeReminderInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {

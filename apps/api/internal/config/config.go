@@ -1,3 +1,4 @@
+// Package config loads runtime configuration from environment variables.
 package config
 
 import (
@@ -5,6 +6,7 @@ import (
 	"os"
 )
 
+// Config holds the runtime configuration for the API server.
 type Config struct {
 	DatabaseURL    string
 	Port           string
@@ -16,6 +18,9 @@ type Config struct {
 	UploadDir      string
 }
 
+// Load reads configuration from the environment, applying defaults and
+// validating required values. It returns an error if any required value is
+// missing or invalid.
 func Load() (*Config, error) {
 	port := os.Getenv("PORT")
 	if port == "" {

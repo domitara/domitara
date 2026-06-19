@@ -11,6 +11,7 @@ import (
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+// LabelRow is the API representation of a label.
 type LabelRow struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -20,13 +21,18 @@ type LabelRow struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// LabelsOutput is the response body listing labels.
 type LabelsOutput struct{ Body []LabelRow }
+
+// LabelOutput is the response body for a single label.
 type LabelOutput struct{ Body LabelRow }
 
+// LabelIDInput carries a label ID path parameter.
 type LabelIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateLabelInput is the request body for creating a label.
 type CreateLabelInput struct {
 	Body struct {
 		Name  string  `json:"name" minLength:"1"`
@@ -34,6 +40,7 @@ type CreateLabelInput struct {
 	}
 }
 
+// UpdateLabelInput is the request body for updating a label.
 type UpdateLabelInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -42,6 +49,7 @@ type UpdateLabelInput struct {
 	}
 }
 
+// ListLabels returns labels for the active home, or all labels if none is set.
 func (h *Handler) ListLabels(ctx context.Context, _ *struct{}) (*LabelsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -74,6 +82,7 @@ func (h *Handler) ListLabels(ctx context.Context, _ *struct{}) (*LabelsOutput, e
 	return &LabelsOutput{Body: labels}, nil
 }
 
+// CreateLabel creates a label in the active home.
 func (h *Handler) CreateLabel(ctx context.Context, input *CreateLabelInput) (*LabelOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -103,6 +112,7 @@ func (h *Handler) CreateLabel(ctx context.Context, input *CreateLabelInput) (*La
 	}}, nil
 }
 
+// UpdateLabel updates a label's name and color.
 func (h *Handler) UpdateLabel(ctx context.Context, input *UpdateLabelInput) (*LabelOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -124,6 +134,7 @@ func (h *Handler) UpdateLabel(ctx context.Context, input *UpdateLabelInput) (*La
 	}}, nil
 }
 
+// DeleteLabel deletes a label.
 func (h *Handler) DeleteLabel(ctx context.Context, input *LabelIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err

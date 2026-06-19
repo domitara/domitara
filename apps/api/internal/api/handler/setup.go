@@ -13,12 +13,14 @@ import (
 	"github.com/domitara/domitara/apps/api/internal/service"
 )
 
+// SystemStatusOutput reports whether initial setup has been completed.
 type SystemStatusOutput struct {
 	Body struct {
 		SetupComplete bool `json:"setup_complete"`
 	}
 }
 
+// SystemStatus reports whether the system has completed first-run setup.
 func (h *Handler) SystemStatus(ctx context.Context, _ *struct{}) (*SystemStatusOutput, error) {
 	setupComplete, _ := h.q.GetSystemStatus(ctx)
 	out := &SystemStatusOutput{}
@@ -26,6 +28,7 @@ func (h *Handler) SystemStatus(ctx context.Context, _ *struct{}) (*SystemStatusO
 	return out, nil
 }
 
+// SetupInput is the request body for first-run setup.
 type SetupInput struct {
 	Body struct {
 		Name     string `json:"name" minLength:"1"`
@@ -35,12 +38,13 @@ type SetupInput struct {
 	}
 }
 
+// Setup performs first-run initialization: creates the admin user and first home.
 func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, error) {
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to start transaction")
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := h.q.WithTx(tx)
 
 	setupComplete, _ := qtx.GetSystemStatusForUpdate(ctx)

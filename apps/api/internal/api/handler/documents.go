@@ -17,6 +17,7 @@ import (
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+// DocumentRow is the API representation of an item document.
 type DocumentRow struct {
 	ID          string    `json:"id"`
 	ItemID      string    `json:"item_id"`
@@ -27,12 +28,15 @@ type DocumentRow struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// DocumentsOutput is the response body listing item documents.
 type DocumentsOutput struct{ Body []DocumentRow }
 
+// DocItemIDInput carries an item ID path parameter for document endpoints.
 type DocItemIDInput struct {
 	ItemID string `path:"itemId"`
 }
 
+// DeleteDocumentInput identifies a document to delete by item and document ID.
 type DeleteDocumentInput struct {
 	ItemID     string `path:"itemId"`
 	DocumentID string `path:"documentId"`
@@ -45,6 +49,7 @@ var allowedDocMIMEs = map[string]string{
 	"image/webp":      ".webp",
 }
 
+// ListItemDocuments returns all documents attached to an item.
 func (h *Handler) ListItemDocuments(ctx context.Context, input *DocItemIDInput) (*DocumentsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -63,6 +68,7 @@ func (h *Handler) ListItemDocuments(ctx context.Context, input *DocItemIDInput) 
 	return &DocumentsOutput{Body: docs}, nil
 }
 
+// DeleteDocument removes a document record and its file from disk.
 func (h *Handler) DeleteDocument(ctx context.Context, input *DeleteDocumentInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -97,7 +103,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "document field required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	buf := make([]byte, 512)
 	n, _ := file.Read(buf)
@@ -142,7 +148,7 @@ func (h *Handler) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "failed to save file")
 		return
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	written, err := io.Copy(dst, file)
 	if err != nil {

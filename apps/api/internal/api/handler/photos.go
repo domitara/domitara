@@ -17,6 +17,7 @@ import (
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+// PhotoRow is the API representation of an item photo.
 type PhotoRow struct {
 	ID          string    `json:"id"`
 	ItemID      string    `json:"item_id"`
@@ -26,12 +27,15 @@ type PhotoRow struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// PhotosOutput is the response body listing item photos.
 type PhotosOutput struct{ Body []PhotoRow }
 
+// PhotoItemIDInput carries an item ID path parameter for photo endpoints.
 type PhotoItemIDInput struct {
 	ItemID string `path:"itemId"`
 }
 
+// DeletePhotoInput identifies a photo to delete by item and photo ID.
 type DeletePhotoInput struct {
 	ItemID  string `path:"itemId"`
 	PhotoID string `path:"photoId"`
@@ -43,6 +47,7 @@ var allowedPhotoMIMEs = map[string]string{
 	"image/webp": ".webp",
 }
 
+// ListItemPhotos returns all photos attached to an item.
 func (h *Handler) ListItemPhotos(ctx context.Context, input *PhotoItemIDInput) (*PhotosOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -61,6 +66,7 @@ func (h *Handler) ListItemPhotos(ctx context.Context, input *PhotoItemIDInput) (
 	return &PhotosOutput{Body: photos}, nil
 }
 
+// DeletePhoto removes a photo record and its file from disk.
 func (h *Handler) DeletePhoto(ctx context.Context, input *DeletePhotoInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -96,7 +102,7 @@ func (h *Handler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "photo field required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	buf := make([]byte, 512)
 	n, _ := file.Read(buf)
@@ -135,7 +141,7 @@ func (h *Handler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "failed to save file")
 		return
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 	if _, err := io.Copy(dst, file); err != nil {
 		_ = h.q.DeleteItemPhoto(r.Context(), rec.ID)
 		_ = os.Remove(absPath)

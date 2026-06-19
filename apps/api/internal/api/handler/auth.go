@@ -13,10 +13,12 @@ import (
 	"github.com/domitara/domitara/apps/api/internal/service"
 )
 
+// AuthOutput is the response body returned after authentication.
 type AuthOutput struct {
 	Body UserResponse
 }
 
+// LoginInput is the request body for the login endpoint.
 type LoginInput struct {
 	Body struct {
 		Email    string `json:"email"`
@@ -24,10 +26,12 @@ type LoginInput struct {
 	}
 }
 
+// MeOutput is the response body describing the current user.
 type MeOutput struct {
 	Body UserResponse
 }
 
+// UpdateMeInput is the request body for updating the current user.
 type UpdateMeInput struct {
 	Body struct {
 		Name     *string `json:"name,omitempty"`
@@ -35,6 +39,7 @@ type UpdateMeInput struct {
 	}
 }
 
+// Login authenticates a user by email and password and sets auth cookies.
 func (h *Handler) Login(ctx context.Context, input *LoginInput) (*AuthOutput, error) {
 	user, err := h.q.GetUserByEmail(ctx, input.Body.Email)
 	if err != nil {
@@ -56,6 +61,7 @@ func (h *Handler) Login(ctx context.Context, input *LoginInput) (*AuthOutput, er
 	return &AuthOutput{Body: userResponse(user)}, nil
 }
 
+// Logout clears the authentication cookies.
 func (h *Handler) Logout(ctx context.Context, _ *struct{}) (*struct{}, error) {
 	if w := apimw.GetResponseWriter(ctx); w != nil {
 		h.clearAuthCookies(w)
@@ -63,6 +69,7 @@ func (h *Handler) Logout(ctx context.Context, _ *struct{}) (*struct{}, error) {
 	return nil, nil
 }
 
+// Me returns the currently authenticated user.
 func (h *Handler) Me(ctx context.Context, _ *struct{}) (*MeOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -75,6 +82,7 @@ func (h *Handler) Me(ctx context.Context, _ *struct{}) (*MeOutput, error) {
 	return &MeOutput{Body: userResponse(user)}, nil
 }
 
+// UpdateMe updates the current user's name and/or password.
 func (h *Handler) UpdateMe(ctx context.Context, input *UpdateMeInput) (*MeOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {

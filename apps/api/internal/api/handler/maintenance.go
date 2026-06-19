@@ -16,6 +16,7 @@ import (
 
 // --- Maintenance Logs ---
 
+// MaintenanceLogRow is the API representation of a maintenance log entry.
 type MaintenanceLogRow struct {
 	ID          string    `json:"id"`
 	ItemID      *string   `json:"item_id"`
@@ -27,17 +28,23 @@ type MaintenanceLogRow struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// MaintenanceLogsOutput is the response body listing maintenance log entries.
 type MaintenanceLogsOutput struct{ Body []MaintenanceLogRow }
+
+// MaintenanceLogOutput is the response body for a single maintenance log entry.
 type MaintenanceLogOutput struct{ Body MaintenanceLogRow }
 
+// ListMaintenanceInput holds the optional query filters for listing logs.
 type ListMaintenanceInput struct {
 	ItemID string `query:"item_id"`
 }
 
+// MaintenanceIDInput carries a maintenance log ID path parameter.
 type MaintenanceIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateMaintenanceInput is the request body for creating a maintenance log entry.
 type CreateMaintenanceInput struct {
 	Body struct {
 		ItemID      *string  `json:"item_id,omitempty"`
@@ -49,6 +56,8 @@ type CreateMaintenanceInput struct {
 	}
 }
 
+// ListMaintenance returns maintenance log entries, optionally filtered by item.
+//
 // sqlc not used here: dynamic WHERE clause built at runtime based on optional filters (home_id, item_id)
 func (h *Handler) ListMaintenance(ctx context.Context, input *ListMaintenanceInput) (*MaintenanceLogsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
@@ -97,6 +106,7 @@ func (h *Handler) ListMaintenance(ctx context.Context, input *ListMaintenanceInp
 	return &MaintenanceLogsOutput{Body: logs}, nil
 }
 
+// CreateMaintenance creates a maintenance log entry and advances any linked schedule.
 func (h *Handler) CreateMaintenance(ctx context.Context, input *CreateMaintenanceInput) (*MaintenanceLogOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -111,7 +121,7 @@ func (h *Handler) CreateMaintenance(ctx context.Context, input *CreateMaintenanc
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to begin transaction")
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := h.q.WithTx(tx)
 
 	rec, err := qtx.CreateMaintenanceLog(ctx, store.CreateMaintenanceLogParams{
@@ -155,6 +165,7 @@ func (h *Handler) CreateMaintenance(ctx context.Context, input *CreateMaintenanc
 	return &MaintenanceLogOutput{Body: log}, nil
 }
 
+// DeleteMaintenance deletes a maintenance log entry.
 func (h *Handler) DeleteMaintenance(ctx context.Context, input *MaintenanceIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -167,6 +178,7 @@ func (h *Handler) DeleteMaintenance(ctx context.Context, input *MaintenanceIDInp
 
 // --- Maintenance Schedules ---
 
+// MaintenanceScheduleRow is the API representation of a maintenance schedule.
 type MaintenanceScheduleRow struct {
 	ID              string    `json:"id"`
 	ItemID          *string   `json:"item_id"`
@@ -181,13 +193,18 @@ type MaintenanceScheduleRow struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+// MaintenanceSchedulesOutput is the response body listing maintenance schedules.
 type MaintenanceSchedulesOutput struct{ Body []MaintenanceScheduleRow }
+
+// MaintenanceScheduleOutput is the response body for a single maintenance schedule.
 type MaintenanceScheduleOutput struct{ Body MaintenanceScheduleRow }
 
+// ScheduleIDInput carries a maintenance schedule ID path parameter.
 type ScheduleIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateScheduleInput is the request body for creating a maintenance schedule.
 type CreateScheduleInput struct {
 	Body struct {
 		ItemID         *string `json:"item_id,omitempty"`
@@ -199,6 +216,7 @@ type CreateScheduleInput struct {
 	}
 }
 
+// UpdateScheduleInput is the request body for updating a maintenance schedule.
 type UpdateScheduleInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -229,6 +247,7 @@ func scheduleRowFromSQL(id string, itemID *string, itemName *string, title strin
 	}
 }
 
+// ListSchedules returns the maintenance schedules for the active home.
 func (h *Handler) ListSchedules(ctx context.Context, _ *struct{}) (*MaintenanceSchedulesOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -249,6 +268,7 @@ func (h *Handler) ListSchedules(ctx context.Context, _ *struct{}) (*MaintenanceS
 	return &MaintenanceSchedulesOutput{Body: schedules}, nil
 }
 
+// CreateSchedule creates a maintenance schedule.
 func (h *Handler) CreateSchedule(ctx context.Context, input *CreateScheduleInput) (*MaintenanceScheduleOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -276,6 +296,7 @@ func (h *Handler) CreateSchedule(ctx context.Context, input *CreateScheduleInput
 	return &MaintenanceScheduleOutput{Body: s}, nil
 }
 
+// UpdateSchedule updates a maintenance schedule.
 func (h *Handler) UpdateSchedule(ctx context.Context, input *UpdateScheduleInput) (*MaintenanceScheduleOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -301,6 +322,7 @@ func (h *Handler) UpdateSchedule(ctx context.Context, input *UpdateScheduleInput
 	return &MaintenanceScheduleOutput{Body: s}, nil
 }
 
+// DeleteSchedule deletes a maintenance schedule.
 func (h *Handler) DeleteSchedule(ctx context.Context, input *ScheduleIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err

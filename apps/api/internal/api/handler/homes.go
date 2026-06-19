@@ -20,6 +20,7 @@ import (
 
 // ---- response types ----
 
+// HomeRow is the API representation of a home.
 type HomeRow struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
@@ -46,9 +47,13 @@ type HomeRow struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// HomesOutput is the response body listing homes.
 type HomesOutput struct{ Body []HomeRow }
+
+// HomeOutput is the response body for a single home.
 type HomeOutput struct{ Body HomeRow }
 
+// HomeMemberRow is the API representation of a home member.
 type HomeMemberRow struct {
 	UserID    int64     `json:"user_id"`
 	UserName  string    `json:"user_name"`
@@ -57,8 +62,10 @@ type HomeMemberRow struct {
 	JoinedAt  time.Time `json:"joined_at"`
 }
 
+// HomeMembersOutput is the response body listing home members.
 type HomeMembersOutput struct{ Body []HomeMemberRow }
 
+// HomePhotoRow is the API representation of a home photo.
 type HomePhotoRow struct {
 	ID          string    `json:"id"`
 	HomeID      string    `json:"home_id"`
@@ -68,8 +75,10 @@ type HomePhotoRow struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// HomePhotosOutput is the response body listing home photos.
 type HomePhotosOutput struct{ Body []HomePhotoRow }
 
+// HomeDocRow is the API representation of a home document.
 type HomeDocRow struct {
 	ID           string    `json:"id"`
 	HomeID       string    `json:"home_id"`
@@ -82,14 +91,17 @@ type HomeDocRow struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+// HomeDocsOutput is the response body listing home documents.
 type HomeDocsOutput struct{ Body []HomeDocRow }
 
 // ---- input types ----
 
+// HomeIDInput carries a home ID path parameter.
 type HomeIDInput struct {
 	ID string `path:"id"`
 }
 
+// HomeBody is the shared request body for creating and updating homes.
 type HomeBody struct {
 	Name           string   `json:"name" minLength:"1"`
 	AddressStreet  *string  `json:"address_street,omitempty"`
@@ -112,13 +124,16 @@ type HomeBody struct {
 	HoaMonthlyDues *float64 `json:"hoa_monthly_dues,omitempty"`
 }
 
+// CreateHomeInput is the request body for creating a home.
 type CreateHomeInput struct{ Body HomeBody }
 
+// UpdateHomeInput is the request body for updating a home.
 type UpdateHomeInput struct {
 	ID   string `path:"id"`
 	Body HomeBody
 }
 
+// AddMemberInput is the request body for adding a member to a home.
 type AddMemberInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -127,21 +142,25 @@ type AddMemberInput struct {
 	}
 }
 
+// RemoveMemberInput identifies a member to remove from a home.
 type RemoveMemberInput struct {
 	ID     string `path:"id"`
 	UserID int64  `path:"userId"`
 }
 
+// DeleteHomePhotoInput identifies a home photo to delete.
 type DeleteHomePhotoInput struct {
 	ID      string `path:"id"`
 	PhotoID string `path:"photoId"`
 }
 
+// DeleteHomeDocInput identifies a home document to delete.
 type DeleteHomeDocInput struct {
 	ID    string `path:"id"`
 	DocID string `path:"docId"`
 }
 
+// UpdateHomeDocFloorLevelInput is the request body for setting a document's floor level.
 type UpdateHomeDocFloorLevelInput struct {
 	HomeID string `path:"homeId"`
 	DocID  string `path:"docId"`
@@ -252,6 +271,7 @@ func (h *Handler) requireHomeMember(ctx context.Context, homeID string, userID i
 
 // ---- CRUD handlers ----
 
+// ListHomes returns the homes the current user is a member of.
 func (h *Handler) ListHomes(ctx context.Context, _ *struct{}) (*HomesOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -268,6 +288,7 @@ func (h *Handler) ListHomes(ctx context.Context, _ *struct{}) (*HomesOutput, err
 	return &HomesOutput{Body: homes}, nil
 }
 
+// GetHome returns a single home the user can access.
 func (h *Handler) GetHome(ctx context.Context, input *HomeIDInput) (*HomeOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -280,6 +301,7 @@ func (h *Handler) GetHome(ctx context.Context, input *HomeIDInput) (*HomeOutput,
 	return &HomeOutput{Body: homeRowFromGet(r)}, nil
 }
 
+// CreateHome creates a home and makes the current user its owner.
 func (h *Handler) CreateHome(ctx context.Context, input *CreateHomeInput) (*HomeOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -292,7 +314,7 @@ func (h *Handler) CreateHome(ctx context.Context, input *CreateHomeInput) (*Home
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := h.q.WithTx(tx)
 
 	homeID, err := qtx.CreateHome(ctx, store.CreateHomeParams{
@@ -337,6 +359,7 @@ func (h *Handler) CreateHome(ctx context.Context, input *CreateHomeInput) (*Home
 	return &HomeOutput{Body: homeRowFromGet(r)}, nil
 }
 
+// UpdateHome updates a home's details.
 func (h *Handler) UpdateHome(ctx context.Context, input *UpdateHomeInput) (*HomeOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -379,6 +402,7 @@ func (h *Handler) UpdateHome(ctx context.Context, input *UpdateHomeInput) (*Home
 	return &HomeOutput{Body: homeRowFromGet(r)}, nil
 }
 
+// DeleteHome deletes a home.
 func (h *Handler) DeleteHome(ctx context.Context, input *HomeIDInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -399,6 +423,7 @@ func (h *Handler) DeleteHome(ctx context.Context, input *HomeIDInput) (*struct{}
 
 // ---- Member management ----
 
+// ListHomeMembers returns the members of a home.
 func (h *Handler) ListHomeMembers(ctx context.Context, input *HomeIDInput) (*HomeMembersOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -421,6 +446,7 @@ func (h *Handler) ListHomeMembers(ctx context.Context, input *HomeIDInput) (*Hom
 	return &HomeMembersOutput{Body: members}, nil
 }
 
+// AddHomeMember adds a user to a home by email.
 func (h *Handler) AddHomeMember(ctx context.Context, input *AddMemberInput) (*HomeMembersOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -449,6 +475,7 @@ func (h *Handler) AddHomeMember(ctx context.Context, input *AddMemberInput) (*Ho
 	return h.ListHomeMembers(ctx, &HomeIDInput{ID: input.ID})
 }
 
+// RemoveHomeMember removes a member from a home.
 func (h *Handler) RemoveHomeMember(ctx context.Context, input *RemoveMemberInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -477,6 +504,7 @@ func (h *Handler) RemoveHomeMember(ctx context.Context, input *RemoveMemberInput
 
 // ---- Home photos ----
 
+// ListHomePhotos returns the photos attached to a home.
 func (h *Handler) ListHomePhotos(ctx context.Context, input *HomeIDInput) (*HomePhotosOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -499,6 +527,7 @@ func (h *Handler) ListHomePhotos(ctx context.Context, input *HomeIDInput) (*Home
 	return &HomePhotosOutput{Body: photos}, nil
 }
 
+// DeleteHomePhoto removes a home photo record and its file from disk.
 func (h *Handler) DeleteHomePhoto(ctx context.Context, input *DeleteHomePhotoInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -520,6 +549,7 @@ func (h *Handler) DeleteHomePhoto(ctx context.Context, input *DeleteHomePhotoInp
 	return nil, nil
 }
 
+// UploadHomePhoto handles multipart home photo uploads as a raw chi handler.
 func (h *Handler) UploadHomePhoto(w http.ResponseWriter, r *http.Request) {
 	claims, ok := apimw.GetClaims(r.Context())
 	if !ok {
@@ -544,7 +574,7 @@ func (h *Handler) UploadHomePhoto(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "photo field required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	buf := make([]byte, 512)
 	n, _ := file.Read(buf)
@@ -583,7 +613,7 @@ func (h *Handler) UploadHomePhoto(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "failed to save file")
 		return
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 	if _, err := io.Copy(dst, file); err != nil {
 		_ = h.q.DeleteHomePhoto(r.Context(), rec.ID)
 		_ = os.Remove(absPath)
@@ -611,6 +641,7 @@ func (h *Handler) UploadHomePhoto(w http.ResponseWriter, r *http.Request) {
 
 // ---- Home documents ----
 
+// ListHomeDocuments returns the documents attached to a home.
 func (h *Handler) ListHomeDocuments(ctx context.Context, input *HomeIDInput) (*HomeDocsOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -635,6 +666,7 @@ func (h *Handler) ListHomeDocuments(ctx context.Context, input *HomeIDInput) (*H
 	return &HomeDocsOutput{Body: docs}, nil
 }
 
+// DeleteHomeDocument removes a home document record and its file from disk.
 func (h *Handler) DeleteHomeDocument(ctx context.Context, input *DeleteHomeDocInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -656,6 +688,7 @@ func (h *Handler) DeleteHomeDocument(ctx context.Context, input *DeleteHomeDocIn
 	return nil, nil
 }
 
+// UpdateHomeDocumentFloorLevel sets the floor level metadata for a home document.
 func (h *Handler) UpdateHomeDocumentFloorLevel(ctx context.Context, input *UpdateHomeDocFloorLevelInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -677,6 +710,7 @@ func (h *Handler) UpdateHomeDocumentFloorLevel(ctx context.Context, input *Updat
 	return nil, nil
 }
 
+// UploadHomeDocument handles multipart home document uploads as a raw chi handler.
 func (h *Handler) UploadHomeDocument(w http.ResponseWriter, r *http.Request) {
 	claims, ok := apimw.GetClaims(r.Context())
 	if !ok {
@@ -701,7 +735,7 @@ func (h *Handler) UploadHomeDocument(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "document field required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	buf := make([]byte, 512)
 	n, _ := file.Read(buf)
@@ -749,7 +783,7 @@ func (h *Handler) UploadHomeDocument(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "failed to save file")
 		return
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	written, err := io.Copy(dst, file)
 	if err != nil {

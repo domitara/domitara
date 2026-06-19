@@ -1,3 +1,4 @@
+// Command server is the Domitara API server entrypoint.
 package main
 
 import (
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+
 	"github.com/domitara/domitara/apps/api/internal/api"
 	"github.com/domitara/domitara/apps/api/internal/config"
 	"github.com/domitara/domitara/apps/api/internal/db"

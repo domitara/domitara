@@ -18,6 +18,7 @@ import (
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+// ItemRow is the API representation of an inventory item.
 type ItemRow struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
@@ -38,19 +39,25 @@ type ItemRow struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
+// ItemsOutput is the response body listing items.
 type ItemsOutput struct{ Body []ItemRow }
+
+// ItemOutput is the response body for a single item.
 type ItemOutput struct{ Body ItemRow }
 
+// ListItemsInput holds the optional query filters for listing items.
 type ListItemsInput struct {
 	LocationID string `query:"location_id"`
 	LabelID    string `query:"label_id"`
 	Q          string `query:"q" doc:"Search query — matches name, description, manufacturer, model, serial, notes, asset_id"`
 }
 
+// ItemIDInput carries an item ID path parameter.
 type ItemIDInput struct {
 	ID string `path:"id"`
 }
 
+// ItemBody is the shared request body for creating and updating items.
 type ItemBody struct {
 	Name          string   `json:"name" minLength:"1"`
 	Description   *string  `json:"description,omitempty"`
@@ -68,8 +75,10 @@ type ItemBody struct {
 	LabelIDs      []string `json:"label_ids,omitempty"`
 }
 
+// CreateItemInput is the request body for creating an item.
 type CreateItemInput struct{ Body ItemBody }
 
+// UpdateItemInput is the request body for updating an item.
 type UpdateItemInput struct {
 	ID   string `path:"id"`
 	Body ItemBody
@@ -98,6 +107,8 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 	return it, err
 }
 
+// ListItems returns items for the active home, filtered by optional query params.
+//
 // sqlc not used here: dynamic WHERE clause built at runtime based on optional filters (home_id, q, location_id, label_id)
 func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
@@ -156,6 +167,8 @@ func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsO
 	return &ItemsOutput{Body: items}, nil
 }
 
+// GetItem returns a single item by ID.
+//
 // sqlc not used here: COALESCE(array_agg(...) FILTER (...), '{}') generates interface{} in sqlc pgx/v5 mode
 func (h *Handler) GetItem(ctx context.Context, input *ItemIDInput) (*ItemOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
@@ -168,6 +181,7 @@ func (h *Handler) GetItem(ctx context.Context, input *ItemIDInput) (*ItemOutput,
 	return &ItemOutput{Body: it}, nil
 }
 
+// CreateItem creates an item in the active home with optional labels.
 func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*ItemOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -188,7 +202,7 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := h.q.WithTx(tx)
 
 	itemID, err := qtx.CreateItem(ctx, store.CreateItemParams{
@@ -230,6 +244,7 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 	return &ItemOutput{Body: it}, nil
 }
 
+// UpdateItem updates an item and its labels.
 func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*ItemOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -239,7 +254,7 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := h.q.WithTx(tx)
 
 	if err := qtx.UpdateItem(ctx, store.UpdateItemParams{
@@ -283,6 +298,7 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 	return &ItemOutput{Body: it}, nil
 }
 
+// DeleteItem deletes an item.
 func (h *Handler) DeleteItem(ctx context.Context, input *ItemIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err

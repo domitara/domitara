@@ -1,3 +1,4 @@
+// Package api wires up the HTTP router, middleware, and route registrations.
 package api
 
 import (
@@ -22,6 +23,7 @@ import (
 
 var bearerAuth = []map[string][]string{{"bearer": {}}}
 
+// NewRouter builds the application HTTP handler with all middleware and routes registered.
 func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	q := store.New(pool)
 	h := handler.New(q, pool, cfg.JWTSecret, cfg.SecureCookies, cfg.UploadDir)
@@ -217,7 +219,6 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	return r
 }
 
-
 func spaHandler(fs http.FileSystem) http.Handler {
 	fileServer := http.FileServer(fs)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +226,7 @@ func spaHandler(fs http.FileSystem) http.Handler {
 		if err != nil {
 			r.URL.Path = "/"
 		} else {
-			f.Close()
+			_ = f.Close()
 		}
 		fileServer.ServeHTTP(w, r)
 	})

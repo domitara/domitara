@@ -1,3 +1,4 @@
+// Package db handles database connections and schema migrations.
 package db
 
 import (
@@ -6,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
+	// postgres driver registered for golang-migrate via blank import.
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +16,7 @@ import (
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
+// Connect opens a pgx connection pool and verifies it with a ping.
 func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	if databaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
@@ -28,6 +31,7 @@ func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
+// Migrate applies all pending up migrations from the embedded migration files.
 func Migrate(databaseURL string) error {
 	src, err := iofs.New(migrationFiles, "migrations")
 	if err != nil {
@@ -37,7 +41,7 @@ func Migrate(databaseURL string) error {
 	if err != nil {
 		return fmt.Errorf("migration init: %w", err)
 	}
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migrate up: %w", err)
 	}

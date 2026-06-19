@@ -1,3 +1,4 @@
+// Command seed populates the database with sample data for development.
 package main
 
 import (
@@ -115,7 +116,7 @@ func (s *seeder) run() error {
 	if err != nil {
 		return err
 	}
-	cabin_bedroom, err := s.createLocation(home2, "Bedroom", nil, "")
+	cabinBedroom, err := s.createLocation(home2, "Bedroom", nil, "")
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func (s *seeder) run() error {
 		return err
 	}
 	_ = mainRoom
-	_ = cabin_bedroom
+	_ = cabinBedroom
 
 	// --- Home 1 labels ---
 	lblElec1, err := s.createLabel(home1, "Electronics", "#3b82f6")
@@ -591,7 +592,7 @@ func (s *seeder) addPhotoToItem(itemID string, bg color.RGBA) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := png.Encode(f, img); err != nil {
 		return err
 	}

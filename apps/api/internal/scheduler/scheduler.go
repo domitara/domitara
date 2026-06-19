@@ -1,3 +1,4 @@
+// Package scheduler runs periodic jobs that generate user reminders.
 package scheduler
 
 import (
@@ -71,21 +72,27 @@ var definitions = []reminderDef{
 	},
 }
 
+// Scheduler runs reminder-generation jobs on a cron schedule.
 type Scheduler struct {
 	pool *pgxpool.Pool
 	c    *cron.Cron
 }
 
+// New creates a Scheduler backed by the given connection pool.
 func New(pool *pgxpool.Pool) *Scheduler {
 	return &Scheduler{pool: pool, c: cron.New()}
 }
 
+// Start runs the reminder job once immediately and then daily.
 func (s *Scheduler) Start() {
 	go s.run()
-	s.c.AddFunc("@daily", s.run)
+	if _, err := s.c.AddFunc("@daily", s.run); err != nil {
+		log.Printf("scheduler: register daily job: %v", err)
+	}
 	s.c.Start()
 }
 
+// Stop halts the cron scheduler.
 func (s *Scheduler) Stop() {
 	s.c.Stop()
 }

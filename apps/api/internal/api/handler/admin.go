@@ -12,6 +12,7 @@ import (
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
+// DashboardOutput is the response body for the admin dashboard summary.
 type DashboardOutput struct {
 	Body struct {
 		TotalItems     int64   `json:"total_items"`
@@ -21,6 +22,7 @@ type DashboardOutput struct {
 	}
 }
 
+// Dashboard returns aggregate counts and total value for the active home.
 func (h *Handler) Dashboard(ctx context.Context, _ *struct{}) (*DashboardOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -32,19 +34,21 @@ func (h *Handler) Dashboard(ctx context.Context, _ *struct{}) (*DashboardOutput,
 		out.Body.TotalItems, _ = h.q.CountItemsByHome(ctx, homeID)
 		out.Body.TotalLocations, _ = h.q.CountLocationsByHome(ctx, homeID)
 		out.Body.TotalLabels, _ = h.q.CountLabelsByHome(ctx, homeID)
-		h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE home_id = $1 AND purchase_price IS NOT NULL`, homeID).Scan(&out.Body.TotalValue)
+		_ = h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE home_id = $1 AND purchase_price IS NOT NULL`, homeID).Scan(&out.Body.TotalValue)
 	} else {
 		// sqlc not used here: COALESCE(SUM(numeric), 0) mixes numeric types and generates interface{} in sqlc pgx/v5 mode
 		out.Body.TotalItems, _ = h.q.CountAllItems(ctx)
 		out.Body.TotalLocations, _ = h.q.CountAllLocations(ctx)
 		out.Body.TotalLabels, _ = h.q.CountAllLabels(ctx)
-		h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE purchase_price IS NOT NULL`).Scan(&out.Body.TotalValue)
+		_ = h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE purchase_price IS NOT NULL`).Scan(&out.Body.TotalValue)
 	}
 	return out, nil
 }
 
+// UsersOutput is the response body listing users.
 type UsersOutput struct{ Body []UserResponse }
 
+// AdminListUsers returns all users (admin only).
 func (h *Handler) AdminListUsers(ctx context.Context, _ *struct{}) (*UsersOutput, error) {
 	if _, err := apimw.RequireAdmin(ctx); err != nil {
 		return nil, err
@@ -60,6 +64,7 @@ func (h *Handler) AdminListUsers(ctx context.Context, _ *struct{}) (*UsersOutput
 	return &UsersOutput{Body: resp}, nil
 }
 
+// AdminCreateUserInput is the request body for creating a user (admin only).
 type AdminCreateUserInput struct {
 	Body struct {
 		Name     string `json:"name" minLength:"1"`
@@ -69,6 +74,7 @@ type AdminCreateUserInput struct {
 	}
 }
 
+// AdminCreateUser creates a new user (admin only).
 func (h *Handler) AdminCreateUser(ctx context.Context, input *AdminCreateUserInput) (*MeOutput, error) {
 	if _, err := apimw.RequireAdmin(ctx); err != nil {
 		return nil, err
@@ -89,10 +95,12 @@ func (h *Handler) AdminCreateUser(ctx context.Context, input *AdminCreateUserInp
 	return &MeOutput{Body: userResponse(user)}, nil
 }
 
+// AdminUserIDInput carries a user ID path parameter (admin only).
 type AdminUserIDInput struct {
 	ID int64 `path:"id"`
 }
 
+// AdminUpdateUserInput is the request body for updating a user (admin only).
 type AdminUpdateUserInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
@@ -101,6 +109,7 @@ type AdminUpdateUserInput struct {
 	}
 }
 
+// AdminUpdateUser updates a user's name and role (admin only).
 func (h *Handler) AdminUpdateUser(ctx context.Context, input *AdminUpdateUserInput) (*MeOutput, error) {
 	if _, err := apimw.RequireAdmin(ctx); err != nil {
 		return nil, err
@@ -119,6 +128,7 @@ func (h *Handler) AdminUpdateUser(ctx context.Context, input *AdminUpdateUserInp
 	return &MeOutput{Body: userResponse(user)}, nil
 }
 
+// AdminDeleteUser deletes a user, refusing to delete the caller (admin only).
 func (h *Handler) AdminDeleteUser(ctx context.Context, input *AdminUserIDInput) (*struct{}, error) {
 	claims, err := apimw.RequireAdmin(ctx)
 	if err != nil {
