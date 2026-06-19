@@ -20,3 +20,13 @@ apps/docs/build/
 
 # OS
 .DS_Store
+
+# Android / Gradle
+apps/android/.gradle/
+apps/android/build/
+apps/android/app/build/
+apps/android/local.properties
+apps/android/.idea/
+apps/android/captures/
+*.keystore
+!debug.keystore

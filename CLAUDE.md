@@ -1,5 +1,17 @@
 # Domitara Development Guide
 
+## Mobile app (`apps/android`)
+
+The mobile application is a **native Android app written in Kotlin** (Jetpack Compose, Retrofit, Coil — not React Native). The old `apps/mobile` Expo/React Native app has been removed.
+
+**Server changes may require corresponding mobile changes.** The Android client mirrors the API's routes, request bodies, and JSON shapes by hand:
+
+- DTOs / enums: `apps/android/.../data/dto/Dtos.kt` (kotlinx-serialization, `JsonNamingStrategy.SnakeCase`)
+- Retrofit endpoints: `apps/android/.../data/api/ApiService.kt`
+- Repository wrappers: `apps/android/.../data/repository/Repositories.kt`
+
+When you touch the API in a way that affects the mobile surface — adding/removing/renaming endpoints, changing request/response fields, enum values, auth, or upload field names — check whether the Android client needs the matching update. The web app (`apps/web`) is the reference for feature parity. Build the Android Kotlin to verify: `cd apps/android && ./gradlew compileDebugKotlin`.
+
 ## SQL in the API (`apps/api`)
 
 **Use sqlc for all database queries.** Write SQL in `apps/api/internal/db/queries/*.sql`, then run:

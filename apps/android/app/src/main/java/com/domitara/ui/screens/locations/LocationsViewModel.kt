@@ -1,0 +1,65 @@
+package com.domitara.ui.screens.locations
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.domitara.data.api.toUserMessage
+import com.domitara.data.dto.Item
+import com.domitara.data.dto.Location
+import com.domitara.data.repository.DataRepository
+import com.domitara.ui.common.Async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class LocationsViewModel(
+    private val repo: DataRepository,
+    private val activeHome: StateFlow<String?>,
+) : ViewModel() {
+
+    private val _locations = MutableStateFlow<Async<List<Location>>>(Async.Loading)
+    val locations: StateFlow<Async<List<Location>>> = _locations.asStateFlow()
+
+    val query = MutableStateFlow("")
+    val expanded = MutableStateFlow<Set<String>>(emptySet())
+
+    private val _selected = MutableStateFlow<Location?>(null)
+    val selected: StateFlow<Location?> = _selected.asStateFlow()
+
+    private val _items = MutableStateFlow<Async<List<Item>>>(Async.Loading)
+    val items: StateFlow<Async<List<Item>>> = _items.asStateFlow()
+
+    init {
+        // Reload whenever the active home changes (and for the initial value).
+        viewModelScope.launch { activeHome.collect { load() } }
+    }
+
+    fun load() {
+        _selected.value = null
+        viewModelScope.launch {
+            _locations.value = Async.Loading
+            runCatching { repo.listLocations() }
+                .onSuccess { _locations.value = Async.Success(it) }
+                .onFailure { _locations.value = Async.Failure(it.toUserMessage("Failed to load locations")) }
+        }
+    }
+
+    fun setQuery(q: String) { query.value = q }
+
+    fun toggleExpand(id: String) {
+        val cur = expanded.value
+        expanded.value = if (id in cur) cur - id else cur + id
+    }
+
+    fun select(location: Location) {
+        _selected.value = location
+        _items.value = Async.Loading
+        viewModelScope.launch {
+            runCatching { repo.listItems(locationId = location.id) }
+                .onSuccess { _items.value = Async.Success(it) }
+                .onFailure { _items.value = Async.Failure(it.toUserMessage("Failed to load items")) }
+        }
+    }
+
+    fun clearSelection() { _selected.value = null }
+}
