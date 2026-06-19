@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware for authentication and request context.
 package middleware
 
 import (
@@ -15,7 +16,8 @@ type contextKey struct{ name string }
 var (
 	ctxClaims         = &contextKey{"claims"}
 	ctxResponseWriter = &contextKey{"response-writer"}
-	CtxActiveHome     = &contextKey{"active-home"}
+	// CtxActiveHome is the context key for the active home ID.
+	CtxActiveHome = &contextKey{"active-home"}
 )
 
 // WithResponseWriter stores the http.ResponseWriter in the request context so

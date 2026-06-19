@@ -1,0 +1,250 @@
+package com.domitara.ui.screens.locations
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.domitara.data.dto.Location
+import com.domitara.di.appViewModel
+import com.domitara.ui.common.Async
+import com.domitara.ui.common.EmptyState
+import com.domitara.ui.common.ErrorState
+import com.domitara.ui.common.LoadingState
+import com.domitara.ui.screens.items.ItemRow
+
+private data class TreeRow(val location: Location, val depth: Int, val hasChildren: Boolean)
+
+@Composable
+fun LocationsScreen() {
+    val vm = appViewModel { LocationsViewModel(it.dataRepository, it.activeHomeId) }
+    val locationsState by vm.locations.collectAsStateWithLifecycle()
+    val selected by vm.selected.collectAsStateWithLifecycle()
+
+    if (selected != null) {
+        LocationDetail(location = selected!!, vm = vm)
+        return
+    }
+
+    val query by vm.query.collectAsStateWithLifecycle()
+    val expanded by vm.expanded.collectAsStateWithLifecycle()
+
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = vm::setQuery,
+            placeholder = { Text("Search locations…") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        when (val s = locationsState) {
+            Async.Loading -> LoadingState()
+            is Async.Failure -> ErrorState(s.message, onRetry = vm::load)
+            is Async.Success -> {
+                val rows = buildRows(s.data, expanded, query)
+                if (rows.isEmpty()) {
+                    EmptyState("No locations found")
+                } else {
+                    LazyColumn(Modifier.fillMaxSize()) {
+                        items(rows, key = { it.location.id }) { row ->
+                            LocationRow(
+                                row = row,
+                                isExpanded = row.location.id in expanded,
+                                onToggle = { vm.toggleExpand(row.location.id) },
+                                onSelect = { vm.select(row.location) },
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun buildRows(
+    all: List<Location>,
+    expanded: Set<String>,
+    query: String,
+): List<TreeRow> {
+    if (query.isNotBlank()) {
+        return all.filter { it.name.contains(query, ignoreCase = true) }
+            .sortedBy { it.name }
+            .map { TreeRow(it, depth = 0, hasChildren = false) }
+    }
+    val byParent = all.groupBy { it.parentId }
+    fun flatten(parentId: String?, depth: Int): List<TreeRow> =
+        (byParent[parentId] ?: emptyList()).sortedBy { it.name }.flatMap { loc ->
+            val children = byParent[loc.id].orEmpty()
+            val self = TreeRow(loc, depth, children.isNotEmpty())
+            if (loc.id in expanded) listOf(self) + flatten(loc.id, depth + 1) else listOf(self)
+        }
+    return flatten(null, 0)
+}
+
+@Composable
+private fun LocationRow(
+    row: TreeRow,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    onSelect: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onSelect)
+            .padding(start = (16 + row.depth * 20).dp, top = 12.dp, bottom = 12.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (row.hasChildren) {
+            IconButton(onClick = onToggle, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    if (isExpanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                )
+            }
+        } else {
+            Box(Modifier.size(28.dp)) {
+                Icon(
+                    Icons.Filled.Place,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp).padding(start = 4.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(row.location.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        Text(
+            "${row.location.itemCount}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun LocationDetail(location: Location, vm: LocationsViewModel) {
+    val itemsState by vm.items.collectAsStateWithLifecycle()
+    val locationsState by vm.locations.collectAsStateWithLifecycle()
+    val allLocations = (locationsState as? Async.Success)?.data ?: emptyList()
+    val subLocations = allLocations.filter { it.parentId == location.id }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+        ) {
+            IconButton(onClick = vm::clearSelection) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(location.name, style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider()
+
+        LazyColumn(Modifier.fillMaxSize()) {
+            location.description?.let { desc ->
+                item {
+                    Text(
+                        desc,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
+            item {
+                Text(
+                    "${location.itemCount} items · ${subLocations.size} sub-locations",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+
+            if (subLocations.isNotEmpty()) {
+                item {
+                    Text(
+                        "Sub-locations",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+                items(subLocations, key = { "sub-${it.id}" }) { sub ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { vm.select(sub) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.Place, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(sub.name, modifier = Modifier.weight(1f))
+                        Text("${sub.itemCount}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    HorizontalDivider()
+                }
+            }
+
+            item {
+                Text(
+                    "Items",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            when (val s = itemsState) {
+                Async.Loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp)) { LoadingState() } }
+                is Async.Failure -> item { ErrorState(s.message) }
+                is Async.Success ->
+                    if (s.data.isEmpty()) {
+                        item {
+                            Text(
+                                "No items in this location.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    } else {
+                        items(s.data, key = { it.id }) { item ->
+                            ItemRow(
+                                item = item,
+                                labelsById = emptyMap(),
+                                locationName = null,
+                                onClick = {},
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+            }
+        }
+    }
+}

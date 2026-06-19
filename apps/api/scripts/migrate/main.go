@@ -1,3 +1,4 @@
+// Command migrate applies or rolls back database migrations from the CLI.
 package main
 
 import (
@@ -28,7 +29,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("migrate new: %v", err)
 	}
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 
 	switch direction {
 	case "up":

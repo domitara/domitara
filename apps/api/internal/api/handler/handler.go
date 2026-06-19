@@ -1,3 +1,4 @@
+// Package handler implements the HTTP request handlers for the API endpoints.
 package handler
 
 import (
@@ -5,11 +6,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
 )
 
 const cookieMaxAge = 86400 // 24 hours, matches JWT expiry
 
+// Handler holds the dependencies shared by all API request handlers.
 type Handler struct {
 	q             *store.Queries
 	pool          *pgxpool.Pool
@@ -18,6 +21,7 @@ type Handler struct {
 	uploadDir     string
 }
 
+// New constructs a Handler with the given dependencies.
 func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string, secureCookies bool, uploadDir string) *Handler {
 	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret, secureCookies: secureCookies, uploadDir: uploadDir}
 }

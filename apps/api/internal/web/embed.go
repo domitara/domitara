@@ -1,3 +1,4 @@
+// Package web embeds the built single-page application assets.
 package web
 
 import (

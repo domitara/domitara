@@ -13,6 +13,7 @@ import (
 
 // ---- types ----
 
+// ElectricalPanelRow is the API representation of an electrical panel.
 type ElectricalPanelRow struct {
 	ID             string    `json:"id"`
 	HomeID         string    `json:"home_id"`
@@ -27,13 +28,18 @@ type ElectricalPanelRow struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// ElectricalPanelsOutput is the response body listing panels.
 type ElectricalPanelsOutput struct{ Body []ElectricalPanelRow }
+
+// ElectricalPanelOutput is the response body for a single panel.
 type ElectricalPanelOutput struct{ Body ElectricalPanelRow }
 
+// ElectricalPanelIDInput carries a panel ID path parameter.
 type ElectricalPanelIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateElectricalPanelInput is the request body for creating a panel.
 type CreateElectricalPanelInput struct {
 	HomeID string `path:"homeId"`
 	Body   struct {
@@ -47,6 +53,7 @@ type CreateElectricalPanelInput struct {
 	}
 }
 
+// UpdateElectricalPanelInput is the request body for updating a panel.
 type UpdateElectricalPanelInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -92,6 +99,7 @@ func panelRowFromSQL(p store.ElectricalPanel) ElectricalPanelRow {
 
 // ---- handlers ----
 
+// ListPanels returns the electrical panels for a home.
 func (h *Handler) ListPanels(ctx context.Context, input *struct {
 	HomeID string `path:"homeId"`
 }) (*ElectricalPanelsOutput, error) {
@@ -113,6 +121,7 @@ func (h *Handler) ListPanels(ctx context.Context, input *struct {
 	return &ElectricalPanelsOutput{Body: panels}, nil
 }
 
+// CreatePanel creates an electrical panel in a home.
 func (h *Handler) CreatePanel(ctx context.Context, input *CreateElectricalPanelInput) (*ElectricalPanelOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -153,6 +162,7 @@ func (h *Handler) CreatePanel(ctx context.Context, input *CreateElectricalPanelI
 	return &ElectricalPanelOutput{Body: panelRowFromSQL(p)}, nil
 }
 
+// GetPanel returns a single panel by ID.
 func (h *Handler) GetPanel(ctx context.Context, input *ElectricalPanelIDInput) (*ElectricalPanelOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -168,6 +178,7 @@ func (h *Handler) GetPanel(ctx context.Context, input *ElectricalPanelIDInput) (
 	return &ElectricalPanelOutput{Body: panelRowFromSQL(p)}, nil
 }
 
+// UpdatePanel updates a panel.
 func (h *Handler) UpdatePanel(ctx context.Context, input *UpdateElectricalPanelInput) (*ElectricalPanelOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -207,6 +218,7 @@ func (h *Handler) UpdatePanel(ctx context.Context, input *UpdateElectricalPanelI
 	return &ElectricalPanelOutput{Body: panelRowFromSQL(p)}, nil
 }
 
+// DeletePanel deletes a panel.
 func (h *Handler) DeletePanel(ctx context.Context, input *ElectricalPanelIDInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {

@@ -16,6 +16,7 @@ import (
 
 // ---- types ----
 
+// FloorPlanShapeRow is the API representation of a floor plan shape.
 type FloorPlanShapeRow struct {
 	ID         string          `json:"id"`
 	HomeID     string          `json:"home_id"`
@@ -28,13 +29,18 @@ type FloorPlanShapeRow struct {
 	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
+// FloorPlanShapesOutput is the response body listing floor plan shapes.
 type FloorPlanShapesOutput struct{ Body []FloorPlanShapeRow }
+
+// FloorPlanShapeOutput is the response body for a single floor plan shape.
 type FloorPlanShapeOutput struct{ Body FloorPlanShapeRow }
 
+// FloorPlanShapeIDInput carries a floor plan shape ID path parameter.
 type FloorPlanShapeIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateFloorPlanShapeInput is the request body for creating a floor plan shape.
 type CreateFloorPlanShapeInput struct {
 	HomeID string `path:"homeId"`
 	Body   struct {
@@ -46,6 +52,7 @@ type CreateFloorPlanShapeInput struct {
 	}
 }
 
+// UpdateFloorPlanShapeInput is the request body for updating a floor plan shape.
 type UpdateFloorPlanShapeInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -69,6 +76,7 @@ func shapeRowFrom(s store.FloorPlanShape) FloorPlanShapeRow {
 
 // ---- handlers ----
 
+// ListFloorPlanShapes returns the floor plan shapes for a home.
 func (h *Handler) ListFloorPlanShapes(ctx context.Context, input *struct {
 	HomeID string `path:"homeId"`
 }) (*FloorPlanShapesOutput, error) {
@@ -94,6 +102,7 @@ func (h *Handler) ListFloorPlanShapes(ctx context.Context, input *struct {
 	return &FloorPlanShapesOutput{Body: shapes}, nil
 }
 
+// CreateFloorPlanShape creates a floor plan shape in a home.
 func (h *Handler) CreateFloorPlanShape(ctx context.Context, input *CreateFloorPlanShapeInput) (*FloorPlanShapeOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -123,6 +132,7 @@ func (h *Handler) CreateFloorPlanShape(ctx context.Context, input *CreateFloorPl
 	return &FloorPlanShapeOutput{Body: shapeRowFrom(s)}, nil
 }
 
+// UpdateFloorPlanShape updates a floor plan shape.
 func (h *Handler) UpdateFloorPlanShape(ctx context.Context, input *UpdateFloorPlanShapeInput) (*FloorPlanShapeOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -148,6 +158,7 @@ func (h *Handler) UpdateFloorPlanShape(ctx context.Context, input *UpdateFloorPl
 	return &FloorPlanShapeOutput{Body: shapeRowFrom(s)}, nil
 }
 
+// DeleteFloorPlanShape deletes a floor plan shape.
 func (h *Handler) DeleteFloorPlanShape(ctx context.Context, input *FloorPlanShapeIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err

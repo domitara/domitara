@@ -13,6 +13,7 @@ import (
 
 // ---- types ----
 
+// ElectricalBreakerRow is the API representation of a breaker.
 type ElectricalBreakerRow struct {
 	ID              string    `json:"id"`
 	PanelID         string    `json:"panel_id"`
@@ -28,13 +29,18 @@ type ElectricalBreakerRow struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
+// ElectricalBreakersOutput is the response body listing breakers.
 type ElectricalBreakersOutput struct{ Body []ElectricalBreakerRow }
+
+// ElectricalBreakerOutput is the response body for a single breaker.
 type ElectricalBreakerOutput struct{ Body ElectricalBreakerRow }
 
+// ElectricalBreakerIDInput carries a breaker ID path parameter.
 type ElectricalBreakerIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateElectricalBreakerInput is the request body for creating a breaker.
 type CreateElectricalBreakerInput struct {
 	PanelID string `path:"panelId"`
 	Body    struct {
@@ -49,6 +55,7 @@ type CreateElectricalBreakerInput struct {
 	}
 }
 
+// UpdateElectricalBreakerInput is the request body for updating a breaker.
 type UpdateElectricalBreakerInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -90,6 +97,7 @@ func (h *Handler) panelHomeID(ctx context.Context, panelID string) (string, erro
 
 // ---- handlers ----
 
+// ListBreakers returns the breakers for a panel.
 func (h *Handler) ListBreakers(ctx context.Context, input *struct {
 	PanelID string `path:"panelId"`
 }) (*ElectricalBreakersOutput, error) {
@@ -115,6 +123,7 @@ func (h *Handler) ListBreakers(ctx context.Context, input *struct {
 	return &ElectricalBreakersOutput{Body: breakers}, nil
 }
 
+// CreateBreaker creates a breaker in a panel.
 func (h *Handler) CreateBreaker(ctx context.Context, input *CreateElectricalBreakerInput) (*ElectricalBreakerOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -180,6 +189,7 @@ func (h *Handler) CreateBreaker(ctx context.Context, input *CreateElectricalBrea
 	return &ElectricalBreakerOutput{Body: breakerRowFromSQL(b)}, nil
 }
 
+// UpdateBreaker updates a breaker.
 func (h *Handler) UpdateBreaker(ctx context.Context, input *UpdateElectricalBreakerInput) (*ElectricalBreakerOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -225,6 +235,7 @@ func (h *Handler) UpdateBreaker(ctx context.Context, input *UpdateElectricalBrea
 	return &ElectricalBreakerOutput{Body: breakerRowFromSQL(b)}, nil
 }
 
+// DeleteBreaker deletes a breaker.
 func (h *Handler) DeleteBreaker(ctx context.Context, input *ElectricalBreakerIDInput) (*struct{}, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {

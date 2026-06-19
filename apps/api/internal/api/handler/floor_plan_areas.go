@@ -31,6 +31,7 @@ func geometryBytes(g *FloorPlanGeometry) []byte {
 
 // ---- types ----
 
+// FloorPlanAreaRow is the API representation of a floor plan area.
 type FloorPlanAreaRow struct {
 	ID         string          `json:"id"`
 	HomeID     string          `json:"home_id"`
@@ -42,13 +43,18 @@ type FloorPlanAreaRow struct {
 	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
+// FloorPlanAreasOutput is the response body listing floor plan areas.
 type FloorPlanAreasOutput struct{ Body []FloorPlanAreaRow }
+
+// FloorPlanAreaOutput is the response body for a single floor plan area.
 type FloorPlanAreaOutput struct{ Body FloorPlanAreaRow }
 
+// FloorPlanAreaIDInput carries a floor plan area ID path parameter.
 type FloorPlanAreaIDInput struct {
 	ID string `path:"id"`
 }
 
+// CreateFloorPlanAreaInput is the request body for creating a floor plan area.
 type CreateFloorPlanAreaInput struct {
 	HomeID string `path:"homeId"`
 	Body   struct {
@@ -59,6 +65,7 @@ type CreateFloorPlanAreaInput struct {
 	}
 }
 
+// UpdateFloorPlanAreaInput is the request body for updating a floor plan area.
 type UpdateFloorPlanAreaInput struct {
 	ID   string `path:"id"`
 	Body struct {
@@ -70,6 +77,7 @@ type UpdateFloorPlanAreaInput struct {
 
 // ---- handlers ----
 
+// ListFloorPlanAreas returns the floor plan areas for a home.
 func (h *Handler) ListFloorPlanAreas(ctx context.Context, input *struct {
 	HomeID string `path:"homeId"`
 }) (*FloorPlanAreasOutput, error) {
@@ -88,13 +96,14 @@ func (h *Handler) ListFloorPlanAreas(ctx context.Context, input *struct {
 	for i, a := range rows {
 		areas[i] = FloorPlanAreaRow{
 			ID: a.ID, HomeID: a.HomeID, DocumentID: a.DocumentID, Name: a.Name, Color: a.Color,
-			Geometry: json.RawMessage(a.Geometry),
+			Geometry:  json.RawMessage(a.Geometry),
 			CreatedAt: a.CreatedAt.Time, UpdatedAt: a.UpdatedAt.Time,
 		}
 	}
 	return &FloorPlanAreasOutput{Body: areas}, nil
 }
 
+// CreateFloorPlanArea creates a floor plan area in a home.
 func (h *Handler) CreateFloorPlanArea(ctx context.Context, input *CreateFloorPlanAreaInput) (*FloorPlanAreaOutput, error) {
 	claims, err := apimw.RequireAuth(ctx)
 	if err != nil {
@@ -122,11 +131,12 @@ func (h *Handler) CreateFloorPlanArea(ctx context.Context, input *CreateFloorPla
 	}
 	return &FloorPlanAreaOutput{Body: FloorPlanAreaRow{
 		ID: a.ID, HomeID: a.HomeID, DocumentID: a.DocumentID, Name: a.Name, Color: a.Color,
-		Geometry: json.RawMessage(a.Geometry),
+		Geometry:  json.RawMessage(a.Geometry),
 		CreatedAt: a.CreatedAt.Time, UpdatedAt: a.UpdatedAt.Time,
 	}}, nil
 }
 
+// UpdateFloorPlanArea updates a floor plan area.
 func (h *Handler) UpdateFloorPlanArea(ctx context.Context, input *UpdateFloorPlanAreaInput) (*FloorPlanAreaOutput, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
@@ -145,11 +155,12 @@ func (h *Handler) UpdateFloorPlanArea(ctx context.Context, input *UpdateFloorPla
 	}
 	return &FloorPlanAreaOutput{Body: FloorPlanAreaRow{
 		ID: a.ID, HomeID: a.HomeID, DocumentID: a.DocumentID, Name: a.Name, Color: a.Color,
-		Geometry: json.RawMessage(a.Geometry),
+		Geometry:  json.RawMessage(a.Geometry),
 		CreatedAt: a.CreatedAt.Time, UpdatedAt: a.UpdatedAt.Time,
 	}}, nil
 }
 
+// DeleteFloorPlanArea deletes a floor plan area.
 func (h *Handler) DeleteFloorPlanArea(ctx context.Context, input *FloorPlanAreaIDInput) (*struct{}, error) {
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err

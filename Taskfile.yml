@@ -2,8 +2,8 @@ version: '3'
 
 tasks:
   dev:
-    desc: "Start everything (Go API + frontend + mobile)"
-    deps: [dev:api, dev:web, dev:mobile]
+    desc: "Start everything (Go API + frontend)"
+    deps: [dev:api, dev:web]
 
   dev:api:
     desc: "Go API with hot reload (air)"
@@ -14,14 +14,20 @@ tasks:
     desc: "Frontend via Turborepo"
     cmd: pnpm turbo run dev
 
-  dev:mobile:
-    desc: "Expo dev server (localhost mode for Android emulator)"
-    dir: apps/mobile
-    cmd: npx expo start --localhost
+  dev:android:
+    desc: "Build & install the Android debug app to a running emulator/device (Server URL: http://10.0.2.2:8080)"
+    dir: apps/android
+    cmd: '{{if eq OS "windows"}}cmd /C ".\gradlew.bat installDebug"{{else}}./gradlew installDebug{{end}}'
 
-  dev:api-tunnel:
-    desc: "ngrok tunnel for Go API (port 8080) — use the URL as Server URL in the mobile app"
-    cmd: ngrok http 8080
+  build:android:
+    desc: "Assemble the Android debug APK"
+    dir: apps/android
+    cmd: '{{if eq OS "windows"}}cmd /C ".\gradlew.bat assembleDebug"{{else}}./gradlew assembleDebug{{end}}'
+
+  test:android:
+    desc: "Run Android JVM unit tests"
+    dir: apps/android
+    cmd: '{{if eq OS "windows"}}cmd /C ".\gradlew.bat testDebugUnitTest"{{else}}./gradlew testDebugUnitTest{{end}}'
 
   build:
     desc: "Build frontend then Go binary (single deployable)"

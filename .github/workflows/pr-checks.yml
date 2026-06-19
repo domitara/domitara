@@ -41,34 +41,23 @@ jobs:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
 
+      # The web build output (apps/api/internal/web/dist) is gitignored and not
+      # present in this job, but //go:embed dist requires it to compile. Create a
+      # stub so typecheck/lint/test can run without building the full frontend.
+      - name: Stub embedded web assets
+        run: |
+          mkdir -p apps/api/internal/web/dist
+          echo '<!doctype html><title>stub</title>' > apps/api/internal/web/dist/index.html
+
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          version: v2.4.0
           working-directory: apps/api
 
       - name: Test
         run: go test ./...
         working-directory: apps/api
-
-  mobile-checks:
-    name: Mobile — Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Type check
-        working-directory: apps/mobile
-        run: npx tsc --noEmit
 
   commitlint:
     name: Commitlint

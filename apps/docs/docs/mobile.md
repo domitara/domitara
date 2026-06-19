@@ -4,69 +4,61 @@ sidebar_position: 3
 
 # Mobile App
 
-Domitara ships a native iOS and Android companion app built with Expo (React Native). It connects to your self-hosted Domitara server and provides on-the-go access to your inventory.
+Domitara ships a native **Android** companion app built with **Kotlin** and
+**Jetpack Compose**. It connects to your self-hosted Domitara server and provides
+on-the-go access to your inventory. (There is no iOS app.)
 
 ## Features
 
 - Browse items, locations, and labels
-- Scan QR asset labels with the device camera
 - View and log maintenance records
-- Map electrical panel breakers with the panel SVG viewer
+- Map electrical panel breakers with the panel viewer
+- Manage home details, photos, documents, and members
 
 ## Getting started (development)
 
 ### Prerequisites
 
-- Node.js 22+
-- [pnpm](https://pnpm.io) (`corepack enable`)
-- Expo Go app on your device, **or** a configured iOS simulator / Android emulator
+- JDK 17 or 21 (the Android Gradle Plugin does not yet support newer JDKs)
+- Android SDK with platform 35 and an emulator or physical device
 - A running Domitara API (see [Installation](./getting-started/installation))
+
+The project lives at `apps/android/` and uses the Gradle wrapper, so you do not
+need a system-wide Gradle install.
 
 ### Run locally
 
 ```bash
-# From the repo root
-pnpm install
-
-# Start the Expo dev server (uses tunnel mode)
-pnpm --filter @domitara/mobile start
+# From apps/android/ — build & install the debug app to a running emulator/device
+./gradlew installDebug
 ```
 
-Scan the QR code with Expo Go (Android) or the Camera app (iOS), or press `i`/`a` to open a simulator.
-
-## Building with EAS
-
-Production and preview builds are handled by [Expo Application Services (EAS)](https://docs.expo.dev/eas/).
-
-### Setup
-
-1. Install the EAS CLI: `npm install -g eas-cli`
-2. Log in: `eas login`
-3. Link the project: `eas init` (run once, inside `apps/mobile/`)
-
-### Build profiles
-
-| Profile | Description |
-|---------|-------------|
-| `development` | Debug build with dev client; iOS simulator-compatible |
-| `preview` | Internal distribution build for testing on real devices |
-| `production` | App Store / Play Store release build |
+Or from the repo root with [Task](https://taskfile.dev):
 
 ```bash
-# From apps/mobile/
-eas build --profile preview --platform all
+task dev:android
 ```
 
-### CI builds
+When the app prompts for a **Server URL**, point it at your API:
 
-The `expo-build` GitHub Actions workflow triggers automatically when `apps/mobile/` or `packages/panel-core/` changes:
+- **Android emulator** → `http://10.0.2.2:8080` (the emulator's alias for the host machine's `localhost`)
+- **Physical device** → your machine's LAN address, e.g. `http://192.168.1.50:8080`
 
-- **Pull requests** → `development` profile
-- **Pushes to `main`** → `preview` profile
-- **Manual dispatch** → choose any profile
+Plain HTTP works on the local network during development; use HTTPS in production.
 
-The workflow requires an `EXPO_TOKEN` secret in your GitHub repository settings. Generate one at [expo.dev/accounts](https://expo.dev/accounts) → Settings → Access Tokens.
+## Building a release
+
+```bash
+# From apps/android/
+./gradlew assembleRelease
+```
+
+A signed release build additionally requires a keystore and signing config (not
+committed). The `android-checks` GitHub Actions workflow runs `lint`, `test`,
+and `assembleDebug` on every pull request that touches `apps/android/`.
 
 ## Connecting to your server
 
-On first launch the app prompts for your server URL (e.g. `https://home.example.com`). Use HTTPS in production; plain HTTP works on the local network during development.
+On first launch the app prompts for your server URL, email, and password. The
+token is persisted on device, so you stay signed in across restarts. Use HTTPS
+in production; plain HTTP works on the local network during development.
