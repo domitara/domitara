@@ -30,3 +30,5 @@ apps/android/.idea/
 apps/android/captures/
 *.keystore
 !debug.keystore
+*.jks
+*.p12
