@@ -12,6 +12,7 @@ object Routes {
     const val PANELS = "panels"
     const val MAINTENANCE = "maintenance"
     const val ASSET_IDS = "asset_ids"
+    const val PROFILE = "profile"
 
     const val ITEM_DETAIL = "item_detail/{itemId}"
     fun itemDetail(itemId: String) = "item_detail/$itemId"

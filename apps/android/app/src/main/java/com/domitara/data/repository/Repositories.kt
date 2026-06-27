@@ -15,6 +15,7 @@ import com.domitara.data.dto.CreateScheduleInput
 import com.domitara.data.dto.LoginRequest
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
+import com.domitara.data.dto.UpdateMeInput
 import com.domitara.data.dto.UpdateScheduleInput
 import com.domitara.data.session.ActiveHomeStore
 import com.domitara.data.session.Session
@@ -142,6 +143,12 @@ class DataRepository(
             throw ApiException(e.message ?: "Network error")
         }
     }
+
+    // Account & system
+    suspend fun getMe() = call { it.getMe() }
+    suspend fun updateMe(name: String?, password: String?) =
+        call { it.updateMe(UpdateMeInput(name, password)) }
+    suspend fun getServerVersion() = call { it.getVersion() }
 
     // Homes
     suspend fun listHomes() = call { it.listHomes() }
