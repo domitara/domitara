@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome layer for Android 13+ themed icons. House silhouette with the door
+  and windows punched out (evenodd) so the shape reads when the system tints it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="22"
+        android:translateY="22"
+        android:scaleX="2"
+        android:scaleY="2">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M16 5L4 14.5h3V27h18V14.5h3L16 5z M13 19h6v8h-6z M7 16h4v4h-4z M21 16h4v4h-4z" />
+    </group>
+</vector>

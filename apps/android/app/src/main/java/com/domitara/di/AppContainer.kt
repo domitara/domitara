@@ -9,13 +9,16 @@ import com.domitara.data.repository.ActiveHomeHolder
 import com.domitara.data.repository.AuthRepository
 import com.domitara.data.repository.DataRepository
 import com.domitara.data.repository.TokenHolder
+import com.domitara.data.dto.User
 import com.domitara.data.session.ActiveHomeStore
 import com.domitara.data.session.Session
 import com.domitara.data.session.SessionStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -70,6 +73,16 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
     /** Live session, drives the auth gate in the navigation root. */
     val session: Flow<Session?> = sessionStore.session
 
+    /** Current authenticated user, shared by the drawer footer and profile screen.
+     *  Refreshed on sign-in and after the user edits their profile. */
+    private val _currentUser = MutableStateFlow<User?>(null)
+    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+
+    /** Re-fetches the current user (best-effort) and publishes it to observers. */
+    suspend fun refreshUser() {
+        runCatching { dataRepository.getMe() }.getOrNull()?.let { _currentUser.value = it }
+    }
+
     /** Globally selected home id. Scopes home-aware API calls and drives the home
      *  switcher; home-scoped ViewModels observe this to reload on change. */
     val activeHomeId: StateFlow<String?> =
@@ -101,9 +114,14 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
         sessionStore.session
             .onEach { session ->
                 tokenHolder.session = session
-                if (session != null && activeHomeStore.current() == null) {
-                    runCatching { dataRepository.listHomes() }
-                        .getOrNull()?.firstOrNull()?.let { activeHomeStore.set(it.id) }
+                if (session != null) {
+                    if (activeHomeStore.current() == null) {
+                        runCatching { dataRepository.listHomes() }
+                            .getOrNull()?.firstOrNull()?.let { activeHomeStore.set(it.id) }
+                    }
+                    refreshUser()
+                } else {
+                    _currentUser.value = null
                 }
             }
             .launchIn(appScope)

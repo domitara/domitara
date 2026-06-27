@@ -29,6 +29,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
@@ -40,6 +41,16 @@ import retrofit2.http.Query
  * is `${serverUrl}/api/v1/`; the Authorization header is added by AuthInterceptor.
  */
 interface ApiService {
+
+    // Account & system
+    @GET("auth/me")
+    suspend fun getMe(): com.domitara.data.dto.User
+
+    @PATCH("auth/me")
+    suspend fun updateMe(@Body body: com.domitara.data.dto.UpdateMeInput): com.domitara.data.dto.User
+
+    @GET("version")
+    suspend fun getVersion(): com.domitara.data.dto.ServerVersion
 
     // Homes
     @GET("homes")

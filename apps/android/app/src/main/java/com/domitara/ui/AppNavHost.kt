@@ -15,6 +15,7 @@ import com.domitara.ui.screens.labels.LabelsScreen
 import com.domitara.ui.screens.locations.LocationsScreen
 import com.domitara.ui.screens.maintenance.MaintenanceScreen
 import com.domitara.ui.screens.panels.ElectricalPanelsScreen
+import com.domitara.ui.screens.profile.ProfileScreen
 import com.domitara.ui.screens.search.SearchScreen
 
 @Composable
@@ -32,6 +33,7 @@ fun AppNavHost(navController: NavHostController) {
         composable(Routes.PANELS) { ElectricalPanelsScreen() }
         composable(Routes.MAINTENANCE) { MaintenanceScreen() }
         composable(Routes.ASSET_IDS) { AssetIdsScreen() }
+        composable(Routes.PROFILE) { ProfileScreen() }
 
         composable(
             route = Routes.ITEM_DETAIL,
