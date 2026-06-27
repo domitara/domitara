@@ -306,6 +306,15 @@ export function useAdminDeleteUser() {
   });
 }
 
+// --- Server version ---
+export function useVersion() {
+  return useQuery({
+    queryKey: ['version'],
+    queryFn: () => api.get<{ version: string }>('/version'),
+    staleTime: Infinity,
+  });
+}
+
 // --- Current user ---
 export const meKeys = { me: ['me'] as const };
 

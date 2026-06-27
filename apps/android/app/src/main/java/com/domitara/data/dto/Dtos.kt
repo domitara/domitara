@@ -96,6 +96,24 @@ data class Home(
     val updatedAt: String,
 )
 
+/** Current authenticated user, from GET /auth/me. */
+@Serializable
+data class User(
+    // id is a bigserial (int64) on the server; use Long to avoid overflow.
+    val id: Long,
+    val email: String,
+    val name: String,
+    val role: String,
+)
+
+/** Server version, from GET /version. */
+@Serializable
+data class ServerVersion(val version: String)
+
+/** Request body for PATCH /auth/me. Null fields are omitted (explicitNulls=false). */
+@Serializable
+data class UpdateMeInput(val name: String? = null, val password: String? = null)
+
 @Serializable
 data class HomeMember(
     // user_id is a bigserial (int64) on the server; use Long to avoid overflow.

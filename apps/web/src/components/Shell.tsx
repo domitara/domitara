@@ -43,7 +43,7 @@ import { AppIcon } from './AppIcon';
 import { NewLocationModal } from './NewLocationModal';
 import { NewLabelModal } from './NewLabelModal';
 import { auth } from '../auth';
-import { useLabels, useLocations, useMe, useHomes } from '../api/queries';
+import { useLabels, useLocations, useMe, useHomes, useVersion } from '../api/queries';
 
 interface ShellProps {
   children: ReactNode;
@@ -217,6 +217,7 @@ function Sidebar() {
   const { data: locations = [] } = useLocations();
   const { data: labels = [] } = useLabels();
   const { data: me } = useMe();
+  const { data: version } = useVersion();
   const activeHomeId = useAtomValue(activeHomeIdAtom);
   const homes = useAtomValue(homesAtom);
   const activeHome = homes.find((h) => h.id === activeHomeId) ?? homes[0];
@@ -493,7 +494,7 @@ function Sidebar() {
         </Button>
       </div>
       <Text size="xs" c="dimmed" ta="center" pb="xs">
-        v0.1.0-dev
+        {version?.version ? `Server v${version.version}` : 'Server …'}
       </Text>
 
       <NewLocationModal opened={locModalOpen} onClose={() => setLocModalOpen(false)} />

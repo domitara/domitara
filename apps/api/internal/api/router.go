@@ -18,6 +18,7 @@ import (
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 	"github.com/domitara/domitara/apps/api/internal/config"
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
+	"github.com/domitara/domitara/apps/api/internal/version"
 	"github.com/domitara/domitara/apps/api/internal/web"
 )
 
@@ -70,7 +71,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	r.Use(apimw.OptionalAuth(cfg.JWTSecret))
 	r.Use(apimw.WithActiveHome)
 
-	apiConfig := huma.DefaultConfig("Domitara API", "1.0.0")
+	apiConfig := huma.DefaultConfig("Domitara API", version.Version)
 	apiConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"bearer": {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
 	}
@@ -87,6 +88,9 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	}, h.Health)
 
 	// System
+	huma.Register(api, huma.Operation{
+		Method: http.MethodGet, Path: "/api/v1/version", Summary: "Server version",
+	}, h.Version)
 	huma.Register(api, huma.Operation{
 		Method: http.MethodGet, Path: "/api/v1/system/status", Summary: "System status",
 	}, h.SystemStatus)
