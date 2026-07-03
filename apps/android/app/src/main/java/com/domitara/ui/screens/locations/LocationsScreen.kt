@@ -1,5 +1,6 @@
 package com.domitara.ui.screens.locations
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.domitara.data.dto.Item
 import com.domitara.data.dto.Location
+import com.domitara.data.dto.LocationType
 import com.domitara.di.appViewModel
 import com.domitara.ui.common.Async
 import com.domitara.ui.common.EmptyState
@@ -214,36 +217,107 @@ private fun LocationDetail(location: Location, vm: LocationsViewModel) {
                 }
             }
 
-            item {
-                Text(
-                    "Items",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            when (val s = itemsState) {
-                Async.Loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp)) { LoadingState() } }
-                is Async.Failure -> item { ErrorState(s.message) }
-                is Async.Success ->
-                    if (s.data.isEmpty()) {
-                        item {
-                            Text(
-                                "No items in this location.",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        }
-                    } else {
-                        items(s.data, key = { it.id }) { item ->
-                            ItemRow(
-                                item = item,
-                                labelsById = emptyMap(),
-                                locationName = null,
-                                onClick = {},
-                            )
-                            HorizontalDivider()
+            if (location.locationType == LocationType.CONTAINER) {
+                item {
+                    Text(
+                        "Cabinet grid",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+                val gridRows = location.gridRows
+                val gridCols = location.gridCols
+                when (val s = itemsState) {
+                    Async.Loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp)) { LoadingState() } }
+                    is Async.Failure -> item { ErrorState(s.message) }
+                    is Async.Success -> {
+                        if (gridRows == null || gridCols == null) {
+                            item {
+                                Text(
+                                    "This container doesn't have a grid defined yet.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        } else {
+                            val itemsByCell = s.data
+                                .filter { it.gridRow != null && it.gridCol != null }
+                                .groupBy { it.gridRow to it.gridCol }
+                            items((0 until gridRows).toList(), key = { "grid-row-$it" }) { r ->
+                                CabinetGridRow(row = r, cols = gridCols, itemsByCell = itemsByCell)
+                            }
                         }
                     }
+                }
+            } else {
+                item {
+                    Text(
+                        "Items",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+                when (val s = itemsState) {
+                    Async.Loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp)) { LoadingState() } }
+                    is Async.Failure -> item { ErrorState(s.message) }
+                    is Async.Success ->
+                        if (s.data.isEmpty()) {
+                            item {
+                                Text(
+                                    "No items in this location.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        } else {
+                            items(s.data, key = { it.id }) { item ->
+                                ItemRow(
+                                    item = item,
+                                    labelsById = emptyMap(),
+                                    locationName = null,
+                                    onClick = {},
+                                )
+                                HorizontalDivider()
+                            }
+                        }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CabinetGridRow(
+    row: Int,
+    cols: Int,
+    itemsByCell: Map<Pair<Int?, Int?>, List<Item>>,
+) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        for (c in 0 until cols) {
+            val cellItems = itemsByCell[row to c].orEmpty()
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(4.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    .padding(8.dp),
+            ) {
+                Text(
+                    "R${row + 1}C${c + 1}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (cellItems.isEmpty()) {
+                    Text(
+                        "—",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    cellItems.forEach { it2 ->
+                        Text(it2.name, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                    }
+                }
             }
         }
     }

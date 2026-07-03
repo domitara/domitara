@@ -107,6 +107,10 @@ function EditForm({ item }: { item: Item }) {
   const [locationId, setLocationId] = useState<string | null>(item.location_id ?? null);
   const [labelIds, setLabelIds] = useState<string[]>(item.label_ids);
   const [status, setStatus] = useState<'owned' | 'loaned' | 'missing'>(item.status);
+  const [tier, setTier] = useState<'quick' | 'full'>(item.tier);
+  const [gridCell, setGridCell] = useState<string | null>(
+    item.grid_row !== null && item.grid_col !== null ? `${item.grid_row},${item.grid_col}` : null
+  );
 
   // Product details — start expanded if any field is populated
   const hasDetails = !!(item.manufacturer || item.model || item.serial);
@@ -151,6 +155,30 @@ function EditForm({ item }: { item: Item }) {
 
   const labelOptions = labels.map((l) => ({ value: l.id, label: l.name, color: l.color }));
 
+  const selectedLocation = locations.find((l) => l.id === locationId);
+  const isGridContainer = !!(
+    selectedLocation?.location_type === 'container' &&
+    selectedLocation.grid_rows &&
+    selectedLocation.grid_cols
+  );
+  const cellOptions =
+    isGridContainer && selectedLocation
+      ? Array.from({ length: selectedLocation.grid_rows! }).flatMap((_, r) =>
+          Array.from({ length: selectedLocation.grid_cols! }).map((_, c) => ({
+            value: `${r},${c}`,
+            label: `Row ${r + 1}, Col ${c + 1}`,
+          }))
+        )
+      : [];
+
+  function handleLocationChange(id: string | null) {
+    setLocationId(id);
+    const loc = locations.find((l) => l.id === id);
+    if (!(loc?.location_type === 'container' && loc.grid_rows && loc.grid_cols)) {
+      setGridCell(null);
+    }
+  }
+
   async function handleCreateLocation() {
     if (!newLocName.trim()) return;
     try {
@@ -190,6 +218,7 @@ function EditForm({ item }: { item: Item }) {
     }
     setNameError('');
     setSubmitError('');
+    const [gridRow, gridCol] = gridCell ? gridCell.split(',').map(Number) : [undefined, undefined];
     try {
       await updateItem.mutateAsync({
         id: item.id,
@@ -208,6 +237,9 @@ function EditForm({ item }: { item: Item }) {
           notes: notes.trim() || undefined,
           asset_id: assetId.trim() || null,
           label_ids: labelIds,
+          tier,
+          grid_row: gridRow,
+          grid_col: gridCol,
         },
       });
       navigate({ to: '/items/$itemId', params: { itemId: item.id } });
@@ -351,8 +383,19 @@ function EditForm({ item }: { item: Item }) {
               clearable
               data={locationOptions}
               value={locationId}
-              onChange={setLocationId}
+              onChange={handleLocationChange}
             />
+            {isGridContainer && (
+              <Select
+                label="Cell"
+                placeholder="Choose a cell (optional)"
+                mt={8}
+                data={cellOptions}
+                value={gridCell}
+                onChange={setGridCell}
+                clearable
+              />
+            )}
             {!showNewLoc ? (
               <button type="button" style={linkBtnStyle} onClick={() => setShowNewLoc(true)}>
                 <IconPlus size={12} />
@@ -527,6 +570,24 @@ function EditForm({ item }: { item: Item }) {
                 { value: 'missing', label: 'Missing' },
               ]}
             />
+          </div>
+
+          {/* Tier */}
+          <div>
+            <Text component="label" size="sm" fw={500} mb={6} display="block">
+              Tier
+            </Text>
+            <SegmentedControl
+              value={tier}
+              onChange={(v) => setTier(v as typeof tier)}
+              data={[
+                { value: 'full', label: 'Full' },
+                { value: 'quick', label: 'Quick' },
+              ]}
+            />
+            <Text size="xs" c="dimmed" mt={4}>
+              Quick items are hidden from dashboards and totals by default.
+            </Text>
           </div>
         </Stack>
       </Paper>

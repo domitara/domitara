@@ -35,6 +35,9 @@ type ItemRow struct {
 	Notes         *string   `json:"notes"`
 	AssetID       *string   `json:"asset_id"`
 	LabelIDs      []string  `json:"label_ids"`
+	Tier          string    `json:"tier"`
+	GridRow       *int      `json:"grid_row"`
+	GridCol       *int      `json:"grid_col"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -47,9 +50,10 @@ type ItemOutput struct{ Body ItemRow }
 
 // ListItemsInput holds the optional query filters for listing items.
 type ListItemsInput struct {
-	LocationID string `query:"location_id"`
-	LabelID    string `query:"label_id"`
-	Q          string `query:"q" doc:"Search query — matches name, description, manufacturer, model, serial, notes, asset_id"`
+	LocationID   string `query:"location_id"`
+	LabelID      string `query:"label_id"`
+	Q            string `query:"q" doc:"Search query — matches name, description, manufacturer, model, serial, notes, asset_id"`
+	IncludeQuick bool   `query:"include_quick" doc:"Include quick-tier items (excluded by default)"`
 }
 
 // ItemIDInput carries an item ID path parameter.
@@ -71,8 +75,11 @@ type ItemBody struct {
 	Warranty      *string  `json:"warranty,omitempty"`
 	Insured       bool     `json:"insured,omitempty"`
 	Notes         *string  `json:"notes,omitempty"`
-	AssetID       *string  `json:"asset_id"`
+	AssetID       *string  `json:"asset_id,omitempty"`
 	LabelIDs      []string `json:"label_ids,omitempty"`
+	Tier          string   `json:"tier,omitempty" enum:"quick,full"`
+	GridRow       *int     `json:"grid_row,omitempty"`
+	GridCol       *int     `json:"grid_col,omitempty"`
 }
 
 // CreateItemInput is the request body for creating an item.
@@ -91,6 +98,7 @@ const itemSelectSQL = `
 	       i.purchase_price, i.purchased_at::text, i.warranty,
 	       i.insured, i.notes, i.asset_id,
 	       COALESCE(array_agg(il.label_id::text ORDER BY il.label_id) FILTER (WHERE il.label_id IS NOT NULL), '{}'),
+	       i.tier, i.grid_row, i.grid_col,
 	       i.created_at, i.updated_at
 	FROM items i
 	LEFT JOIN item_labels il ON il.item_id = i.id`
@@ -102,7 +110,9 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 		&it.Manufacturer, &it.Model, &it.Serial,
 		&it.PurchasePrice, &it.PurchasedAt, &it.Warranty,
 		&it.Insured, &it.Notes, &it.AssetID,
-		&it.LabelIDs, &it.CreatedAt, &it.UpdatedAt,
+		&it.LabelIDs,
+		&it.Tier, &it.GridRow, &it.GridCol,
+		&it.CreatedAt, &it.UpdatedAt,
 	)
 	return it, err
 }
@@ -144,6 +154,9 @@ func (h *Handler) ListItems(ctx context.Context, input *ListItemsInput) (*ItemsO
 		conditions = append(conditions, fmt.Sprintf(`i.id IN (SELECT item_id FROM item_labels WHERE label_id = $%d)`, n))
 		args = append(args, input.LabelID)
 		n++
+	}
+	if !input.IncludeQuick {
+		conditions = append(conditions, `i.tier != 'quick'`)
 	}
 	if len(conditions) > 0 {
 		query += ` WHERE ` + strings.Join(conditions, ` AND `)
@@ -198,6 +211,9 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 		id := generateAssetID()
 		b.AssetID = &id
 	}
+	if err := h.validateGridPlacement(ctx, &b); err != nil {
+		return nil, err
+	}
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
@@ -220,6 +236,9 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 		Notes:         b.Notes,
 		AssetID:       b.AssetID,
 		HomeID:        homeID,
+		Tier:          b.Tier,
+		GridRow:       toNullInt4(b.GridRow),
+		GridCol:       toNullInt4(b.GridCol),
 	})
 	if err != nil {
 		if isUniqueViolation(err, "items_asset_id_key") {
@@ -250,6 +269,9 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 		return nil, err
 	}
 	b := input.Body
+	if err := h.validateGridPlacement(ctx, &b); err != nil {
+		return nil, err
+	}
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "transaction failed")
@@ -272,6 +294,9 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 		Insured:       b.Insured,
 		Notes:         b.Notes,
 		AssetID:       b.AssetID,
+		Tier:          b.Tier,
+		GridRow:       toNullInt4(b.GridRow),
+		GridCol:       toNullInt4(b.GridCol),
 	}); err != nil {
 		if isUniqueViolation(err, "items_asset_id_key") {
 			return nil, huma.NewError(http.StatusConflict, "asset ID is already in use")
@@ -307,6 +332,37 @@ func (h *Handler) DeleteItem(ctx context.Context, input *ItemIDInput) (*struct{}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete item")
 	}
 	return nil, nil
+}
+
+// validateGridPlacement defaults tier to "full" and, if a grid cell is set,
+// validates the location is a grid container and the cell is within bounds.
+func (h *Handler) validateGridPlacement(ctx context.Context, b *ItemBody) error {
+	if b.Tier == "" {
+		b.Tier = "full"
+	}
+	if b.Tier != "quick" && b.Tier != "full" {
+		return huma.NewError(http.StatusUnprocessableEntity, "tier must be 'quick' or 'full'")
+	}
+	if (b.GridRow == nil) != (b.GridCol == nil) {
+		return huma.NewError(http.StatusUnprocessableEntity, "grid_row and grid_col must be set together")
+	}
+	if b.GridRow == nil {
+		return nil
+	}
+	if b.LocationID == nil {
+		return huma.NewError(http.StatusUnprocessableEntity, "a grid cell requires a location")
+	}
+	loc, err := h.q.GetLocation(ctx, *b.LocationID)
+	if err != nil {
+		return huma.NewError(http.StatusUnprocessableEntity, "location not found")
+	}
+	if loc.LocationType != "container" || !loc.GridRows.Valid || !loc.GridCols.Valid {
+		return huma.NewError(http.StatusUnprocessableEntity, "location is not a grid container")
+	}
+	if *b.GridRow < 0 || *b.GridRow >= int(loc.GridRows.Int32) || *b.GridCol < 0 || *b.GridCol >= int(loc.GridCols.Int32) {
+		return huma.NewError(http.StatusUnprocessableEntity, "grid cell is out of bounds")
+	}
+	return nil
 }
 
 func isUniqueViolation(err error, constraintName string) bool {

@@ -207,8 +207,12 @@ class DataRepository(
 
     // Inventory
     suspend fun getDashboard() = call { it.getDashboard() }
-    suspend fun listItems(q: String? = null, locationId: String? = null, labelId: String? = null) =
-        call { it.listItems(q, locationId, labelId) }
+    suspend fun listItems(
+        q: String? = null,
+        locationId: String? = null,
+        labelId: String? = null,
+        includeQuick: Boolean? = null,
+    ) = call { it.listItems(q, locationId, labelId, includeQuick) }
     suspend fun getItem(id: String) = call { it.getItem(id) }
     suspend fun listLocations() = call { it.listLocations() }
     suspend fun listLabels() = call { it.listLabels() }

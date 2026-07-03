@@ -133,6 +133,9 @@ type Item struct {
 	AssetID       *string            `json:"asset_id"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	Tier          string             `json:"tier"`
+	GridRow       pgtype.Int4        `json:"grid_row"`
+	GridCol       pgtype.Int4        `json:"grid_col"`
 }
 
 type ItemDocument struct {
@@ -169,13 +172,16 @@ type Label struct {
 }
 
 type Location struct {
-	ID          string             `json:"id"`
-	HomeID      string             `json:"home_id"`
-	Name        string             `json:"name"`
-	ParentID    *string            `json:"parent_id"`
-	Description *string            `json:"description"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID           string             `json:"id"`
+	HomeID       string             `json:"home_id"`
+	Name         string             `json:"name"`
+	ParentID     *string            `json:"parent_id"`
+	Description  *string            `json:"description"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	LocationType string             `json:"location_type"`
+	GridRows     pgtype.Int4        `json:"grid_rows"`
+	GridCols     pgtype.Int4        `json:"grid_cols"`
 }
 
 type MaintenanceLog struct {

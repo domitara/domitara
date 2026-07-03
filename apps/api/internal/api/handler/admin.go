@@ -34,13 +34,13 @@ func (h *Handler) Dashboard(ctx context.Context, _ *struct{}) (*DashboardOutput,
 		out.Body.TotalItems, _ = h.q.CountItemsByHome(ctx, homeID)
 		out.Body.TotalLocations, _ = h.q.CountLocationsByHome(ctx, homeID)
 		out.Body.TotalLabels, _ = h.q.CountLabelsByHome(ctx, homeID)
-		_ = h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE home_id = $1 AND purchase_price IS NOT NULL`, homeID).Scan(&out.Body.TotalValue)
+		_ = h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE home_id = $1 AND purchase_price IS NOT NULL AND tier != 'quick'`, homeID).Scan(&out.Body.TotalValue)
 	} else {
 		// sqlc not used here: COALESCE(SUM(numeric), 0) mixes numeric types and generates interface{} in sqlc pgx/v5 mode
 		out.Body.TotalItems, _ = h.q.CountAllItems(ctx)
 		out.Body.TotalLocations, _ = h.q.CountAllLocations(ctx)
 		out.Body.TotalLabels, _ = h.q.CountAllLabels(ctx)
-		_ = h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE purchase_price IS NOT NULL`).Scan(&out.Body.TotalValue)
+		_ = h.pool.QueryRow(ctx, `SELECT COALESCE(SUM(purchase_price), 0) FROM items WHERE purchase_price IS NOT NULL AND tier != 'quick'`).Scan(&out.Body.TotalValue)
 	}
 	return out, nil
 }

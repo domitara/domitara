@@ -59,6 +59,18 @@ enum class BreakerType {
 }
 
 @Serializable
+enum class LocationType {
+    @SerialName("room") ROOM,
+    @SerialName("container") CONTAINER,
+}
+
+@Serializable
+enum class ItemTier {
+    @SerialName("quick") QUICK,
+    @SerialName("full") FULL,
+}
+
+@Serializable
 enum class ReminderTone {
     @SerialName("info") INFO,
     @SerialName("warn") WARN,
@@ -153,6 +165,9 @@ data class Location(
     val name: String,
     val parentId: String? = null,
     val description: String? = null,
+    val locationType: LocationType = LocationType.ROOM,
+    val gridRows: Int? = null,
+    val gridCols: Int? = null,
     val itemCount: Int,
     val createdAt: String,
     val updatedAt: String,
@@ -193,6 +208,9 @@ data class Item(
     val notes: String? = null,
     val assetId: String? = null,
     val labelIds: List<String> = emptyList(),
+    val tier: ItemTier = ItemTier.FULL,
+    val gridRow: Int? = null,
+    val gridCol: Int? = null,
     val createdAt: String,
     val updatedAt: String,
 )
