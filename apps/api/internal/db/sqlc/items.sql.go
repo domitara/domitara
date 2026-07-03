@@ -13,7 +13,7 @@ import (
 )
 
 const countAllItems = `-- name: CountAllItems :one
-SELECT COUNT(*) FROM items
+SELECT COUNT(*) FROM items WHERE tier != 'quick'
 `
 
 func (q *Queries) CountAllItems(ctx context.Context) (int64, error) {
@@ -24,7 +24,7 @@ func (q *Queries) CountAllItems(ctx context.Context) (int64, error) {
 }
 
 const countItemsByHome = `-- name: CountItemsByHome :one
-SELECT COUNT(*) FROM items WHERE home_id = $1
+SELECT COUNT(*) FROM items WHERE home_id = $1 AND tier != 'quick'
 `
 
 func (q *Queries) CountItemsByHome(ctx context.Context, homeID string) (int64, error) {
@@ -36,8 +36,9 @@ func (q *Queries) CountItemsByHome(ctx context.Context, homeID string) (int64, e
 
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (name, description, location_id, status, manufacturer, model, serial,
-                   purchase_price, purchased_at, warranty, insured, notes, asset_id, home_id)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                   purchase_price, purchased_at, warranty, insured, notes, asset_id, home_id,
+                   tier, grid_row, grid_col)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 RETURNING id
 `
 
@@ -56,6 +57,9 @@ type CreateItemParams struct {
 	Notes         *string        `json:"notes"`
 	AssetID       *string        `json:"asset_id"`
 	HomeID        string         `json:"home_id"`
+	Tier          string         `json:"tier"`
+	GridRow       pgtype.Int4    `json:"grid_row"`
+	GridCol       pgtype.Int4    `json:"grid_col"`
 }
 
 func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (string, error) {
@@ -74,6 +78,9 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (string,
 		arg.Notes,
 		arg.AssetID,
 		arg.HomeID,
+		arg.Tier,
+		arg.GridRow,
+		arg.GridCol,
 	)
 	var id string
 	err := row.Scan(&id)
@@ -98,6 +105,23 @@ func (q *Queries) DeleteItemLabels(ctx context.Context, itemID string) error {
 	return err
 }
 
+const getMaxGridCell = `-- name: GetMaxGridCell :one
+SELECT COALESCE(MAX(grid_row), -1)::int AS max_row, COALESCE(MAX(grid_col), -1)::int AS max_col
+FROM items WHERE location_id = $1
+`
+
+type GetMaxGridCellRow struct {
+	MaxRow int32 `json:"max_row"`
+	MaxCol int32 `json:"max_col"`
+}
+
+func (q *Queries) GetMaxGridCell(ctx context.Context, locationID *string) (GetMaxGridCellRow, error) {
+	row := q.db.QueryRow(ctx, getMaxGridCell, locationID)
+	var i GetMaxGridCellRow
+	err := row.Scan(&i.MaxRow, &i.MaxCol)
+	return i, err
+}
+
 const insertItemLabel = `-- name: InsertItemLabel :exec
 INSERT INTO item_labels (item_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
 `
@@ -116,7 +140,8 @@ const updateItem = `-- name: UpdateItem :exec
 UPDATE items SET name=$2, description=$3, location_id=$4, status=$5,
                  manufacturer=$6, model=$7, serial=$8,
                  purchase_price=$9, purchased_at=$10, warranty=$11,
-                 insured=$12, notes=$13, asset_id=$14, updated_at=NOW()
+                 insured=$12, notes=$13, asset_id=$14,
+                 tier=$15, grid_row=$16, grid_col=$17, updated_at=NOW()
 WHERE id=$1
 `
 
@@ -135,6 +160,9 @@ type UpdateItemParams struct {
 	Insured       bool           `json:"insured"`
 	Notes         *string        `json:"notes"`
 	AssetID       *string        `json:"asset_id"`
+	Tier          string         `json:"tier"`
+	GridRow       pgtype.Int4    `json:"grid_row"`
+	GridCol       pgtype.Int4    `json:"grid_col"`
 }
 
 func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) error {
@@ -153,6 +181,9 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) error {
 		arg.Insured,
 		arg.Notes,
 		arg.AssetID,
+		arg.Tier,
+		arg.GridRow,
+		arg.GridCol,
 	)
 	return err
 }

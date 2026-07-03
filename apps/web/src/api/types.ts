@@ -1,5 +1,7 @@
 export type UserRole = 'admin' | 'member';
 export type ItemStatus = 'owned' | 'loaned' | 'missing';
+export type LocationType = 'room' | 'container';
+export type ItemTier = 'quick' | 'full';
 
 export interface User {
   id: number;
@@ -15,6 +17,9 @@ export interface Location {
   name: string;
   parent_id: string | null;
   description: string | null;
+  location_type: LocationType;
+  grid_rows: number | null;
+  grid_cols: number | null;
   item_count: number;
   created_at: string;
   updated_at: string;
@@ -45,6 +50,9 @@ export interface Item {
   notes: string | null;
   asset_id: string | null;
   label_ids: string[];
+  tier: ItemTier;
+  grid_row: number | null;
+  grid_col: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +99,9 @@ export interface CreateItemInput {
   notes?: string;
   asset_id?: string | null;
   label_ids?: string[];
+  tier?: ItemTier;
+  grid_row?: number;
+  grid_col?: number;
 }
 
 export interface UpdateItemInput {
@@ -108,6 +119,9 @@ export interface UpdateItemInput {
   notes?: string;
   asset_id?: string | null;
   label_ids?: string[];
+  tier?: ItemTier;
+  grid_row?: number;
+  grid_col?: number;
 }
 
 export interface CreateUserInput {
@@ -121,6 +135,18 @@ export interface CreateLocationInput {
   name: string;
   parent_id?: string;
   description?: string;
+  location_type?: LocationType;
+  grid_rows?: number;
+  grid_cols?: number;
+}
+
+export interface UpdateLocationInput {
+  name: string;
+  parent_id?: string;
+  description?: string;
+  location_type?: LocationType;
+  grid_rows?: number;
+  grid_cols?: number;
 }
 
 export interface CreateLabelInput {

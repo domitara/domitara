@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.domitara.data.api.toUserMessage
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Location
+import com.domitara.data.dto.LocationType
 import com.domitara.data.repository.DataRepository
 import com.domitara.ui.common.Async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,8 +55,9 @@ class LocationsViewModel(
     fun select(location: Location) {
         _selected.value = location
         _items.value = Async.Loading
+        val includeQuick = location.locationType == LocationType.CONTAINER
         viewModelScope.launch {
-            runCatching { repo.listItems(locationId = location.id) }
+            runCatching { repo.listItems(locationId = location.id, includeQuick = includeQuick) }
                 .onSuccess { _items.value = Async.Success(it) }
                 .onFailure { _items.value = Async.Failure(it.toUserMessage("Failed to load items")) }
         }

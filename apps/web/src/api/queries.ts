@@ -17,6 +17,7 @@ import type {
   CreateItemInput,
   UpdateItemInput,
   CreateLocationInput,
+  UpdateLocationInput,
   CreateLabelInput,
   CreateUserInput,
   CreateMaintenanceInput,
@@ -89,6 +90,18 @@ export function useCreateLocation() {
   });
 }
 
+export function useUpdateLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateLocationInput }) =>
+      api.put<Location>(`/locations/${id}`, body),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: locationKeys.byId(id) });
+      qc.invalidateQueries({ queryKey: locationKeys.all });
+    },
+  });
+}
+
 export function useDeleteLocation() {
   const qc = useQueryClient();
   return useMutation({
@@ -128,16 +141,26 @@ export function useDeleteLabel() {
 // --- Items ---
 export const itemKeys = {
   all: ['items'] as const,
-  filtered: (params: { locationId?: string; labelId?: string; q?: string }) =>
-    ['items', params] as const,
+  filtered: (params: {
+    locationId?: string;
+    labelId?: string;
+    q?: string;
+    includeQuick?: boolean;
+  }) => ['items', params] as const,
   byId: (id: string) => ['items', id] as const,
 };
 
-export function useItems(params?: { locationId?: string; labelId?: string; q?: string }) {
+export function useItems(params?: {
+  locationId?: string;
+  labelId?: string;
+  q?: string;
+  includeQuick?: boolean;
+}) {
   const qs = new URLSearchParams();
   if (params?.locationId) qs.set('location_id', params.locationId);
   if (params?.labelId) qs.set('label_id', params.labelId);
   if (params?.q) qs.set('q', params.q);
+  if (params?.includeQuick) qs.set('include_quick', 'true');
   const query = qs.toString() ? `?${qs}` : '';
   const hasParams = params && Object.values(params).some(Boolean);
   return useQuery({

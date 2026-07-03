@@ -22,6 +22,17 @@ func (q *Queries) CountAllLocations(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countLocationChildren = `-- name: CountLocationChildren :one
+SELECT COUNT(*) FROM locations WHERE parent_id = $1
+`
+
+func (q *Queries) CountLocationChildren(ctx context.Context, parentID *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countLocationChildren, parentID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countLocationsByHome = `-- name: CountLocationsByHome :one
 SELECT COUNT(*) FROM locations WHERE home_id = $1
 `
@@ -34,25 +45,31 @@ func (q *Queries) CountLocationsByHome(ctx context.Context, homeID string) (int6
 }
 
 const createLocation = `-- name: CreateLocation :one
-INSERT INTO locations (name, parent_id, description, home_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, parent_id, description, created_at, updated_at
+INSERT INTO locations (name, parent_id, description, home_id, location_type, grid_rows, grid_cols)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, parent_id, description, location_type, grid_rows, grid_cols, created_at, updated_at
 `
 
 type CreateLocationParams struct {
-	Name        string  `json:"name"`
-	ParentID    *string `json:"parent_id"`
-	Description *string `json:"description"`
-	HomeID      string  `json:"home_id"`
+	Name         string      `json:"name"`
+	ParentID     *string     `json:"parent_id"`
+	Description  *string     `json:"description"`
+	HomeID       string      `json:"home_id"`
+	LocationType string      `json:"location_type"`
+	GridRows     pgtype.Int4 `json:"grid_rows"`
+	GridCols     pgtype.Int4 `json:"grid_cols"`
 }
 
 type CreateLocationRow struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	ParentID    *string            `json:"parent_id"`
-	Description *string            `json:"description"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	ParentID     *string            `json:"parent_id"`
+	Description  *string            `json:"description"`
+	LocationType string             `json:"location_type"`
+	GridRows     pgtype.Int4        `json:"grid_rows"`
+	GridCols     pgtype.Int4        `json:"grid_cols"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) (CreateLocationRow, error) {
@@ -61,6 +78,9 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		arg.ParentID,
 		arg.Description,
 		arg.HomeID,
+		arg.LocationType,
+		arg.GridRows,
+		arg.GridCols,
 	)
 	var i CreateLocationRow
 	err := row.Scan(
@@ -68,6 +88,9 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		&i.Name,
 		&i.ParentID,
 		&i.Description,
+		&i.LocationType,
+		&i.GridRows,
+		&i.GridCols,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -84,7 +107,7 @@ func (q *Queries) DeleteLocation(ctx context.Context, id string) error {
 }
 
 const getLocation = `-- name: GetLocation :one
-SELECT l.id, l.name, l.parent_id, l.description,
+SELECT l.id, l.name, l.parent_id, l.description, l.location_type, l.grid_rows, l.grid_cols,
        COUNT(i.id) AS item_count, l.created_at, l.updated_at
 FROM locations l
 LEFT JOIN items i ON i.location_id = l.id
@@ -93,13 +116,16 @@ GROUP BY l.id
 `
 
 type GetLocationRow struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	ParentID    *string            `json:"parent_id"`
-	Description *string            `json:"description"`
-	ItemCount   int64              `json:"item_count"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	ParentID     *string            `json:"parent_id"`
+	Description  *string            `json:"description"`
+	LocationType string             `json:"location_type"`
+	GridRows     pgtype.Int4        `json:"grid_rows"`
+	GridCols     pgtype.Int4        `json:"grid_cols"`
+	ItemCount    int64              `json:"item_count"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) GetLocation(ctx context.Context, id string) (GetLocationRow, error) {
@@ -110,6 +136,9 @@ func (q *Queries) GetLocation(ctx context.Context, id string) (GetLocationRow, e
 		&i.Name,
 		&i.ParentID,
 		&i.Description,
+		&i.LocationType,
+		&i.GridRows,
+		&i.GridCols,
 		&i.ItemCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -118,7 +147,7 @@ func (q *Queries) GetLocation(ctx context.Context, id string) (GetLocationRow, e
 }
 
 const listAllLocations = `-- name: ListAllLocations :many
-SELECT l.id, l.name, l.parent_id, l.description,
+SELECT l.id, l.name, l.parent_id, l.description, l.location_type, l.grid_rows, l.grid_cols,
        COUNT(i.id) AS item_count, l.created_at, l.updated_at
 FROM locations l
 LEFT JOIN items i ON i.location_id = l.id
@@ -126,13 +155,16 @@ GROUP BY l.id ORDER BY l.name
 `
 
 type ListAllLocationsRow struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	ParentID    *string            `json:"parent_id"`
-	Description *string            `json:"description"`
-	ItemCount   int64              `json:"item_count"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	ParentID     *string            `json:"parent_id"`
+	Description  *string            `json:"description"`
+	LocationType string             `json:"location_type"`
+	GridRows     pgtype.Int4        `json:"grid_rows"`
+	GridCols     pgtype.Int4        `json:"grid_cols"`
+	ItemCount    int64              `json:"item_count"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) ListAllLocations(ctx context.Context) ([]ListAllLocationsRow, error) {
@@ -149,6 +181,9 @@ func (q *Queries) ListAllLocations(ctx context.Context) ([]ListAllLocationsRow, 
 			&i.Name,
 			&i.ParentID,
 			&i.Description,
+			&i.LocationType,
+			&i.GridRows,
+			&i.GridCols,
 			&i.ItemCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -164,7 +199,7 @@ func (q *Queries) ListAllLocations(ctx context.Context) ([]ListAllLocationsRow, 
 }
 
 const listLocationsByHome = `-- name: ListLocationsByHome :many
-SELECT l.id, l.name, l.parent_id, l.description,
+SELECT l.id, l.name, l.parent_id, l.description, l.location_type, l.grid_rows, l.grid_cols,
        COUNT(i.id) AS item_count, l.created_at, l.updated_at
 FROM locations l
 LEFT JOIN items i ON i.location_id = l.id
@@ -173,13 +208,16 @@ GROUP BY l.id ORDER BY l.name
 `
 
 type ListLocationsByHomeRow struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	ParentID    *string            `json:"parent_id"`
-	Description *string            `json:"description"`
-	ItemCount   int64              `json:"item_count"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	ParentID     *string            `json:"parent_id"`
+	Description  *string            `json:"description"`
+	LocationType string             `json:"location_type"`
+	GridRows     pgtype.Int4        `json:"grid_rows"`
+	GridCols     pgtype.Int4        `json:"grid_cols"`
+	ItemCount    int64              `json:"item_count"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) ListLocationsByHome(ctx context.Context, homeID string) ([]ListLocationsByHomeRow, error) {
@@ -196,6 +234,9 @@ func (q *Queries) ListLocationsByHome(ctx context.Context, homeID string) ([]Lis
 			&i.Name,
 			&i.ParentID,
 			&i.Description,
+			&i.LocationType,
+			&i.GridRows,
+			&i.GridCols,
 			&i.ItemCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -211,15 +252,19 @@ func (q *Queries) ListLocationsByHome(ctx context.Context, homeID string) ([]Lis
 }
 
 const updateLocation = `-- name: UpdateLocation :exec
-UPDATE locations SET name = $2, parent_id = $3, description = $4, updated_at = NOW()
+UPDATE locations SET name = $2, parent_id = $3, description = $4,
+                      location_type = $5, grid_rows = $6, grid_cols = $7, updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateLocationParams struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	ParentID    *string `json:"parent_id"`
-	Description *string `json:"description"`
+	ID           string      `json:"id"`
+	Name         string      `json:"name"`
+	ParentID     *string     `json:"parent_id"`
+	Description  *string     `json:"description"`
+	LocationType string      `json:"location_type"`
+	GridRows     pgtype.Int4 `json:"grid_rows"`
+	GridCols     pgtype.Int4 `json:"grid_cols"`
 }
 
 func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) error {
@@ -228,6 +273,9 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		arg.Name,
 		arg.ParentID,
 		arg.Description,
+		arg.LocationType,
+		arg.GridRows,
+		arg.GridCols,
 	)
 	return err
 }

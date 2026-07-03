@@ -11,6 +11,7 @@ import {
   TextInput,
   Loader,
   Center,
+  Switch,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -48,11 +49,13 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
   const [activeLabels, setActiveLabels] = useState(
     new Set<string>(filterLabelId ? [filterLabelId] : [])
   );
+  const [includeQuick, setIncludeQuick] = useState(false);
 
   const { data: allItems = [], isLoading } = useItems({
     ...(filterLocationId ? { locationId: filterLocationId } : {}),
     ...(filterLabelId ? { labelId: filterLabelId } : {}),
     ...(search ? { q: search } : {}),
+    includeQuick,
   });
   const { data: locations = [] } = useLocations();
   const { data: labels = [] } = useLabels();
@@ -190,6 +193,12 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           <Button variant="default" size="sm" leftSection={<IconCalendar size={14} />}>
             Date
           </Button>
+          <Switch
+            size="sm"
+            label="Show quick items"
+            checked={includeQuick}
+            onChange={(e) => setIncludeQuick(e.currentTarget.checked)}
+          />
           {(activeLabels.size > 0 || search) && (
             <Button
               variant="subtle"
@@ -381,15 +390,25 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
                   <IconBox size={16} color="rgba(255,255,255,.7)" />
                 </div>
                 <div>
-                  <Text size="sm" fw={500}>
-                    {it.name}
-                  </Text>
+                  <Group gap={6} wrap="nowrap">
+                    <Text size="sm" fw={500}>
+                      {it.name}
+                    </Text>
+                    {it.tier === 'quick' && (
+                      <Badge size="xs" color="gray" variant="light">
+                        quick
+                      </Badge>
+                    )}
+                  </Group>
                   <Text size="xs" className="mono" c="dimmed">
                     {it.asset_id ?? '—'}
                   </Text>
                 </div>
                 <Text size="sm" c="dimmed">
                   {lo?.name ?? '—'}
+                  {it.grid_row !== null && it.grid_col !== null
+                    ? ` · R${it.grid_row + 1}C${it.grid_col + 1}`
+                    : ''}
                 </Text>
                 <Group gap={4} wrap="wrap">
                   {it.label_ids.slice(0, 2).map((lid) => {
@@ -604,11 +623,21 @@ export function ItemCard({
         )}
       </div>
       <div>
-        <Text size="sm" fw={600} lh={1.3}>
-          {item.name}
-        </Text>
+        <Group gap={6} wrap="nowrap">
+          <Text size="sm" fw={600} lh={1.3} lineClamp={1}>
+            {item.name}
+          </Text>
+          {item.tier === 'quick' && (
+            <Badge size="xs" color="gray" variant="light">
+              quick
+            </Badge>
+          )}
+        </Group>
         <Text size="xs" c="dimmed">
           {loc?.name ?? '—'}
+          {item.grid_row !== null && item.grid_col !== null
+            ? ` · R${item.grid_row + 1}C${item.grid_col + 1}`
+            : ''}
         </Text>
       </div>
     </div>

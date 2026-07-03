@@ -28,6 +28,8 @@ import { useLocations, useItems } from '../api/queries';
 import { getDescendants } from '../utils';
 import { ItemCard } from './AllItemsScreen';
 import { NewLocationModal } from '../components/NewLocationModal';
+import { LocationGrid } from '../components/LocationGrid';
+import type { Location } from '../api/types';
 
 export function LocationsScreen() {
   const navigate = useNavigate();
@@ -35,6 +37,8 @@ export function LocationsScreen() {
   const { data: allItems = [] } = useItems();
   const [open, setOpen] = useState(new Set<string>());
   const [modalOpen, setModalOpen] = useState(false);
+  const [newLocParentId, setNewLocParentId] = useState<string | undefined>();
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [active, setActive] = useState<string | null>(null);
 
   const toggle = (id: string) =>
@@ -147,7 +151,14 @@ export function LocationsScreen() {
           <Button variant="default" size="sm" leftSection={<IconUpload size={14} />}>
             Import CSV
           </Button>
-          <Button size="sm" leftSection={<IconPlus size={14} />} onClick={() => setModalOpen(true)}>
+          <Button
+            size="sm"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => {
+              setNewLocParentId(undefined);
+              setModalOpen(true);
+            }}
+          >
             New location
           </Button>
         </Group>
@@ -180,8 +191,13 @@ export function LocationsScreen() {
                       {activeLoc.name}
                     </Title>
                     <Text size="sm" c="dimmed" mt={4}>
-                      {activeLoc.item_count} items ·{' '}
-                      {locations.filter((l) => l.parent_id === activeLoc.id).length} child locations
+                      {activeLoc.location_type === 'container'
+                        ? activeLoc.grid_rows && activeLoc.grid_cols
+                          ? `${activeLoc.item_count} items · ${activeLoc.grid_rows} × ${activeLoc.grid_cols} grid`
+                          : `${activeLoc.item_count} items · container (no grid)`
+                        : `${activeLoc.item_count} items · ${
+                            locations.filter((l) => l.parent_id === activeLoc.id).length
+                          } child locations`}
                     </Text>
                   </div>
                   <Group gap={6}>
@@ -198,10 +214,27 @@ export function LocationsScreen() {
                     >
                       View all items
                     </Button>
-                    <Button size="sm" leftSection={<IconPlus size={14} />}>
+                    <Button
+                      size="sm"
+                      leftSection={<IconPlus size={14} />}
+                      disabled={activeLoc.location_type === 'container'}
+                      title={
+                        activeLoc.location_type === 'container'
+                          ? "Containers can't have locations nested inside them"
+                          : undefined
+                      }
+                      onClick={() => {
+                        setNewLocParentId(activeLoc.id);
+                        setModalOpen(true);
+                      }}
+                    >
                       Add location
                     </Button>
-                    <ActionIcon variant="default" size="lg">
+                    <ActionIcon
+                      variant="default"
+                      size="lg"
+                      onClick={() => setEditingLocation(activeLoc)}
+                    >
                       <IconEdit size={16} />
                     </ActionIcon>
                     <ActionIcon variant="default" size="lg">
@@ -214,22 +247,31 @@ export function LocationsScreen() {
               <Paper withBorder p={16} radius="md">
                 <Group justify="space-between" mb={12}>
                   <Title order={3} style={{ fontSize: '1.125rem' }}>
-                    Items in this location
+                    {activeLoc.location_type === 'container'
+                      ? 'Cabinet contents'
+                      : 'Items in this location'}
                   </Title>
-                  <Button
-                    variant="subtle"
-                    size="sm"
-                    onClick={() =>
-                      navigate({
-                        to: '/locations/$locationId',
-                        params: { locationId: activeLoc.id },
-                      })
-                    }
-                  >
-                    See all
-                  </Button>
+                  {activeLoc.location_type !== 'container' && (
+                    <Button
+                      variant="subtle"
+                      size="sm"
+                      onClick={() =>
+                        navigate({
+                          to: '/locations/$locationId',
+                          params: { locationId: activeLoc.id },
+                        })
+                      }
+                    >
+                      See all
+                    </Button>
+                  )}
                 </Group>
-                {itemsHere.length === 0 ? (
+                {activeLoc.location_type === 'container' ? (
+                  <LocationGrid
+                    location={activeLoc}
+                    onItemClick={(itemId) => navigate({ to: '/items/$itemId', params: { itemId } })}
+                  />
+                ) : itemsHere.length === 0 ? (
                   <div
                     style={{
                       padding: 32,
@@ -242,7 +284,12 @@ export function LocationsScreen() {
                   >
                     <IconBox size={32} color="var(--dt-gray-5)" />
                     <Text fw={600}>No items here yet</Text>
-                    <Button size="sm" leftSection={<IconPlus size={14} />} mt={4}>
+                    <Button
+                      size="sm"
+                      leftSection={<IconPlus size={14} />}
+                      mt={4}
+                      onClick={() => navigate({ to: '/items/new' })}
+                    >
                       Add item
                     </Button>
                   </div>
@@ -277,7 +324,16 @@ export function LocationsScreen() {
         </Stack>
       </div>
 
-      <NewLocationModal opened={modalOpen} onClose={() => setModalOpen(false)} />
+      <NewLocationModal
+        key={editingLocation?.id ?? 'new'}
+        opened={modalOpen || !!editingLocation}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingLocation(null);
+        }}
+        defaultParentId={newLocParentId}
+        location={editingLocation ?? undefined}
+      />
     </Stack>
   );
 }

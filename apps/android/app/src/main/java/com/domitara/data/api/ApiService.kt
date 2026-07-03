@@ -147,6 +147,7 @@ interface ApiService {
         @Query("q") q: String? = null,
         @Query("location_id") locationId: String? = null,
         @Query("label_id") labelId: String? = null,
+        @Query("include_quick") includeQuick: Boolean? = null,
     ): List<Item>
 
     @GET("items/{id}")
