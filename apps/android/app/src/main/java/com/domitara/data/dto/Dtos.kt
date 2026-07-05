@@ -160,6 +160,11 @@ data class HomeDocument(
 )
 
 @Serializable
+data class UpdateDocumentTypeInput(
+    val documentType: HomeDocumentType? = null,
+)
+
+@Serializable
 data class Location(
     val id: String,
     val name: String,

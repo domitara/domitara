@@ -169,6 +169,15 @@ type UpdateHomeDocFloorLevelInput struct {
 	}
 }
 
+// UpdateHomeDocTypeInput is the request body for setting a document's type.
+type UpdateHomeDocTypeInput struct {
+	HomeID string `path:"homeId"`
+	DocID  string `path:"docId"`
+	Body   struct {
+		DocumentType *string `json:"document_type"`
+	}
+}
+
 // ---- mapping helpers ----
 
 // homeParamsFromBody converts the HomeBody request fields to pgtype values for sqlc.
@@ -706,6 +715,25 @@ func (h *Handler) UpdateHomeDocumentFloorLevel(ctx context.Context, input *Updat
 		HomeID:     input.HomeID,
 	}); err != nil {
 		return nil, huma.NewError(http.StatusNotFound, "document not found")
+	}
+	return nil, nil
+}
+
+// UpdateHomeDocumentType sets the document type metadata for a home document.
+func (h *Handler) UpdateHomeDocumentType(ctx context.Context, input *UpdateHomeDocTypeInput) (*struct{}, error) {
+	claims, err := apimw.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := h.requireHomeMember(ctx, input.HomeID, claims.Sub); err != nil {
+		return nil, err
+	}
+	if err := h.q.UpdateHomeDocumentType(ctx, store.UpdateHomeDocumentTypeParams{
+		DocumentType: input.Body.DocumentType,
+		ID:           input.DocID,
+		HomeID:       input.HomeID,
+	}); err != nil {
+		return nil, huma.NewError(http.StatusUnprocessableEntity, "invalid document type")
 	}
 	return nil, nil
 }

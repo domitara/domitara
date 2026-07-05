@@ -7,6 +7,7 @@ import com.domitara.data.api.toUserMessage
 import com.domitara.data.dto.FloorPlanArea
 import com.domitara.data.dto.Home
 import com.domitara.data.dto.HomeDocument
+import com.domitara.data.dto.HomeDocumentType
 import com.domitara.data.dto.HomeMember
 import com.domitara.data.dto.HomeMemberRole
 import com.domitara.data.dto.HomePhoto
@@ -171,6 +172,21 @@ class HomeDetailViewModel(private val container: AppContainer) : ViewModel() {
                 .onSuccess {
                     (_documents.value as? Async.Success)?.let { cur ->
                         _documents.value = Async.Success(cur.data.filterNot { it.id == docId })
+                    }
+                }
+                .onFailure { _actionError.value = msg(it) }
+        }
+    }
+
+    fun updateDocumentType(docId: String, documentType: HomeDocumentType?) {
+        val homeId = _selected.value?.id ?: return
+        viewModelScope.launch {
+            runCatching { repo.updateHomeDocumentType(homeId, docId, documentType) }
+                .onSuccess {
+                    (_documents.value as? Async.Success)?.let { cur ->
+                        _documents.value = Async.Success(
+                            cur.data.map { if (it.id == docId) it.copy(documentType = documentType) else it },
+                        )
                     }
                 }
                 .onFailure { _actionError.value = msg(it) }

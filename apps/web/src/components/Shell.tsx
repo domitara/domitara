@@ -174,7 +174,16 @@ export function DomitaraShell({ children }: ShellProps) {
             <ActionIcon variant="subtle" color="gray" size="lg" title="Notifications">
               <IconBell size={18} />
             </ActionIcon>
-            <ActionIcon variant="subtle" color="gray" size="lg" title="Help">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="lg"
+              title="Help"
+              component="a"
+              href="https://domitara.github.io/domitara/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <IconHelp size={18} />
             </ActionIcon>
             <ActionIcon

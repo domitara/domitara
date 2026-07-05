@@ -21,6 +21,7 @@ import {
   IconPencil,
   IconCalendar,
 } from '@tabler/icons-react';
+import { modals } from '@mantine/modals';
 import {
   useMaintenance,
   useSchedules,
@@ -168,7 +169,20 @@ function ScheduleRow({ schedule, onMarkDone, onEdit }: ScheduleRowProps) {
             <Menu.Item
               color="red"
               leftSection={<IconTrash size={14} />}
-              onClick={() => del.mutate(schedule.id)}
+              onClick={() =>
+                modals.openConfirmModal({
+                  title: 'Delete schedule',
+                  children: (
+                    <Text size="sm">
+                      Are you sure you want to delete <strong>{schedule.title}</strong>? This cannot
+                      be undone.
+                    </Text>
+                  ),
+                  labels: { confirm: 'Delete', cancel: 'Cancel' },
+                  confirmProps: { color: 'red' },
+                  onConfirm: () => del.mutate(schedule.id),
+                })
+              }
             >
               Delete
             </Menu.Item>
@@ -215,7 +229,20 @@ function LogRow({ log }: { log: MaintenanceLog }) {
           <Menu.Item
             color="red"
             leftSection={<IconTrash size={14} />}
-            onClick={() => del.mutate(log.id)}
+            onClick={() =>
+              modals.openConfirmModal({
+                title: 'Delete log entry',
+                children: (
+                  <Text size="sm">
+                    Are you sure you want to delete <strong>{log.title}</strong>? This cannot be
+                    undone.
+                  </Text>
+                ),
+                labels: { confirm: 'Delete', cancel: 'Cancel' },
+                confirmProps: { color: 'red' },
+                onConfirm: () => del.mutate(log.id),
+              })
+            }
           >
             Delete
           </Menu.Item>

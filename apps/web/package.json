@@ -17,6 +17,7 @@
     "@domitara/panel-core": "workspace:*",
     "@mantine/core": "^9.2.1",
     "@mantine/hooks": "^9.2.1",
+    "@mantine/modals": "^9.2.1",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-query": "^5.100.10",
     "@tanstack/react-query-devtools": "^5.100.10",

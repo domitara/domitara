@@ -34,17 +34,21 @@ import {
   IconBolt,
   IconMap,
 } from '@tabler/icons-react';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { modals } from '@mantine/modals';
+import { useNavigate } from '@tanstack/react-router';
 import { activeHomeIdAtom } from '../store/atoms';
 import {
   useHome,
   useUpdateHome,
+  useDeleteHome,
   useHomePhotos,
   useUploadHomePhoto,
   useDeleteHomePhoto,
   useHomeDocuments,
   useUploadHomeDocument,
   useDeleteHomeDocument,
+  useUpdateDocumentType,
   useHomeMembers,
   useAddHomeMember,
   useRemoveHomeMember,
@@ -84,6 +88,9 @@ function formatBytes(bytes: number) {
 function DetailsTab({ homeId }: { homeId: string }) {
   const { data: home, isLoading } = useHome(homeId);
   const updateHome = useUpdateHome(homeId);
+  const deleteHome = useDeleteHome();
+  const navigate = useNavigate();
+  const setActiveHomeId = useSetAtom(activeHomeIdAtom);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState('');
 
@@ -320,6 +327,48 @@ function DetailsTab({ homeId }: { homeId: string }) {
           Save changes
         </Button>
       </Group>
+
+      {home?.role === 'owner' && (
+        <Paper p="lg" withBorder radius="md" style={{ borderColor: 'var(--mantine-color-red-4)' }}>
+          <Text fw={600} mb={4} c="red">
+            Danger zone
+          </Text>
+          <Text size="sm" c="dimmed" mb="md">
+            Deleting this home permanently removes all its items, locations, labels, photos,
+            documents, and electrical panels for every member. This cannot be undone.
+          </Text>
+          <Button
+            color="red"
+            variant="light"
+            leftSection={<IconTrash size={16} />}
+            loading={deleteHome.isPending}
+            onClick={() =>
+              modals.openConfirmModal({
+                title: 'Delete home',
+                children: (
+                  <Text size="sm">
+                    Are you sure you want to delete <strong>{home.name}</strong>? This will
+                    permanently delete all items, locations, labels, photos, documents, and
+                    electrical panels for this home. This cannot be undone.
+                  </Text>
+                ),
+                labels: { confirm: 'Delete home', cancel: 'Cancel' },
+                confirmProps: { color: 'red' },
+                onConfirm: () => {
+                  deleteHome.mutate(homeId, {
+                    onSuccess: () => {
+                      setActiveHomeId(null);
+                      navigate({ to: '/' });
+                    },
+                  });
+                },
+              })
+            }
+          >
+            Delete home
+          </Button>
+        </Paper>
+      )}
     </Stack>
   );
 }
@@ -380,7 +429,19 @@ function PhotosTab({ homeId }: { homeId: string }) {
                   color="red"
                   variant="filled"
                   style={{ position: 'absolute', top: 6, right: 6 }}
-                  onClick={() => deletePhoto.mutate(p.id)}
+                  onClick={() =>
+                    modals.openConfirmModal({
+                      title: 'Delete photo',
+                      children: (
+                        <Text size="sm">
+                          Are you sure you want to delete this photo? This cannot be undone.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Delete', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () => deletePhoto.mutate(p.id),
+                    })
+                  }
                 >
                   <IconX size={12} />
                 </ActionIcon>
@@ -400,6 +461,7 @@ function DocumentsTab({ homeId }: { homeId: string }) {
   const { data: docs = [], isLoading } = useHomeDocuments(homeId);
   const upload = useUploadHomeDocument(homeId);
   const deleteDoc = useDeleteHomeDocument(homeId);
+  const updateDocumentType = useUpdateDocumentType(homeId);
   const [uploadType, setUploadType] = useState<HomeDocumentType | null>(null);
   const [uploadError, setUploadError] = useState('');
   const resetRef = useRef<() => void>(null);
@@ -488,21 +550,42 @@ function DocumentsTab({ homeId }: { homeId: string }) {
                   </a>
                 </Table.Td>
                 <Table.Td>
-                  {d.document_type ? (
-                    <Badge variant="light" size="sm">
-                      {documentTypeOptions.find((o) => o.value === d.document_type)?.label ??
-                        d.document_type}
-                    </Badge>
-                  ) : (
-                    <Text c="dimmed" size="sm">
-                      —
-                    </Text>
-                  )}
+                  <Select
+                    size="xs"
+                    placeholder="Set type"
+                    data={documentTypeOptions}
+                    value={d.document_type}
+                    onChange={(v) =>
+                      updateDocumentType.mutate({
+                        docId: d.id,
+                        documentType: v as HomeDocumentType | null,
+                      })
+                    }
+                    clearable
+                    w={150}
+                  />
                 </Table.Td>
                 <Table.Td>{formatBytes(d.size)}</Table.Td>
                 <Table.Td>{new Date(d.created_at).toLocaleDateString()}</Table.Td>
                 <Table.Td>
-                  <ActionIcon color="red" variant="subtle" onClick={() => deleteDoc.mutate(d.id)}>
+                  <ActionIcon
+                    color="red"
+                    variant="subtle"
+                    onClick={() =>
+                      modals.openConfirmModal({
+                        title: 'Delete document',
+                        children: (
+                          <Text size="sm">
+                            Are you sure you want to delete <strong>{d.filename}</strong>? This
+                            cannot be undone.
+                          </Text>
+                        ),
+                        labels: { confirm: 'Delete', cancel: 'Cancel' },
+                        confirmProps: { color: 'red' },
+                        onConfirm: () => deleteDoc.mutate(d.id),
+                      })
+                    }
+                  >
                     <IconTrash size={16} />
                   </ActionIcon>
                 </Table.Td>
@@ -601,7 +684,20 @@ function MembersTab({ homeId }: { homeId: string }) {
                   <ActionIcon
                     color="red"
                     variant="subtle"
-                    onClick={() => removeMember.mutate(m.user_id)}
+                    onClick={() =>
+                      modals.openConfirmModal({
+                        title: 'Remove member',
+                        children: (
+                          <Text size="sm">
+                            Are you sure you want to remove <strong>{m.user_name}</strong> from this
+                            home?
+                          </Text>
+                        ),
+                        labels: { confirm: 'Remove', cancel: 'Cancel' },
+                        confirmProps: { color: 'red' },
+                        onConfirm: () => removeMember.mutate(m.user_id),
+                      })
+                    }
                   >
                     <IconX size={16} />
                   </ActionIcon>

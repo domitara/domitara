@@ -22,6 +22,7 @@ import com.domitara.data.dto.MaintenanceSchedule
 import com.domitara.data.dto.Reminder
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
+import com.domitara.data.dto.UpdateDocumentTypeInput
 import com.domitara.data.dto.UpdateScheduleInput
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -85,6 +86,13 @@ interface ApiService {
 
     @DELETE("homes/{homeId}/documents/{docId}")
     suspend fun deleteHomeDocument(@Path("homeId") homeId: String, @Path("docId") docId: String)
+
+    @PATCH("homes/{homeId}/documents/{docId}/type")
+    suspend fun updateHomeDocumentType(
+        @Path("homeId") homeId: String,
+        @Path("docId") docId: String,
+        @Body body: UpdateDocumentTypeInput,
+    )
 
     @GET("homes/{homeId}/members")
     suspend fun listHomeMembers(@Path("homeId") homeId: String): List<HomeMember>

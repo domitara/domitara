@@ -10,6 +10,7 @@ import {
   TextInput,
   Loader,
   Center,
+  Menu,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -19,9 +20,11 @@ import {
   IconBox,
   IconEdit,
   IconDotsVertical,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useLabels, useItems, useLocations } from '../api/queries';
+import { modals } from '@mantine/modals';
+import { useLabels, useItems, useLocations, useDeleteLabel } from '../api/queries';
 import { ItemCard } from './AllItemsScreen';
 import { NewLabelModal } from '../components/NewLabelModal';
 
@@ -30,6 +33,7 @@ export function LabelsScreen() {
   const { data: labels = [], isLoading } = useLabels();
   const { data: allItems = [] } = useItems();
   const { data: locations = [] } = useLocations();
+  const deleteLabel = useDeleteLabel();
   const [active, setActive] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -165,9 +169,42 @@ export function LabelsScreen() {
                     <ActionIcon variant="default" size="lg">
                       <IconEdit size={16} />
                     </ActionIcon>
-                    <ActionIcon variant="default" size="lg">
-                      <IconDotsVertical size={16} />
-                    </ActionIcon>
+                    <Menu shadow="md" width={180} position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="default" size="lg">
+                          <IconDotsVertical size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={14} />}
+                          onClick={() =>
+                            modals.openConfirmModal({
+                              title: 'Delete label',
+                              children: (
+                                <Text size="sm">
+                                  Are you sure you want to delete{' '}
+                                  <strong>{activeLabel.name}</strong>?{' '}
+                                  {activeLabel.item_count > 0 &&
+                                    `It will be removed from ${activeLabel.item_count} item(s). `}
+                                  This cannot be undone.
+                                </Text>
+                              ),
+                              labels: { confirm: 'Delete', cancel: 'Cancel' },
+                              confirmProps: { color: 'red' },
+                              onConfirm: () => {
+                                deleteLabel.mutate(activeLabel.id, {
+                                  onSuccess: () => setActive(null),
+                                });
+                              },
+                            })
+                          }
+                        >
+                          Delete label
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Group>
                 </Group>
               </Paper>

@@ -17,6 +17,7 @@ import {
   ColorInput,
 } from '@mantine/core';
 import { IconBolt, IconPlus, IconTrash, IconPrinter } from '@tabler/icons-react';
+import { modals } from '@mantine/modals';
 import type { SlotGeometry } from '@domitara/panel-core';
 import type { ElectricalPanel, CreatePanelInput } from '../api/types';
 import {
@@ -82,7 +83,20 @@ function FloorPlanAreaManager({ homeId }: { homeId: string }) {
               color="red"
               variant="subtle"
               size="sm"
-              onClick={() => void deleteArea.mutate(area.id)}
+              onClick={() =>
+                modals.openConfirmModal({
+                  title: 'Delete floor plan area',
+                  children: (
+                    <Text size="sm">
+                      Are you sure you want to delete <strong>{area.name}</strong>? This cannot be
+                      undone.
+                    </Text>
+                  ),
+                  labels: { confirm: 'Delete', cancel: 'Cancel' },
+                  confirmProps: { color: 'red' },
+                  onConfirm: () => deleteArea.mutate(area.id),
+                })
+              }
             >
               <IconTrash size={13} />
             </ActionIcon>
@@ -230,6 +244,8 @@ export function ElectricalPanelsTab({ homeId, homeName }: { homeId: string; home
   const [selectedSlot, setSelectedSlot] = useState<SlotGeometry | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
 
+  const [panelToDelete, setPanelToDelete] = useState<ElectricalPanel | null>(null);
+
   const selectedPanel = panels.find((p) => p.id === selectedPanelId) ?? panels[0] ?? null;
   const { data: breakers = [], isLoading: breakersLoading } = useBreakers(selectedPanel?.id ?? '');
 
@@ -300,7 +316,7 @@ export function ElectricalPanelsTab({ homeId, homeName }: { homeId: string; home
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  void deletePanel.mutate(p.id);
+                  setPanelToDelete(p);
                 }}
               >
                 <IconTrash size={12} />
@@ -376,6 +392,40 @@ export function ElectricalPanelsTab({ homeId, homeName }: { homeId: string; home
         areas={areas}
         onClose={() => setSelectedSlot(null)}
       />
+
+      <Modal
+        opened={panelToDelete !== null}
+        onClose={() => setPanelToDelete(null)}
+        title="Delete panel"
+        size="sm"
+      >
+        <Stack gap={16}>
+          <Text size="sm">
+            Are you sure you want to delete <strong>{panelToDelete?.name}</strong>? This cannot be
+            undone.
+          </Text>
+          <Group justify="flex-end" gap={8}>
+            <Button variant="default" onClick={() => setPanelToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={deletePanel.isPending}
+              onClick={() => {
+                if (!panelToDelete) return;
+                deletePanel.mutate(panelToDelete.id, {
+                  onSuccess: () => {
+                    if (selectedPanelId === panelToDelete.id) setSelectedPanelId(null);
+                    setPanelToDelete(null);
+                  },
+                });
+              }}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       {selectedPanel && (
         <Modal
