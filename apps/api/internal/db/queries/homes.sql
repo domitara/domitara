@@ -92,6 +92,9 @@ ORDER BY (document_type = 'floor_plan') DESC, created_at ASC;
 -- name: UpdateHomeDocumentFloorLevel :exec
 UPDATE home_documents SET floor_level = $1 WHERE id = $2 AND home_id = $3;
 
+-- name: UpdateHomeDocumentType :exec
+UPDATE home_documents SET document_type = $1 WHERE id = $2 AND home_id = $3;
+
 -- name: GetHomeDocumentFilePath :one
 SELECT file_path FROM home_documents WHERE id = $1 AND home_id = $2;
 

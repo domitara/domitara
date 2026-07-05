@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider, createTheme, localStorageColorSchemeManager } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 import '@mantine/core/styles.css';
 import './tokens.css';
 import './app.css';
@@ -28,7 +29,9 @@ createRoot(document.getElementById('root')!).render(
         colorSchemeManager={colorSchemeManager}
         defaultColorScheme="light"
       >
-        <RouterProvider router={router} />
+        <ModalsProvider>
+          <RouterProvider router={router} />
+        </ModalsProvider>
       </MantineProvider>
     </QueryClientProvider>
   </StrictMode>

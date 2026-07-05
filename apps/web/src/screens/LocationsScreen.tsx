@@ -10,6 +10,7 @@ import {
   TextInput,
   Loader,
   Center,
+  Menu,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -22,9 +23,11 @@ import {
   IconBox,
   IconEdit,
   IconDotsVertical,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useLocations, useItems } from '../api/queries';
+import { modals } from '@mantine/modals';
+import { useLocations, useItems, useDeleteLocation } from '../api/queries';
 import { getDescendants } from '../utils';
 import { ItemCard } from './AllItemsScreen';
 import { NewLocationModal } from '../components/NewLocationModal';
@@ -35,6 +38,7 @@ export function LocationsScreen() {
   const navigate = useNavigate();
   const { data: locations = [], isLoading } = useLocations();
   const { data: allItems = [] } = useItems();
+  const deleteLocation = useDeleteLocation();
   const [open, setOpen] = useState(new Set<string>());
   const [modalOpen, setModalOpen] = useState(false);
   const [newLocParentId, setNewLocParentId] = useState<string | undefined>();
@@ -237,9 +241,46 @@ export function LocationsScreen() {
                     >
                       <IconEdit size={16} />
                     </ActionIcon>
-                    <ActionIcon variant="default" size="lg">
-                      <IconDotsVertical size={16} />
-                    </ActionIcon>
+                    <Menu shadow="md" width={180} position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="default" size="lg">
+                          <IconDotsVertical size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={14} />}
+                          onClick={() => {
+                            const childCount = locations.filter(
+                              (l) => l.parent_id === activeLoc.id
+                            ).length;
+                            modals.openConfirmModal({
+                              title: 'Delete location',
+                              children: (
+                                <Text size="sm">
+                                  Are you sure you want to delete <strong>{activeLoc.name}</strong>?{' '}
+                                  {activeLoc.item_count > 0 &&
+                                    `${activeLoc.item_count} item(s) here will become unassigned. `}
+                                  {childCount > 0 &&
+                                    `${childCount} child location(s) will be moved to the top level. `}
+                                  This cannot be undone.
+                                </Text>
+                              ),
+                              labels: { confirm: 'Delete', cancel: 'Cancel' },
+                              confirmProps: { color: 'red' },
+                              onConfirm: () => {
+                                deleteLocation.mutate(activeLoc.id, {
+                                  onSuccess: () => setActive(null),
+                                });
+                              },
+                            });
+                          }}
+                        >
+                          Delete location
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Group>
                 </Group>
               </Paper>

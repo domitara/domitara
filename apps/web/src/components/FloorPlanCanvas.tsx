@@ -21,6 +21,7 @@ import {
   Stack,
 } from '@mantine/core';
 import { IconX, IconTrash, IconMapPin } from '@tabler/icons-react';
+import { modals } from '@mantine/modals';
 import useImage from 'use-image';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Line as KonvaLine } from 'konva/lib/shapes/Line';
@@ -257,19 +258,42 @@ export function FloorPlanCanvas({
     setCircleCenter(null);
   }, []);
 
+  const confirmDeleteSelected = useCallback(() => {
+    if (!selected) return;
+    const kind = selected.kind;
+    const id = selected.id;
+    const name =
+      kind === 'zone'
+        ? (zones.find((z) => z.id === id)?.name ?? 'this zone')
+        : (shapes.find((s) => s.id === id)?.label ?? 'this shape');
+    modals.openConfirmModal({
+      title: kind === 'zone' ? 'Delete electrical zone' : 'Delete layout shape',
+      children: (
+        <div style={{ fontSize: 14 }}>
+          Are you sure you want to delete <strong>{name}</strong>? This cannot be undone.
+        </div>
+      ),
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        if (kind === 'zone') onDeleteZone(id);
+        else onDeleteShape(id);
+        setSelected(null);
+        setEditing(null);
+      },
+    });
+  }, [selected, zones, shapes, onDeleteZone, onDeleteShape]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') exitDraw();
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected && drawMode === 'none') {
-        if (selected.kind === 'zone') onDeleteZone(selected.id);
-        else onDeleteShape(selected.id);
-        setSelected(null);
-        setEditing(null);
+        confirmDeleteSelected();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [exitDraw, selected, drawMode, onDeleteZone, onDeleteShape]);
+  }, [exitDraw, selected, drawMode, confirmDeleteSelected]);
 
   // Stage click: place draw vertex OR deselect
   const handleStageClick = useCallback(
@@ -587,17 +611,7 @@ export function FloorPlanCanvas({
           </>
         )}
         {selected && drawMode === 'none' && (
-          <ActionIcon
-            color="red"
-            variant="light"
-            size="sm"
-            onClick={() => {
-              if (selected.kind === 'zone') onDeleteZone(selected.id);
-              else onDeleteShape(selected.id);
-              setSelected(null);
-              setEditing(null);
-            }}
-          >
+          <ActionIcon color="red" variant="light" size="sm" onClick={confirmDeleteSelected}>
             <IconTrash size={14} />
           </ActionIcon>
         )}

@@ -25,6 +25,7 @@ import type {
   HomeMember,
   HomePhoto,
   HomeDocument,
+  HomeDocumentType,
   CreateHomeInput,
   ElectricalPanel,
   ElectricalBreaker,
@@ -717,6 +718,20 @@ export function useUpdateDocumentFloorLevel(homeId: string) {
   return useMutation({
     mutationFn: ({ docId, floorLevel }: { docId: string; floorLevel: number | null }) =>
       api.patch(`/homes/${homeId}/documents/${docId}/floor-level`, { floor_level: floorLevel }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: homeKeys.documents(homeId) }),
+  });
+}
+
+export function useUpdateDocumentType(homeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      docId,
+      documentType,
+    }: {
+      docId: string;
+      documentType: HomeDocumentType | null;
+    }) => api.patch(`/homes/${homeId}/documents/${docId}/type`, { document_type: documentType }),
     onSuccess: () => qc.invalidateQueries({ queryKey: homeKeys.documents(homeId) }),
   });
 }

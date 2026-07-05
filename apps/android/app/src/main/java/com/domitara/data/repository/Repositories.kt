@@ -12,9 +12,11 @@ import com.domitara.data.dto.CreateFloorPlanAreaInput
 import com.domitara.data.dto.CreateMaintenanceInput
 import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
+import com.domitara.data.dto.HomeDocumentType
 import com.domitara.data.dto.LoginRequest
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
+import com.domitara.data.dto.UpdateDocumentTypeInput
 import com.domitara.data.dto.UpdateMeInput
 import com.domitara.data.dto.UpdateScheduleInput
 import com.domitara.data.session.ActiveHomeStore
@@ -167,6 +169,8 @@ class DataRepository(
     }
     suspend fun deleteHomeDocument(homeId: String, docId: String) =
         call { it.deleteHomeDocument(homeId, docId) }
+    suspend fun updateHomeDocumentType(homeId: String, docId: String, documentType: HomeDocumentType?) =
+        call { it.updateHomeDocumentType(homeId, docId, UpdateDocumentTypeInput(documentType)) }
 
     /**
      * Reads a picked content [uri] into a multipart part. The server detects the

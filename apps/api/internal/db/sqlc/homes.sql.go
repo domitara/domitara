@@ -610,6 +610,21 @@ func (q *Queries) UpdateHomeDocumentPath(ctx context.Context, arg UpdateHomeDocu
 	return err
 }
 
+const updateHomeDocumentType = `-- name: UpdateHomeDocumentType :exec
+UPDATE home_documents SET document_type = $1 WHERE id = $2 AND home_id = $3
+`
+
+type UpdateHomeDocumentTypeParams struct {
+	DocumentType *string `json:"document_type"`
+	ID           string  `json:"id"`
+	HomeID       string  `json:"home_id"`
+}
+
+func (q *Queries) UpdateHomeDocumentType(ctx context.Context, arg UpdateHomeDocumentTypeParams) error {
+	_, err := q.db.Exec(ctx, updateHomeDocumentType, arg.DocumentType, arg.ID, arg.HomeID)
+	return err
+}
+
 const updateHomePhotoPath = `-- name: UpdateHomePhotoPath :exec
 UPDATE home_photos SET file_path = $1 WHERE id = $2
 `

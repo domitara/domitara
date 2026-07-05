@@ -105,7 +105,7 @@ export function FloorPlansTab({ homeId }: { homeId: string }) {
         <FileButton
           resetRef={resetRef}
           onChange={handleUpload}
-          accept="application/pdf,image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp"
         >
           {(props) => (
             <Button {...props} leftSection={<IconUpload size={16} />} loading={upload.isPending}>
@@ -194,7 +194,7 @@ export function FloorPlansTab({ homeId }: { homeId: string }) {
             <FileButton
               resetRef={resetRef}
               onChange={handleUpload}
-              accept="application/pdf,image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp"
             >
               {(props) => (
                 <Button

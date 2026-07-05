@@ -177,6 +177,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes/{id}/documents", Summary: "List home documents", Security: bearerAuth}, h.ListHomeDocuments)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/homes/{id}/documents/{docId}", Summary: "Delete home document", DefaultStatus: 204, Security: bearerAuth}, h.DeleteHomeDocument)
 	huma.Register(api, huma.Operation{Method: http.MethodPatch, Path: "/api/v1/homes/{homeId}/documents/{docId}/floor-level", Summary: "Set floor level on document", DefaultStatus: 204, Security: bearerAuth}, h.UpdateHomeDocumentFloorLevel)
+	huma.Register(api, huma.Operation{Method: http.MethodPatch, Path: "/api/v1/homes/{homeId}/documents/{docId}/type", Summary: "Set document type", DefaultStatus: 204, Security: bearerAuth}, h.UpdateHomeDocumentType)
 	r.Post("/api/v1/homes/{id}/documents", h.UploadHomeDocument)
 
 	// Item photos — list and delete through HUMA; upload is a raw chi handler (multipart)

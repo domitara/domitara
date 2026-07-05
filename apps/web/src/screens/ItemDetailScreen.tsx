@@ -30,6 +30,7 @@ import {
 } from '@tabler/icons-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { modals } from '@mantine/modals';
 import {
   useItem,
   useLabels,
@@ -256,11 +257,23 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
                   color="red"
                   size="sm"
                   style={{ position: 'absolute', top: 6, right: 6 }}
-                  onClick={() => {
-                    deletePhoto.mutate(currentPhoto.id, {
-                      onSuccess: () => setPhotoIndex(Math.max(0, photoIndex - 1)),
-                    });
-                  }}
+                  onClick={() =>
+                    modals.openConfirmModal({
+                      title: 'Delete photo',
+                      children: (
+                        <Text size="sm">
+                          Are you sure you want to delete this photo? This cannot be undone.
+                        </Text>
+                      ),
+                      labels: { confirm: 'Delete', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: () => {
+                        deletePhoto.mutate(currentPhoto.id, {
+                          onSuccess: () => setPhotoIndex(Math.max(0, photoIndex - 1)),
+                        });
+                      },
+                    })
+                  }
                 >
                   <IconTrash size={12} />
                 </ActionIcon>
@@ -557,7 +570,20 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
                             color="red"
                             size="sm"
                             loading={deleteDocument.isPending}
-                            onClick={() => deleteDocument.mutate(doc.id)}
+                            onClick={() =>
+                              modals.openConfirmModal({
+                                title: 'Delete document',
+                                children: (
+                                  <Text size="sm">
+                                    Are you sure you want to delete <strong>{doc.filename}</strong>?
+                                    This cannot be undone.
+                                  </Text>
+                                ),
+                                labels: { confirm: 'Delete', cancel: 'Cancel' },
+                                confirmProps: { color: 'red' },
+                                onConfirm: () => deleteDocument.mutate(doc.id),
+                              })
+                            }
                           >
                             <IconTrash size={15} />
                           </ActionIcon>

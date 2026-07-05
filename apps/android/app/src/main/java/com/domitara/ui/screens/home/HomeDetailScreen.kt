@@ -333,6 +333,7 @@ private fun DocumentsTab(vm: HomeDetailViewModel) {
     val uploading by vm.uploadingDocument.collectAsStateWithLifecycle()
     var uploadType by remember { mutableStateOf<HomeDocumentType?>(null) }
     var uploadError by remember { mutableStateOf<String?>(null) }
+    var docToDelete by remember { mutableStateOf<HomeDocument?>(null) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -371,13 +372,19 @@ private fun DocumentsTab(vm: HomeDetailViewModel) {
                                 ) {
                                     Column(Modifier.weight(1f)) {
                                         Text(doc.filename, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        val meta = listOfNotNull(
-                                            doc.documentType?.let(::documentTypeLabel),
-                                            formatBytes(doc.size),
-                                        ).joinToString(" · ")
-                                        Text(meta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            InlineDocumentTypeSelector(
+                                                selected = doc.documentType,
+                                                onSelect = { vm.updateDocumentType(doc.id, it) },
+                                            )
+                                            Text(
+                                                " · ${formatBytes(doc.size)}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
                                     }
-                                    IconButton(onClick = { vm.deleteDocument(doc.id) }) {
+                                    IconButton(onClick = { docToDelete = doc }) {
                                         Icon(Icons.Filled.Delete, contentDescription = "Delete")
                                     }
                                 }
@@ -385,6 +392,58 @@ private fun DocumentsTab(vm: HomeDetailViewModel) {
                             }
                         }
                     }
+            }
+        }
+    }
+
+    docToDelete?.let { doc ->
+        AlertDialog(
+            onDismissRequest = { docToDelete = null },
+            title = { Text("Delete document?") },
+            text = { Text("This will permanently delete \"${doc.filename}\". This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { vm.deleteDocument(doc.id); docToDelete = null }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { docToDelete = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun InlineDocumentTypeSelector(
+    selected: HomeDocumentType?,
+    onSelect: (HomeDocumentType?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier.clickable { expanded = true },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                selected?.let(::documentTypeLabel) ?: "Set type",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (selected == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = if (selected == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = { expanded = false; onSelect(null) },
+            )
+            DOCUMENT_TYPE_OPTIONS.forEach { (type, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = { expanded = false; onSelect(type) },
+                )
             }
         }
     }

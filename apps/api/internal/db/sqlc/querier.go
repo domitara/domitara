@@ -103,6 +103,7 @@ type Querier interface {
 	UpdateHome(ctx context.Context, arg UpdateHomeParams) error
 	UpdateHomeDocumentFloorLevel(ctx context.Context, arg UpdateHomeDocumentFloorLevelParams) error
 	UpdateHomeDocumentPath(ctx context.Context, arg UpdateHomeDocumentPathParams) error
+	UpdateHomeDocumentType(ctx context.Context, arg UpdateHomeDocumentTypeParams) error
 	UpdateHomePhotoPath(ctx context.Context, arg UpdateHomePhotoPathParams) error
 	UpdateItem(ctx context.Context, arg UpdateItemParams) error
 	UpdateItemDocumentPath(ctx context.Context, arg UpdateItemDocumentPathParams) error
