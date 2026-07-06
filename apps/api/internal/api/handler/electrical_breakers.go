@@ -129,10 +129,11 @@ func (h *Handler) CreateBreaker(ctx context.Context, input *CreateElectricalBrea
 	if err != nil {
 		return nil, err
 	}
-	homeID, err := h.panelHomeID(ctx, input.PanelID)
+	panel, err := h.q.GetPanel(ctx, input.PanelID)
 	if err != nil {
-		return nil, err
+		return nil, huma.NewError(http.StatusNotFound, "panel not found")
 	}
+	homeID := panel.HomeID
 	if _, err := h.requireHomeMember(ctx, homeID, claims.Sub); err != nil {
 		return nil, err
 	}
@@ -142,27 +143,23 @@ func (h *Handler) CreateBreaker(ctx context.Context, input *CreateElectricalBrea
 		breakerType = "standard"
 	}
 
-	if breakerType == "double_pole" && input.Body.Slot%2 == 0 {
-		return nil, huma.NewError(http.StatusUnprocessableEntity, "double_pole breakers must start on an odd slot")
+	// A double_pole breaker occupies two same-column slots two apart (e.g.
+	// 1 & 3, or 2 & 4 - left/right column is determined by odd/even slot).
+	slot2 := input.Body.Slot
+	if breakerType == "double_pole" {
+		slot2 = input.Body.Slot + 2
+		if slot2 > int(panel.TotalSlots) {
+			return nil, huma.NewError(http.StatusUnprocessableEntity, "double_pole breaker's second slot exceeds the panel's total slots")
+		}
 	}
 
-	if breakerType == "double_pole" {
-		count, err := h.q.CountBreakersAtDoublePoleSlots(ctx, store.CountBreakersAtDoublePoleSlotsParams{
-			PanelID: input.PanelID,
-			Slot:    int32(input.Body.Slot),
-			Slot_2:  int32(input.Body.Slot + 1),
-		})
-		if err == nil && count > 0 {
-			return nil, huma.NewError(http.StatusConflict, "slot conflict: another breaker occupies this slot or the adjacent even slot")
-		}
-	} else {
-		count, err := h.q.CountBreakerAtSlot(ctx, store.CountBreakerAtSlotParams{
-			PanelID: input.PanelID,
-			Slot:    int32(input.Body.Slot),
-		})
-		if err == nil && count > 0 {
-			return nil, huma.NewError(http.StatusConflict, "a breaker already exists at this slot")
-		}
+	count, err := h.q.CountConflictingBreakerSlots(ctx, store.CountConflictingBreakerSlotsParams{
+		PanelID: input.PanelID,
+		Slot:    int32(input.Body.Slot),
+		Slot_2:  int32(slot2),
+	})
+	if err == nil && count > 0 {
+		return nil, huma.NewError(http.StatusConflict, "slot conflict: another breaker occupies this slot")
 	}
 
 	if input.Body.FloorPlanAreaID != nil {

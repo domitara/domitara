@@ -36,7 +36,8 @@ class ApiProvider(private val client: OkHttpClient) {
 fun HttpException.toApiException(): ApiException {
     val raw = response()?.errorBody()?.string()
     val message = raw?.let {
-        runCatching { AppJson.decodeFromString<ApiError>(it).error }.getOrNull()
+        runCatching { AppJson.decodeFromString<ApiError>(it) }.getOrNull()
+            ?.let { e -> e.detail ?: e.error ?: e.title }
     } ?: message()
     return ApiException(
         message = message ?: "Request failed (${code()})",

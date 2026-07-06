@@ -11,34 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countBreakerAtSlot = `-- name: CountBreakerAtSlot :one
-SELECT COUNT(*) FROM electrical_breakers WHERE panel_id = $1 AND slot = $2
+const countConflictingBreakerSlots = `-- name: CountConflictingBreakerSlots :one
+SELECT COUNT(*) FROM electrical_breakers
+WHERE panel_id = $1
+  AND (
+    slot = $2 OR slot = $3
+    OR (breaker_type = 'double_pole' AND (slot + 2 = $2 OR slot + 2 = $3))
+  )
 `
 
-type CountBreakerAtSlotParams struct {
-	PanelID string `json:"panel_id"`
-	Slot    int32  `json:"slot"`
-}
-
-func (q *Queries) CountBreakerAtSlot(ctx context.Context, arg CountBreakerAtSlotParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countBreakerAtSlot, arg.PanelID, arg.Slot)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countBreakersAtDoublePoleSlots = `-- name: CountBreakersAtDoublePoleSlots :one
-SELECT COUNT(*) FROM electrical_breakers WHERE panel_id = $1 AND (slot = $2 OR slot = $3)
-`
-
-type CountBreakersAtDoublePoleSlotsParams struct {
+type CountConflictingBreakerSlotsParams struct {
 	PanelID string `json:"panel_id"`
 	Slot    int32  `json:"slot"`
 	Slot_2  int32  `json:"slot_2"`
 }
 
-func (q *Queries) CountBreakersAtDoublePoleSlots(ctx context.Context, arg CountBreakersAtDoublePoleSlotsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countBreakersAtDoublePoleSlots, arg.PanelID, arg.Slot, arg.Slot_2)
+// Checks whether a new breaker occupying {slot, slot2} would overlap an
+// existing breaker. A double_pole breaker occupies two same-column slots
+// two apart (e.g. 1 & 3, or 2 & 4), so its implied second slot (slot + 2)
+// must also be checked against. For a single-slot request pass slot2 = slot.
+func (q *Queries) CountConflictingBreakerSlots(ctx context.Context, arg CountConflictingBreakerSlotsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countConflictingBreakerSlots, arg.PanelID, arg.Slot, arg.Slot_2)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

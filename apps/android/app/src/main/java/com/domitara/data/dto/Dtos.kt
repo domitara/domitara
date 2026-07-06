@@ -380,6 +380,10 @@ data class CreateFloorPlanAreaInput(
     val color: String? = null,
 )
 
-/** Shape of the API error envelope: `{ "error": "..." }`. */
+/**
+ * Shape of the API's error envelope. Huma (the Go API framework) returns
+ * RFC7807 problem-details JSON, e.g. `{ "title": "...", "detail": "...", "status": 422 }`,
+ * not a plain `{ "error": "..." }` - `detail` carries the human-readable message.
+ */
 @Serializable
-data class ApiError(val error: String? = null)
+data class ApiError(val error: String? = null, val title: String? = null, val detail: String? = null)

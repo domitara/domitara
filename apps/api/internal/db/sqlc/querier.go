@@ -14,8 +14,11 @@ type Querier interface {
 	CountAllItems(ctx context.Context) (int64, error)
 	CountAllLabels(ctx context.Context) (int64, error)
 	CountAllLocations(ctx context.Context) (int64, error)
-	CountBreakerAtSlot(ctx context.Context, arg CountBreakerAtSlotParams) (int64, error)
-	CountBreakersAtDoublePoleSlots(ctx context.Context, arg CountBreakersAtDoublePoleSlotsParams) (int64, error)
+	// Checks whether a new breaker occupying {slot, slot2} would overlap an
+	// existing breaker. A double_pole breaker occupies two same-column slots
+	// two apart (e.g. 1 & 3, or 2 & 4), so its implied second slot (slot + 2)
+	// must also be checked against. For a single-slot request pass slot2 = slot.
+	CountConflictingBreakerSlots(ctx context.Context, arg CountConflictingBreakerSlotsParams) (int64, error)
 	CountHomeOwners(ctx context.Context, homeID string) (int64, error)
 	CountItemsByHome(ctx context.Context, homeID string) (int64, error)
 	CountLabelsByHome(ctx context.Context, homeID string) (int64, error)
