@@ -107,7 +107,8 @@ class AuthRepository(
 
     private fun parseError(raw: String?): String? {
         if (raw.isNullOrBlank()) return null
-        return runCatching { AppJson.decodeFromString<ApiError>(raw).error }.getOrNull()
+        val e = runCatching { AppJson.decodeFromString<ApiError>(raw) }.getOrNull() ?: return null
+        return e.detail ?: e.error ?: e.title
     }
 }
 
