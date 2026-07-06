@@ -29,18 +29,22 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.domitara.di.appViewModel
 import com.domitara.ui.common.ActionErrorHost
+import com.domitara.ui.common.Async
+import com.domitara.ui.common.ErrorState
+import com.domitara.ui.common.LoadingState
 
 @Composable
-fun AddItemScreen(onBack: () -> Unit, onCreated: (String) -> Unit) {
-    val vm = appViewModel { AddItemViewModel(it.dataRepository) }
+fun EditItemScreen(itemId: String, onBack: () -> Unit, onSaved: (String) -> Unit) {
+    val vm = appViewModel { EditItemViewModel(it.dataRepository, itemId) }
+    val loadState by vm.loadState.collectAsStateWithLifecycle()
     val locations by vm.locations.collectAsStateWithLifecycle()
     val labels by vm.labels.collectAsStateWithLifecycle()
     val saving by vm.saving.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
-    val created by vm.created.collectAsStateWithLifecycle()
+    val saved by vm.saved.collectAsStateWithLifecycle()
 
-    LaunchedEffect(created) {
-        created?.let { onCreated(it.id) }
+    LaunchedEffect(saved) {
+        saved?.let { onSaved(it.id) }
     }
 
     ActionErrorHost(error, vm::clearError) {
@@ -49,30 +53,35 @@ fun AddItemScreen(onBack: () -> Unit, onCreated: (String) -> Unit) {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Text("Add item", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text("Edit item", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 if (saving) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(end = 12.dp))
-                } else {
+                } else if (loadState is Async.Success) {
                     TextButton(onClick = vm::submit) { Text("Save") }
                 }
             }
             HorizontalDivider()
 
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                ItemFormFields(vm = vm, locations = locations, labels = labels)
+            when (val s = loadState) {
+                Async.Loading -> LoadingState()
+                is Async.Failure -> ErrorState(s.message, onRetry = vm::load)
+                is Async.Success ->
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ItemFormFields(vm = vm, locations = locations, labels = labels)
 
-                Spacer(Modifier.padding(top = 8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = vm::submit, enabled = !saving) { Text("Save item") }
-                    OutlinedButton(onClick = onBack) { Text("Cancel") }
-                }
-                Spacer(Modifier.padding(bottom = 24.dp))
+                        Spacer(Modifier.padding(top = 8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = vm::submit, enabled = !saving) { Text("Save changes") }
+                            OutlinedButton(onClick = onBack) { Text("Cancel") }
+                        }
+                        Spacer(Modifier.padding(bottom = 24.dp))
+                    }
             }
         }
     }

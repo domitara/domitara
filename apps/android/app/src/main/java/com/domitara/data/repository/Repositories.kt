@@ -223,6 +223,20 @@ class DataRepository(
     ) = call { it.listItems(q, locationId, labelId, includeQuick) }
     suspend fun getItem(id: String) = call { it.getItem(id) }
     suspend fun createItem(body: CreateItemInput) = call { it.createItem(body) }
+    suspend fun updateItem(id: String, body: CreateItemInput) = call { it.updateItem(id, body) }
+    suspend fun deleteItem(id: String) = call { it.deleteItem(id) }
+    suspend fun listItemPhotos(itemId: String) = call { it.listItemPhotos(itemId) }
+    suspend fun uploadItemPhoto(itemId: String, uri: Uri) = call { svc ->
+        svc.uploadItemPhoto(itemId, readUploadPart(uri, "photo"))
+    }
+    suspend fun deleteItemPhoto(itemId: String, photoId: String) =
+        call { it.deleteItemPhoto(itemId, photoId) }
+    suspend fun listItemDocuments(itemId: String) = call { it.listItemDocuments(itemId) }
+    suspend fun uploadItemDocument(itemId: String, uri: Uri) = call { svc ->
+        svc.uploadItemDocument(itemId, readUploadPart(uri, "document"))
+    }
+    suspend fun deleteItemDocument(itemId: String, documentId: String) =
+        call { it.deleteItemDocument(itemId, documentId) }
     suspend fun listLocations() = call { it.listLocations() }
     suspend fun createLocation(body: CreateLocationInput) = call { it.createLocation(body) }
     suspend fun listLabels() = call { it.listLabels() }

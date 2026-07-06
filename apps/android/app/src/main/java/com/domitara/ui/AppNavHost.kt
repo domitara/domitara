@@ -11,6 +11,7 @@ import com.domitara.ui.screens.dashboard.DashboardScreen
 import com.domitara.ui.screens.home.HomeDetailScreen
 import com.domitara.ui.screens.items.AddItemScreen
 import com.domitara.ui.screens.items.AllItemsScreen
+import com.domitara.ui.screens.items.EditItemScreen
 import com.domitara.ui.screens.items.ItemDetailScreen
 import com.domitara.ui.screens.labels.LabelsScreen
 import com.domitara.ui.screens.locations.LocationsScreen
@@ -43,7 +44,29 @@ fun AppNavHost(navController: NavHostController) {
             arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
         ) { entry ->
             val itemId = entry.arguments?.getString("itemId").orEmpty()
-            ItemDetailScreen(itemId = itemId, onBack = { navController.popBackStack() })
+            ItemDetailScreen(
+                itemId = itemId,
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate(Routes.itemEdit(it)) },
+            )
+        }
+
+        composable(
+            route = Routes.ITEM_EDIT,
+            arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
+        ) { entry ->
+            val itemId = entry.arguments?.getString("itemId").orEmpty()
+            EditItemScreen(
+                itemId = itemId,
+                onBack = { navController.popBackStack() },
+                onSaved = { id ->
+                    // Pop both the edit screen and the (now-stale) detail screen it was
+                    // opened from, so the fresh detail screen replaces it rather than stacking.
+                    navController.navigate(Routes.itemDetail(id)) {
+                        popUpTo(Routes.ITEM_DETAIL) { inclusive = true }
+                    }
+                },
+            )
         }
 
         composable(Routes.ITEM_NEW) {

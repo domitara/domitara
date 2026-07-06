@@ -221,6 +221,27 @@ data class Item(
 )
 
 @Serializable
+data class ItemPhoto(
+    val id: String,
+    val itemId: String,
+    val filename: String,
+    val contentType: String,
+    val url: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class ItemDocument(
+    val id: String,
+    val itemId: String,
+    val filename: String,
+    val contentType: String,
+    val url: String,
+    val size: Long,
+    val createdAt: String,
+)
+
+@Serializable
 data class Reminder(
     val id: String,
     val key: String,
