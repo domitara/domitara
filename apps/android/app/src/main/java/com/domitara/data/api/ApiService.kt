@@ -18,6 +18,8 @@ import com.domitara.data.dto.HomeDocument
 import com.domitara.data.dto.HomeMember
 import com.domitara.data.dto.HomePhoto
 import com.domitara.data.dto.Item
+import com.domitara.data.dto.ItemDocument
+import com.domitara.data.dto.ItemPhoto
 import com.domitara.data.dto.Label
 import com.domitara.data.dto.Location
 import com.domitara.data.dto.MaintenanceLog
@@ -166,6 +168,38 @@ interface ApiService {
 
     @POST("items")
     suspend fun createItem(@Body body: CreateItemInput): Item
+
+    @PUT("items/{id}")
+    suspend fun updateItem(@Path("id") id: String, @Body body: CreateItemInput): Item
+
+    @DELETE("items/{id}")
+    suspend fun deleteItem(@Path("id") id: String)
+
+    @GET("items/{itemId}/photos")
+    suspend fun listItemPhotos(@Path("itemId") itemId: String): List<ItemPhoto>
+
+    @Multipart
+    @POST("items/{itemId}/photos")
+    suspend fun uploadItemPhoto(
+        @Path("itemId") itemId: String,
+        @Part photo: MultipartBody.Part,
+    ): ItemPhoto
+
+    @DELETE("items/{itemId}/photos/{photoId}")
+    suspend fun deleteItemPhoto(@Path("itemId") itemId: String, @Path("photoId") photoId: String)
+
+    @GET("items/{itemId}/documents")
+    suspend fun listItemDocuments(@Path("itemId") itemId: String): List<ItemDocument>
+
+    @Multipart
+    @POST("items/{itemId}/documents")
+    suspend fun uploadItemDocument(
+        @Path("itemId") itemId: String,
+        @Part document: MultipartBody.Part,
+    ): ItemDocument
+
+    @DELETE("items/{itemId}/documents/{documentId}")
+    suspend fun deleteItemDocument(@Path("itemId") itemId: String, @Path("documentId") documentId: String)
 
     @GET("locations")
     suspend fun listLocations(): List<Location>

@@ -25,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
@@ -57,8 +56,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.domitara.data.dto.FloorPlanArea
@@ -77,6 +74,7 @@ import com.domitara.ui.common.EmptyState
 import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LabelValue
 import com.domitara.ui.common.LoadingState
+import com.domitara.ui.common.PhotoViewerDialog
 import com.domitara.ui.common.formatBytes
 import com.domitara.ui.common.formatCurrency
 import com.domitara.ui.common.parseHexColor
@@ -277,32 +275,6 @@ private fun PhotosTab(vm: HomeDetailViewModel) {
             description = photo.filename,
             onDismiss = { photoToView = null },
         )
-    }
-}
-
-@Composable
-private fun PhotoViewerDialog(url: String, description: String?, onDismiss: () -> Unit) {
-    val container = LocalAppContainer.current
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().clickable(onClick = onDismiss).background(Color.Black.copy(alpha = 0.9f))) {
-            AsyncImage(
-                model = url,
-                imageLoader = container.imageLoader,
-                contentDescription = description,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(16.dp).align(Alignment.Center),
-            )
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.4f)),
-            ) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
-            }
-        }
     }
 }
 

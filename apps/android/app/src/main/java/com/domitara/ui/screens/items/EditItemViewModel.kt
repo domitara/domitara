@@ -13,12 +13,19 @@ import com.domitara.data.dto.Label
 import com.domitara.data.dto.Location
 import com.domitara.data.dto.LocationType
 import com.domitara.data.repository.DataRepository
+import com.domitara.ui.common.Async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemFormState {
+class EditItemViewModel(
+    private val repo: DataRepository,
+    private val itemId: String,
+) : ViewModel(), ItemFormState {
+
+    private val _loadState = MutableStateFlow<Async<Unit>>(Async.Loading)
+    val loadState: StateFlow<Async<Unit>> = _loadState.asStateFlow()
 
     private val _locations = MutableStateFlow<List<Location>>(emptyList())
     val locations: StateFlow<List<Location>> = _locations.asStateFlow()
@@ -42,7 +49,7 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
     override val warranty = MutableStateFlow("")
     override val insured = MutableStateFlow(false)
     override val notes = MutableStateFlow("")
-    override val assetId = MutableStateFlow(generateAssetId())
+    override val assetId = MutableStateFlow("")
 
     private val _saving = MutableStateFlow(false)
     val saving: StateFlow<Boolean> = _saving.asStateFlow()
@@ -50,8 +57,8 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _created = MutableStateFlow<Item?>(null)
-    val created: StateFlow<Item?> = _created.asStateFlow()
+    private val _saved = MutableStateFlow<Item?>(null)
+    val saved: StateFlow<Item?> = _saved.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -60,6 +67,36 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
         viewModelScope.launch {
             runCatching { repo.listLabels() }.onSuccess { _labels.value = it }
         }
+        load()
+    }
+
+    fun load() {
+        viewModelScope.launch {
+            _loadState.value = Async.Loading
+            runCatching { repo.getItem(itemId) }
+                .onSuccess { populate(it); _loadState.value = Async.Success(Unit) }
+                .onFailure { _loadState.value = Async.Failure(it.toUserMessage("Failed to load item")) }
+        }
+    }
+
+    private fun populate(item: Item) {
+        name.value = item.name
+        description.value = item.description ?: ""
+        locationId.value = item.locationId
+        gridRow.value = item.gridRow
+        gridCol.value = item.gridCol
+        labelIds.value = item.labelIds.toSet()
+        status.value = item.status
+        tier.value = item.tier
+        manufacturer.value = item.manufacturer ?: ""
+        model.value = item.model ?: ""
+        serial.value = item.serial ?: ""
+        purchasePrice.value = item.purchasePrice?.toString() ?: ""
+        purchasedAt.value = item.purchasedAt ?: ""
+        warranty.value = item.warranty ?: ""
+        insured.value = item.insured
+        notes.value = item.notes ?: ""
+        assetId.value = item.assetId ?: ""
     }
 
     override fun regenerateAssetId() { assetId.value = generateAssetId() }
@@ -115,7 +152,8 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
         viewModelScope.launch {
             _saving.value = true
             runCatching {
-                repo.createItem(
+                repo.updateItem(
+                    itemId,
                     CreateItemInput(
                         name = name.value.trim(),
                         description = description.value.trim().ifBlank { null },
@@ -137,8 +175,8 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
                     ),
                 )
             }
-                .onSuccess { _created.value = it }
-                .onFailure { _error.value = it.toUserMessage("Couldn't create item") }
+                .onSuccess { _saved.value = it }
+                .onFailure { _error.value = it.toUserMessage("Couldn't save item") }
             _saving.value = false
         }
     }
