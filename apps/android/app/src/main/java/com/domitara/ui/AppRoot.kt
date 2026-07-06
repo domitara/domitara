@@ -145,5 +145,6 @@ private fun titleFor(route: String?): String = when (route) {
     Routes.MAINTENANCE -> "Maintenance"
     Routes.ASSET_IDS -> "Asset IDs"
     Routes.PROFILE -> "Profile & Settings"
+    Routes.ITEM_NEW -> "Add Item"
     else -> "Domitara"
 }

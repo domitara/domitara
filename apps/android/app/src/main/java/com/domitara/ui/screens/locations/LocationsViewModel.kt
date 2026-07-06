@@ -3,6 +3,7 @@ package com.domitara.ui.screens.locations
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.domitara.data.api.toUserMessage
+import com.domitara.data.dto.CreateLocationInput
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Location
 import com.domitara.data.dto.LocationType
@@ -29,6 +30,11 @@ class LocationsViewModel(
 
     private val _items = MutableStateFlow<Async<List<Item>>>(Async.Loading)
     val items: StateFlow<Async<List<Item>>> = _items.asStateFlow()
+
+    private val _actionError = MutableStateFlow<String?>(null)
+    val actionError: StateFlow<String?> = _actionError.asStateFlow()
+
+    fun clearActionError() { _actionError.value = null }
 
     init {
         // Reload whenever the active home changes (and for the initial value).
@@ -64,4 +70,30 @@ class LocationsViewModel(
     }
 
     fun clearSelection() { _selected.value = null }
+
+    fun createLocation(
+        name: String,
+        parentId: String?,
+        description: String?,
+        locationType: LocationType,
+        gridRows: Int?,
+        gridCols: Int?,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                repo.createLocation(
+                    CreateLocationInput(
+                        name = name,
+                        parentId = parentId,
+                        description = description,
+                        locationType = locationType,
+                        gridRows = gridRows,
+                        gridCols = gridCols,
+                    ),
+                )
+            }
+                .onSuccess { load() }
+                .onFailure { _actionError.value = it.toUserMessage("Couldn't create location") }
+        }
+    }
 }

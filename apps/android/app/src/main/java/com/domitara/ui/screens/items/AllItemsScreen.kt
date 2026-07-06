@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
@@ -53,9 +54,12 @@ import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LoadingState
 
 @Composable
-fun AllItemsScreen(onOpenItem: (String) -> Unit) {
+fun AllItemsScreen(onOpenItem: (String) -> Unit, onAddItem: () -> Unit = {}) {
     val vm = appViewModel { AllItemsViewModel(it.dataRepository, it.activeHomeId) }
-    LaunchedEffect(Unit) { vm.start() }
+    LaunchedEffect(Unit) {
+        vm.start()
+        vm.reloadNow()
+    }
 
     val query by vm.query.collectAsStateWithLifecycle()
     val itemsState by vm.displayedItems.collectAsStateWithLifecycle()
@@ -66,19 +70,25 @@ fun AllItemsScreen(onOpenItem: (String) -> Unit) {
     val dateFilter by vm.dateFilter.collectAsStateWithLifecycle()
     val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
     val viewMode by vm.viewMode.collectAsStateWithLifecycle()
+    val includeQuick by vm.includeQuick.collectAsStateWithLifecycle()
 
     val labelsById = remember(labels) { labels.associateBy { it.id } }
     val locationNames = remember(locations) { locations.associate { it.id to it.name } }
 
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = vm::setQuery,
-            placeholder = { Text("Search items…") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = vm::setQuery,
+                placeholder = { Text("Search items…") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                singleLine = true,
+                modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            IconButton(onClick = onAddItem) {
+                Icon(Icons.Filled.Add, contentDescription = "Add item")
+            }
+        }
 
         // Filter / sort toolbar (scrollable) + grid/list toggle (fixed).
         Row(
@@ -115,6 +125,11 @@ fun AllItemsScreen(onOpenItem: (String) -> Unit) {
                     options = SortOrder.entries.map { it.label to it },
                     selectedValue = sortOrder,
                     onSelect = vm::setSortOrder,
+                )
+                FilterChip(
+                    selected = includeQuick,
+                    onClick = { vm.setIncludeQuick(!includeQuick) },
+                    label = { Text("Quick items") },
                 )
             }
             IconButton(
