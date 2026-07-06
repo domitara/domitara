@@ -16,4 +16,6 @@ object Routes {
 
     const val ITEM_DETAIL = "item_detail/{itemId}"
     fun itemDetail(itemId: String) = "item_detail/$itemId"
+
+    const val ITEM_NEW = "item_new"
 }

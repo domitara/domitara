@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import com.domitara.ui.screens.assetids.AssetIdsScreen
 import com.domitara.ui.screens.dashboard.DashboardScreen
 import com.domitara.ui.screens.home.HomeDetailScreen
+import com.domitara.ui.screens.items.AddItemScreen
 import com.domitara.ui.screens.items.AllItemsScreen
 import com.domitara.ui.screens.items.ItemDetailScreen
 import com.domitara.ui.screens.labels.LabelsScreen
@@ -24,7 +25,9 @@ fun AppNavHost(navController: NavHostController) {
 
     NavHost(navController = navController, startDestination = Routes.DASHBOARD) {
         composable(Routes.DASHBOARD) { DashboardScreen(onOpenItem = openItem) }
-        composable(Routes.ITEMS) { AllItemsScreen(onOpenItem = openItem) }
+        composable(Routes.ITEMS) {
+            AllItemsScreen(onOpenItem = openItem, onAddItem = { navController.navigate(Routes.ITEM_NEW) })
+        }
         composable(Routes.SEARCH) { SearchScreen(onOpenItem = openItem) }
         composable(Routes.LOCATIONS) { LocationsScreen() }
         composable(Routes.LABELS) { LabelsScreen(onOpenItem = openItem) }
@@ -41,6 +44,17 @@ fun AppNavHost(navController: NavHostController) {
         ) { entry ->
             val itemId = entry.arguments?.getString("itemId").orEmpty()
             ItemDetailScreen(itemId = itemId, onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.ITEM_NEW) {
+            AddItemScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { id ->
+                    navController.navigate(Routes.itemDetail(id)) {
+                        popUpTo(Routes.ITEM_NEW) { inclusive = true }
+                    }
+                },
+            )
         }
     }
 }

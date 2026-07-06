@@ -2,6 +2,7 @@ package com.domitara.ui.screens.locations
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,17 +17,28 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -35,6 +47,7 @@ import com.domitara.data.dto.Item
 import com.domitara.data.dto.Location
 import com.domitara.data.dto.LocationType
 import com.domitara.di.appViewModel
+import com.domitara.ui.common.ActionErrorHost
 import com.domitara.ui.common.Async
 import com.domitara.ui.common.EmptyState
 import com.domitara.ui.common.ErrorState
@@ -48,45 +61,65 @@ fun LocationsScreen() {
     val vm = appViewModel { LocationsViewModel(it.dataRepository, it.activeHomeId) }
     val locationsState by vm.locations.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
+    val actionError by vm.actionError.collectAsStateWithLifecycle()
+    var showAdd by remember { mutableStateOf(false) }
 
-    if (selected != null) {
-        LocationDetail(location = selected!!, vm = vm)
-        return
-    }
+    ActionErrorHost(actionError, vm::clearActionError) {
+        if (selected != null) {
+            LocationDetail(location = selected!!, vm = vm)
+        } else {
+            val query by vm.query.collectAsStateWithLifecycle()
+            val expanded by vm.expanded.collectAsStateWithLifecycle()
+            val allLocations = (locationsState as? Async.Success)?.data ?: emptyList()
 
-    val query by vm.query.collectAsStateWithLifecycle()
-    val expanded by vm.expanded.collectAsStateWithLifecycle()
+            Column(Modifier.fillMaxSize()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = vm::setQuery,
+                        placeholder = { Text("Search locations…") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    IconButton(onClick = { showAdd = true }) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add location")
+                    }
+                }
 
-    Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = vm::setQuery,
-            placeholder = { Text("Search locations…") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-
-        when (val s = locationsState) {
-            Async.Loading -> LoadingState()
-            is Async.Failure -> ErrorState(s.message, onRetry = vm::load)
-            is Async.Success -> {
-                val rows = buildRows(s.data, expanded, query)
-                if (rows.isEmpty()) {
-                    EmptyState("No locations found")
-                } else {
-                    LazyColumn(Modifier.fillMaxSize()) {
-                        items(rows, key = { it.location.id }) { row ->
-                            LocationRow(
-                                row = row,
-                                isExpanded = row.location.id in expanded,
-                                onToggle = { vm.toggleExpand(row.location.id) },
-                                onSelect = { vm.select(row.location) },
-                            )
-                            HorizontalDivider()
+                when (val s = locationsState) {
+                    Async.Loading -> LoadingState()
+                    is Async.Failure -> ErrorState(s.message, onRetry = vm::load)
+                    is Async.Success -> {
+                        val rows = buildRows(s.data, expanded, query)
+                        if (rows.isEmpty()) {
+                            EmptyState("No locations found")
+                        } else {
+                            LazyColumn(Modifier.fillMaxSize()) {
+                                items(rows, key = { it.location.id }) { row ->
+                                    LocationRow(
+                                        row = row,
+                                        isExpanded = row.location.id in expanded,
+                                        onToggle = { vm.toggleExpand(row.location.id) },
+                                        onSelect = { vm.select(row.location) },
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
                         }
                     }
                 }
+            }
+
+            if (showAdd) {
+                AddLocationDialog(
+                    locations = allLocations,
+                    onDismiss = { showAdd = false },
+                    onCreate = { name, parentId, description, type, rows, cols ->
+                        vm.createLocation(name, parentId, description, type, rows, cols)
+                        showAdd = false
+                    },
+                )
             }
         }
     }
@@ -321,4 +354,117 @@ private fun CabinetGridRow(
             }
         }
     }
+}
+
+@Composable
+private fun AddLocationDialog(
+    locations: List<Location>,
+    onDismiss: () -> Unit,
+    onCreate: (
+        name: String,
+        parentId: String?,
+        description: String?,
+        type: LocationType,
+        gridRows: Int?,
+        gridCols: Int?,
+    ) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf(LocationType.ROOM) }
+    var gridRows by remember { mutableStateOf("") }
+    var gridCols by remember { mutableStateOf("") }
+    var parentId by remember { mutableStateOf<String?>(null) }
+    var parentMenuExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add location") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = type == LocationType.ROOM,
+                        onClick = { type = LocationType.ROOM },
+                        label = { Text("Room") },
+                    )
+                    FilterChip(
+                        selected = type == LocationType.CONTAINER,
+                        onClick = { type = LocationType.CONTAINER },
+                        label = { Text("Container") },
+                    )
+                }
+                if (type == LocationType.CONTAINER) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = gridRows,
+                            onValueChange = { gridRows = it.filter(Char::isDigit) },
+                            label = { Text("Grid rows") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = gridCols,
+                            onValueChange = { gridCols = it.filter(Char::isDigit) },
+                            label = { Text("Grid cols") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Box {
+                    FilterChip(
+                        selected = parentId != null,
+                        onClick = { parentMenuExpanded = true },
+                        label = { Text(locations.find { it.id == parentId }?.name ?: "No parent") },
+                        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+                    )
+                    DropdownMenu(expanded = parentMenuExpanded, onDismissRequest = { parentMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text("No parent") },
+                            onClick = { parentId = null; parentMenuExpanded = false },
+                            trailingIcon = if (parentId == null) {
+                                { Icon(Icons.Filled.Check, contentDescription = "Selected") }
+                            } else null,
+                        )
+                        locations.filter { it.locationType == LocationType.ROOM }.sortedBy { it.name }.forEach { loc ->
+                            DropdownMenuItem(
+                                text = { Text(loc.name) },
+                                onClick = { parentId = loc.id; parentMenuExpanded = false },
+                                trailingIcon = if (parentId == loc.id) {
+                                    { Icon(Icons.Filled.Check, contentDescription = "Selected") }
+                                } else null,
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description (optional)") },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onCreate(
+                        name.ifBlank { "New location" },
+                        parentId,
+                        description.ifBlank { null },
+                        type,
+                        if (type == LocationType.CONTAINER) gridRows.toIntOrNull() else null,
+                        if (type == LocationType.CONTAINER) gridCols.toIntOrNull() else null,
+                    )
+                },
+            ) { Text("Create") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

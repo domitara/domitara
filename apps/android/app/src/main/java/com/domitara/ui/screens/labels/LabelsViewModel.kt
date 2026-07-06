@@ -3,6 +3,7 @@ package com.domitara.ui.screens.labels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.domitara.data.api.toUserMessage
+import com.domitara.data.dto.CreateLabelInput
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Label
 import com.domitara.data.repository.DataRepository
@@ -28,6 +29,11 @@ class LabelsViewModel(
 
     private val _locationNames = MutableStateFlow<Map<String, String>>(emptyMap())
     val locationNames: StateFlow<Map<String, String>> = _locationNames.asStateFlow()
+
+    private val _actionError = MutableStateFlow<String?>(null)
+    val actionError: StateFlow<String?> = _actionError.asStateFlow()
+
+    fun clearActionError() { _actionError.value = null }
 
     init {
         // Reload whenever the active home changes (and for the initial value).
@@ -60,5 +66,13 @@ class LabelsViewModel(
 
     fun clearSelection() {
         _selected.value = null
+    }
+
+    fun createLabel(name: String, color: String) {
+        viewModelScope.launch {
+            runCatching { repo.createLabel(CreateLabelInput(name = name, color = color)) }
+                .onSuccess { load() }
+                .onFailure { _actionError.value = it.toUserMessage("Couldn't create label") }
+        }
     }
 }

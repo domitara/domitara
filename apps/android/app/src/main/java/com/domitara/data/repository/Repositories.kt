@@ -9,6 +9,9 @@ import com.domitara.data.dto.AddMemberInput
 import com.domitara.data.dto.ApiError
 import com.domitara.data.dto.CreateBreakerInput
 import com.domitara.data.dto.CreateFloorPlanAreaInput
+import com.domitara.data.dto.CreateItemInput
+import com.domitara.data.dto.CreateLabelInput
+import com.domitara.data.dto.CreateLocationInput
 import com.domitara.data.dto.CreateMaintenanceInput
 import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
@@ -219,8 +222,11 @@ class DataRepository(
         includeQuick: Boolean? = null,
     ) = call { it.listItems(q, locationId, labelId, includeQuick) }
     suspend fun getItem(id: String) = call { it.getItem(id) }
+    suspend fun createItem(body: CreateItemInput) = call { it.createItem(body) }
     suspend fun listLocations() = call { it.listLocations() }
+    suspend fun createLocation(body: CreateLocationInput) = call { it.createLocation(body) }
     suspend fun listLabels() = call { it.listLabels() }
+    suspend fun createLabel(body: CreateLabelInput) = call { it.createLabel(body) }
 
     // Maintenance logs & schedules (scoped to the active home via X-Active-Home header)
     suspend fun listMaintenance(itemId: String? = null) = call { it.listMaintenance(itemId) }

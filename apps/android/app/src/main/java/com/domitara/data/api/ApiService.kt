@@ -3,6 +3,9 @@ package com.domitara.data.api
 import com.domitara.data.dto.AddMemberInput
 import com.domitara.data.dto.CreateBreakerInput
 import com.domitara.data.dto.CreateFloorPlanAreaInput
+import com.domitara.data.dto.CreateItemInput
+import com.domitara.data.dto.CreateLabelInput
+import com.domitara.data.dto.CreateLocationInput
 import com.domitara.data.dto.CreateMaintenanceInput
 import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
@@ -161,11 +164,20 @@ interface ApiService {
     @GET("items/{id}")
     suspend fun getItem(@Path("id") id: String): Item
 
+    @POST("items")
+    suspend fun createItem(@Body body: CreateItemInput): Item
+
     @GET("locations")
     suspend fun listLocations(): List<Location>
 
+    @POST("locations")
+    suspend fun createLocation(@Body body: CreateLocationInput): Location
+
     @GET("labels")
     suspend fun listLabels(): List<Label>
+
+    @POST("labels")
+    suspend fun createLabel(@Body body: CreateLabelInput): Label
 
     // Maintenance logs & schedules (home scope comes from the X-Active-Home header)
     @GET("maintenance")

@@ -380,6 +380,43 @@ data class CreateFloorPlanAreaInput(
     val color: String? = null,
 )
 
+@Serializable
+data class CreateLocationInput(
+    val name: String,
+    val parentId: String? = null,
+    val description: String? = null,
+    val locationType: LocationType? = null,
+    val gridRows: Int? = null,
+    val gridCols: Int? = null,
+)
+
+@Serializable
+data class CreateLabelInput(
+    val name: String,
+    val color: String? = null,
+)
+
+@Serializable
+data class CreateItemInput(
+    val name: String,
+    val description: String? = null,
+    val locationId: String? = null,
+    val status: ItemStatus? = null,
+    val manufacturer: String? = null,
+    val model: String? = null,
+    val serial: String? = null,
+    val purchasePrice: Double? = null,
+    val purchasedAt: String? = null,
+    val warranty: String? = null,
+    val insured: Boolean = false,
+    val notes: String? = null,
+    val assetId: String? = null,
+    val labelIds: List<String> = emptyList(),
+    val tier: ItemTier? = null,
+    val gridRow: Int? = null,
+    val gridCol: Int? = null,
+)
+
 /**
  * Shape of the API's error envelope. Huma (the Go API framework) returns
  * RFC7807 problem-details JSON, e.g. `{ "title": "...", "detail": "...", "status": 422 }`,

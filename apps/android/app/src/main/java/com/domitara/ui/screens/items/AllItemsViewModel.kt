@@ -52,6 +52,7 @@ class AllItemsViewModel(
     val dateFilter = MutableStateFlow(DateFilter.ANY)
     val sortOrder = MutableStateFlow(SortOrder.RECENT)
     val viewMode = MutableStateFlow(ViewMode.LIST)
+    val includeQuick = MutableStateFlow(false)
 
     private val _items = MutableStateFlow<Async<List<Item>>>(Async.Loading)
 
@@ -78,14 +79,14 @@ class AllItemsViewModel(
         _started = true
         loadSupporting()
         viewModelScope.launch {
-            combine(query.debounce(300), selectedLocation) { q, loc -> q to loc }
-                .collectLatest { (q, loc) -> reload(q, loc) }
+            combine(query.debounce(300), selectedLocation, includeQuick) { q, loc, quick -> Triple(q, loc, quick) }
+                .collectLatest { (q, loc, quick) -> reload(q, loc, quick) }
         }
         // Re-scope to the new home when the active home changes.
         viewModelScope.launch {
             activeHome.drop(1).collectLatest {
                 loadSupporting()
-                reload(query.value, selectedLocation.value)
+                reload(query.value, selectedLocation.value, includeQuick.value)
             }
         }
     }
@@ -112,6 +113,7 @@ class AllItemsViewModel(
     fun setDateFilter(f: DateFilter) { dateFilter.value = f }
     fun setSortOrder(s: SortOrder) { sortOrder.value = s }
     fun setViewMode(m: ViewMode) { viewMode.value = m }
+    fun setIncludeQuick(v: Boolean) { includeQuick.value = v }
 
     /** Resets every filter (search, location, labels, date) to its default. */
     fun clearFilters() {
@@ -126,12 +128,14 @@ class AllItemsViewModel(
             selectedLabels.value.isNotEmpty() || dateFilter.value != DateFilter.ANY
 
     fun reloadNow() {
-        viewModelScope.launch { reload(query.value, selectedLocation.value) }
+        viewModelScope.launch { reload(query.value, selectedLocation.value, includeQuick.value) }
     }
 
-    private suspend fun reload(q: String, locationId: String?) {
+    private suspend fun reload(q: String, locationId: String?, includeQuick: Boolean) {
         _items.value = Async.Loading
-        runCatching { repo.listItems(q = q.ifBlank { null }, locationId = locationId) }
+        runCatching {
+            repo.listItems(q = q.ifBlank { null }, locationId = locationId, includeQuick = includeQuick)
+        }
             .onSuccess { _items.value = Async.Success(it) }
             .onFailure {
                 _items.value = Async.Failure(it.toUserMessage("Failed to load items"))
