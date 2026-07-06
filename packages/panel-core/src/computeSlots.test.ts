@@ -98,6 +98,34 @@ describe('computeSlots — main breaker', () => {
   });
 });
 
+describe('computeSlots — double-pole on an even (right-column) slot', () => {
+  it('does not desync row numbering for subsequent slots', () => {
+    // A double-pole on an even slot (e.g. a 240V sub-panel feed) previously
+    // failed to advance the row counter, causing every later slot's row to
+    // collide with an earlier one and get painted over.
+    const breakers = [
+      makeBreaker({ slot: 0, breaker_type: 'main', label: 'Main 200A' }),
+      makeBreaker({ slot: 2, breaker_type: 'double_pole', label: 'Sub Panel', amps: 40 }),
+      makeBreaker({ slot: 1, label: 'Laundry' }),
+      makeBreaker({ slot: 37, label: 'Attic Fan' }),
+    ];
+    const slots = computeSlots({ total_slots: 40 }, breakers);
+
+    const seen = new Set<string>();
+    for (const s of slots) {
+      for (let r = s.row; r < s.row + s.rowSpan; r++) {
+        const key = `${r}:${s.col}`;
+        expect(seen.has(key)).toBe(false);
+        seen.add(key);
+      }
+    }
+
+    const slot37 = slots.find((s) => s.slot === 37);
+    expect(slot37?.state).toBe('occupied');
+    expect(slot37?.breaker?.label).toBe('Attic Fan');
+  });
+});
+
 describe('computeSlots — mixed panel', () => {
   it('handles a realistic panel: main + standard + double-pole + blanks', () => {
     const breakers = [
