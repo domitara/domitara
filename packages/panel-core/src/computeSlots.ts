@@ -44,15 +44,15 @@ export function computeSlots(
     });
   }
 
-  // Occupied slots that are NOT the main breaker
-  const regularSlotsInUse = new Set(
-    breakers
-      .filter((b) => b.breaker_type !== 'main')
-      .map((b) => b.slot),
-  );
-
   // Grid rows start after the main breaker row (or at 1 if no main)
-  let gridRow = mainBreaker ? 2 : 1;
+  const gridBaseRow = mainBreaker ? 2 : 1;
+
+  // Row is derived directly from the slot number (1&2 -> row 0, 3&4 -> row 1, ...)
+  // so it stays correct even when a double-pole breaker consumes a slot out of
+  // the normal left/right alternation.
+  function rowForSlot(slot: number): number {
+    return gridBaseRow + Math.floor((slot - 1) / 2);
+  }
 
   // Track which slots have been rendered (secondary slot of a double-pole)
   const rendered = new Set<number>();
@@ -71,7 +71,7 @@ export function computeSlots(
       result.push({
         slot,
         col,
-        row: gridRow,
+        row: rowForSlot(slot),
         rowSpan: 2,
         state: 'occupied',
         breaker,
@@ -84,16 +84,13 @@ export function computeSlots(
       result.push({
         slot,
         col,
-        row: gridRow,
+        row: rowForSlot(slot),
         rowSpan: 1,
         state: breaker ? 'occupied' : 'blank',
         breaker: breaker ?? null,
         isUnlabeled: breaker ? !breaker.label : false,
       });
       rendered.add(slot);
-
-      // Advance grid row after each even slot (a complete pair)
-      if (!isOdd) gridRow++;
     }
   }
 
