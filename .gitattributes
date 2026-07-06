@@ -1,0 +1,26 @@
+# Normalize line endings for all text files to LF, regardless of the
+# platform or the local core.autocrlf setting. Without this, tools that
+# write files with LF endings (prettier, sqlc, gradle, tsc) conflict with
+# Windows checkouts using core.autocrlf=true (which checks files out as
+# CRLF), causing files to spuriously show as modified after every build.
+* text=auto eol=lf
+
+# Windows batch scripts need CRLF to run reliably via cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never touch line endings, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.jar binary
+*.keystore binary
+*.jks binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
