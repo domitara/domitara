@@ -7,15 +7,17 @@ slug: /
 
 Domitara is a self-hosted home inventory and management application — a modern replacement for Homebox.
 
+![Domitara dashboard](/img/web/dashboard.png)
+
 ## Features
 
-- **Inventory tracking** — Catalog everything you own with photos, purchase info, and serial numbers
-- **Locations** — Organize items by room and storage location
-- **Labels** — Tag items for quick filtering
-- **Asset IDs** — Generate and print QR code labels for physical items
-- **Maintenance** — Log and schedule maintenance for appliances and equipment
-- **Electrical panels** — Map circuit breakers and document your panel layouts
-- **Mobile app** — Native Android companion app (Kotlin / Jetpack Compose)
+- **[Inventory tracking](./features/inventory)** — Catalog everything you own with photos, documents, purchase info, serial numbers, and free-form custom fields
+- **[Locations & Labels](./features/locations-labels)** — Organize items by a room/container tree, and tag them with color-coded labels
+- **[Asset IDs](./features/asset-ids)** — Auto-generated codes for physical items, ready for printed labels
+- **[Maintenance](./features/maintenance)** — Reminders, recurring schedules, and a log of completed work — see [schedule ideas](./features/maintenance-schedules) for what to track
+- **[Electrical panels](./features/electrical-panels)** — Map circuit breakers, subpanels, and floor plan areas, and print a breaker directory
+- **[Homes & Members](./features/homes)** — Track multiple properties, invite members, and store home-level photos and documents
+- **[Mobile app](./mobile)** — Native Android companion app (Kotlin / Jetpack Compose)
 - **Multi-user** — Admin and member roles with per-user access
 
 ## Quick start

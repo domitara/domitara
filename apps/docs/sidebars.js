@@ -10,6 +10,21 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Features',
+      items: [
+        'features/inventory',
+        'features/locations-labels',
+        'features/asset-ids',
+        'features/maintenance',
+        'features/maintenance-schedules',
+        'features/electrical-panels',
+        'features/homes',
+      ],
+      collapsed: false,
+    },
+    'mobile',
+    {
+      type: 'category',
       label: 'API',
       items: ['api/overview'],
     },
