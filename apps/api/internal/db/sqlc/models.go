@@ -138,6 +138,19 @@ type Item struct {
 	GridCol       pgtype.Int4        `json:"grid_col"`
 }
 
+type ItemCustomField struct {
+	ID        string             `json:"id"`
+	ItemID    string             `json:"item_id"`
+	FieldKey  string             `json:"field_key"`
+	Label     string             `json:"label"`
+	Value     *string            `json:"value"`
+	ValueType string             `json:"value_type"`
+	Unit      *string            `json:"unit"`
+	SortOrder int32              `json:"sort_order"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type ItemDocument struct {
 	ID          string             `json:"id"`
 	ItemID      string             `json:"item_id"`

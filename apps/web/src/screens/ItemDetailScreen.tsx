@@ -28,7 +28,7 @@ import {
   IconFile,
   IconDownload,
 } from '@tabler/icons-react';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { modals } from '@mantine/modals';
 import {
@@ -504,6 +504,20 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
                         Quantity
                       </Text>
                       <Text size="sm">1</Text>
+                      {item.custom_fields.map((field) => (
+                        <Fragment key={field.key}>
+                          <Text size="sm" c="dimmed">
+                            {field.label}
+                          </Text>
+                          <Text size="sm">
+                            {field.value
+                              ? field.unit
+                                ? `${field.value} ${field.unit}`
+                                : field.value
+                              : '—'}
+                          </Text>
+                        </Fragment>
+                      ))}
                     </div>
                   </div>
                   {item.notes && (

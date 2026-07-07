@@ -31,3 +31,10 @@ SELECT COUNT(*) FROM items WHERE tier != 'quick';
 -- name: GetMaxGridCell :one
 SELECT COALESCE(MAX(grid_row), -1)::int AS max_row, COALESCE(MAX(grid_col), -1)::int AS max_col
 FROM items WHERE location_id = $1;
+
+-- name: DeleteItemCustomFields :exec
+DELETE FROM item_custom_fields WHERE item_id = $1;
+
+-- name: InsertItemCustomField :exec
+INSERT INTO item_custom_fields (item_id, field_key, label, value, value_type, unit, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7);

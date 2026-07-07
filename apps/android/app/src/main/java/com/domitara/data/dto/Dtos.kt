@@ -216,8 +216,18 @@ data class Item(
     val tier: ItemTier = ItemTier.FULL,
     val gridRow: Int? = null,
     val gridCol: Int? = null,
+    val customFields: List<CustomField> = emptyList(),
     val createdAt: String,
     val updatedAt: String,
+)
+
+@Serializable
+data class CustomField(
+    val key: String,
+    val label: String,
+    val value: String? = null,
+    val valueType: String = "text",
+    val unit: String? = null,
 )
 
 @Serializable
@@ -436,6 +446,7 @@ data class CreateItemInput(
     val tier: ItemTier? = null,
     val gridRow: Int? = null,
     val gridCol: Int? = null,
+    val customFields: List<CustomField> = emptyList(),
 )
 
 /**

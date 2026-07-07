@@ -6,6 +6,7 @@ import com.domitara.data.api.toUserMessage
 import com.domitara.data.dto.CreateItemInput
 import com.domitara.data.dto.CreateLabelInput
 import com.domitara.data.dto.CreateLocationInput
+import com.domitara.data.dto.CustomField
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.ItemStatus
 import com.domitara.data.dto.ItemTier
@@ -43,6 +44,7 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
     override val insured = MutableStateFlow(false)
     override val notes = MutableStateFlow("")
     override val assetId = MutableStateFlow(generateAssetId())
+    override val customFields = MutableStateFlow<List<CustomField>>(emptyList())
 
     private val _saving = MutableStateFlow(false)
     val saving: StateFlow<Boolean> = _saving.asStateFlow()
@@ -134,6 +136,7 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
                         tier = tier.value,
                         gridRow = gridRow.value,
                         gridCol = gridCol.value,
+                        customFields = customFields.value,
                     ),
                 )
             }
