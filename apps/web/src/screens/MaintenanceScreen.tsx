@@ -20,6 +20,7 @@ import {
   IconCheck,
   IconPencil,
   IconCalendar,
+  IconHelp,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import {
@@ -317,9 +318,23 @@ export function MaintenanceScreen() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Group justify="space-between">
-          <Title order={1} style={{ fontSize: '1.75rem' }}>
-            Maintenance
-          </Title>
+          <Group gap={6}>
+            <Title order={1} style={{ fontSize: '1.75rem' }}>
+              Maintenance
+            </Title>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="lg"
+              title="Schedule ideas"
+              component="a"
+              href="https://domitara.github.io/domitara/features/maintenance-schedules"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <IconHelp size={18} />
+            </ActionIcon>
+          </Group>
           <Group gap={8}>
             <Button
               size="sm"

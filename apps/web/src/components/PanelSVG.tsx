@@ -43,6 +43,9 @@ function truncate(text: string | null | undefined, maxChars: number): string {
   return text.length > maxChars ? text.slice(0, maxChars - 1) + '…' : text;
 }
 
+const LEGEND_ITEM_W = 90;
+const LEGEND_ROW_H = 18;
+
 export function PanelSVG({ panel, breakers, areas, onSlotClick, width = 380 }: PanelSVGProps) {
   const slots = computeSlots(panel, breakers as Parameters<typeof computeSlots>[1]);
 
@@ -52,7 +55,14 @@ export function PanelSVG({ panel, breakers, areas, onSlotClick, width = 380 }: P
   const maxRow = regularSlots.reduce((m, s) => Math.max(m, s.row + s.rowSpan - 1), 1);
   const mainHeight = mainSlot ? MAIN_H + SLOT_GAP : 0;
   const gridHeight = maxRow * (SLOT_H + SLOT_GAP);
-  const svgHeight = PANEL_PAD * 2 + mainHeight + gridHeight + 28; // 28 for legend
+
+  // Unique areas present in this panel for the legend
+  const presentAreas = areas.filter((a) => breakers.some((b) => b.floor_plan_area_id === a.id));
+  const legendCols = Math.max(1, Math.floor((width - PANEL_PAD * 2) / LEGEND_ITEM_W));
+  const legendRows = presentAreas.length > 0 ? Math.ceil(presentAreas.length / legendCols) : 0;
+  const legendHeight = legendRows > 0 ? legendRows * LEGEND_ROW_H + 10 : 0;
+
+  const svgHeight = PANEL_PAD * 2 + mainHeight + gridHeight + legendHeight;
 
   // Grid starts after padding + main breaker
   const gridY = PANEL_PAD + mainHeight;
@@ -77,9 +87,6 @@ export function PanelSVG({ panel, breakers, areas, onSlotClick, width = 380 }: P
     if (slot.state === 'main') return MAIN_H;
     return slot.rowSpan * SLOT_H + (slot.rowSpan - 1) * SLOT_GAP;
   }
-
-  // Unique areas present in this panel for the legend
-  const presentAreas = areas.filter((a) => breakers.some((b) => b.floor_plan_area_id === a.id));
 
   return (
     <svg
@@ -210,27 +217,32 @@ export function PanelSVG({ panel, breakers, areas, onSlotClick, width = 380 }: P
       {/* Legend */}
       {presentAreas.length > 0 && (
         <>
-          {presentAreas.map((area, i) => (
-            <g key={area.id}>
-              <rect
-                x={PANEL_PAD + i * 90}
-                y={svgHeight - 22}
-                width={10}
-                height={10}
-                rx={2}
-                fill={area.color}
-              />
-              <text
-                x={PANEL_PAD + i * 90 + 14}
-                y={svgHeight - 13}
-                fontSize={9}
-                fill={TEXT_DIM}
-                fontFamily="system-ui, sans-serif"
-              >
-                {truncate(area.name, 10)}
-              </text>
-            </g>
-          ))}
+          {presentAreas.map((area, i) => {
+            const col = i % legendCols;
+            const row = Math.floor(i / legendCols);
+            const rowY = svgHeight - legendHeight + 10 + row * LEGEND_ROW_H;
+            return (
+              <g key={area.id}>
+                <rect
+                  x={PANEL_PAD + col * LEGEND_ITEM_W}
+                  y={rowY}
+                  width={10}
+                  height={10}
+                  rx={2}
+                  fill={area.color}
+                />
+                <text
+                  x={PANEL_PAD + col * LEGEND_ITEM_W + 14}
+                  y={rowY + 9}
+                  fontSize={9}
+                  fill={TEXT_DIM}
+                  fontFamily="system-ui, sans-serif"
+                >
+                  {truncate(area.name, 10)}
+                </text>
+              </g>
+            );
+          })}
         </>
       )}
     </svg>
