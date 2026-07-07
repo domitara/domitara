@@ -49,6 +49,7 @@ type Querier interface {
 	DeleteHomeMember(ctx context.Context, arg DeleteHomeMemberParams) error
 	DeleteHomePhoto(ctx context.Context, id string) error
 	DeleteItem(ctx context.Context, id string) error
+	DeleteItemCustomFields(ctx context.Context, itemID string) error
 	DeleteItemDocument(ctx context.Context, id string) error
 	DeleteItemLabels(ctx context.Context, itemID string) error
 	DeleteItemPhoto(ctx context.Context, id string) error
@@ -81,6 +82,7 @@ type Querier interface {
 	GetUser(ctx context.Context, id int64) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserIDByEmail(ctx context.Context, email string) (int64, error)
+	InsertItemCustomField(ctx context.Context, arg InsertItemCustomFieldParams) error
 	InsertItemLabel(ctx context.Context, arg InsertItemLabelParams) error
 	ListAllLabels(ctx context.Context) ([]ListAllLabelsRow, error)
 	ListAllLocations(ctx context.Context) ([]ListAllLocationsRow, error)

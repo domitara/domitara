@@ -35,7 +35,8 @@ import {
   useCreateLabel,
   useCreateItem,
 } from '../api/queries';
-import { getLocationChain } from '../utils';
+import type { CustomField } from '../api/types';
+import { getLocationChain, slugify } from '../utils';
 
 function generateAssetId(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -90,6 +91,12 @@ export function AddItemScreen() {
   const [status, setStatus] = useState<'owned' | 'loaned' | 'missing'>('owned');
   const [tier, setTier] = useState<'quick' | 'full'>('full');
   const [gridCell, setGridCell] = useState<string | null>(null);
+
+  // Custom fields
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [showNewField, setShowNewField] = useState(false);
+  const [newFieldLabel, setNewFieldLabel] = useState('');
+  const [newFieldValue, setNewFieldValue] = useState('');
 
   // Product details
   const [manufacturer, setManufacturer] = useState('');
@@ -159,6 +166,23 @@ export function AddItemScreen() {
     }
   }
 
+  function handleAddCustomField() {
+    if (!newFieldLabel.trim()) return;
+    setCustomFields((prev) => [
+      ...prev,
+      {
+        key: slugify(newFieldLabel),
+        label: newFieldLabel.trim(),
+        value: newFieldValue.trim() || null,
+        value_type: 'text',
+        unit: null,
+      },
+    ]);
+    setShowNewField(false);
+    setNewFieldLabel('');
+    setNewFieldValue('');
+  }
+
   async function handleCreateLocation() {
     if (!newLocName.trim()) return;
     try {
@@ -218,6 +242,7 @@ export function AddItemScreen() {
         tier,
         grid_row: gridRow,
         grid_col: gridCol,
+        custom_fields: customFields,
       });
       navigate({ to: '/items/$itemId', params: { itemId: item.id } });
     } catch (e: unknown) {
@@ -559,6 +584,77 @@ export function AddItemScreen() {
               Quick items are hidden from dashboards and totals by default.
             </Text>
           </div>
+        </Stack>
+      </Paper>
+
+      {/* ── CUSTOM FIELDS ───────────────────────────────────────── */}
+      <Paper withBorder p={20} radius="md">
+        <Text fw={700} size="xs" tt="uppercase" lts="0.06em" c="dimmed" mb={14}>
+          Custom fields
+        </Text>
+        <Stack gap={14}>
+          {customFields.map((field, index) => (
+            <Group key={field.key} gap={8} align="flex-end">
+              <TextInput
+                label={field.unit ? `${field.label} (${field.unit})` : field.label}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  setCustomFields((prev) =>
+                    prev.map((f, i) => (i === index ? { ...f, value } : f))
+                  );
+                }}
+                style={{ flex: 1 }}
+              />
+              <ActionIcon
+                variant="default"
+                size={36}
+                onClick={() => setCustomFields((prev) => prev.filter((_, i) => i !== index))}
+              >
+                <IconX size={14} />
+              </ActionIcon>
+            </Group>
+          ))}
+          {!showNewField ? (
+            <button type="button" style={linkBtnStyle} onClick={() => setShowNewField(true)}>
+              <IconPlus size={12} />
+              Add custom field
+            </button>
+          ) : (
+            <Paper withBorder p={12} radius="sm" style={{ background: 'var(--dt-gray-0)' }}>
+              <Group gap={8} align="flex-end">
+                <TextInput
+                  label="Field name"
+                  value={newFieldLabel}
+                  onChange={(e) => setNewFieldLabel(e.currentTarget.value)}
+                  style={{ flex: 1 }}
+                  size="sm"
+                />
+                <TextInput
+                  label="Value"
+                  value={newFieldValue}
+                  onChange={(e) => setNewFieldValue(e.currentTarget.value)}
+                  style={{ flex: 1 }}
+                  size="sm"
+                />
+                <Button size="sm" onClick={handleAddCustomField} mb={1}>
+                  Add
+                </Button>
+                <ActionIcon
+                  variant="default"
+                  size={36}
+                  mb={1}
+                  onClick={() => {
+                    setShowNewField(false);
+                    setNewFieldLabel('');
+                    setNewFieldValue('');
+                  }}
+                >
+                  <IconX size={14} />
+                </ActionIcon>
+              </Group>
+            </Paper>
+          )}
         </Stack>
       </Paper>
 

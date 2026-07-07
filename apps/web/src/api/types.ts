@@ -2,6 +2,15 @@ export type UserRole = 'admin' | 'member';
 export type ItemStatus = 'owned' | 'loaned' | 'missing';
 export type LocationType = 'room' | 'container';
 export type ItemTier = 'quick' | 'full';
+export type CustomFieldValueType = 'text' | 'number' | 'date';
+
+export interface CustomField {
+  key: string;
+  label: string;
+  value: string | null;
+  value_type: CustomFieldValueType;
+  unit: string | null;
+}
 
 export interface User {
   id: number;
@@ -53,6 +62,7 @@ export interface Item {
   tier: ItemTier;
   grid_row: number | null;
   grid_col: number | null;
+  custom_fields: CustomField[];
   created_at: string;
   updated_at: string;
 }
@@ -102,6 +112,7 @@ export interface CreateItemInput {
   tier?: ItemTier;
   grid_row?: number;
   grid_col?: number;
+  custom_fields?: CustomField[];
 }
 
 export interface UpdateItemInput {
@@ -122,6 +133,7 @@ export interface UpdateItemInput {
   tier?: ItemTier;
   grid_row?: number;
   grid_col?: number;
+  custom_fields?: CustomField[];
 }
 
 export interface CreateUserInput {

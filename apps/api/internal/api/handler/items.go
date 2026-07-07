@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	crand "crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,26 +21,45 @@ import (
 
 // ItemRow is the API representation of an inventory item.
 type ItemRow struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Description   *string   `json:"description"`
-	LocationID    *string   `json:"location_id"`
-	Status        string    `json:"status"`
-	Manufacturer  *string   `json:"manufacturer"`
-	Model         *string   `json:"model"`
-	Serial        *string   `json:"serial"`
-	PurchasePrice *float64  `json:"purchase_price"`
-	PurchasedAt   *string   `json:"purchased_at"`
-	Warranty      *string   `json:"warranty"`
-	Insured       bool      `json:"insured"`
-	Notes         *string   `json:"notes"`
-	AssetID       *string   `json:"asset_id"`
-	LabelIDs      []string  `json:"label_ids"`
-	Tier          string    `json:"tier"`
-	GridRow       *int      `json:"grid_row"`
-	GridCol       *int      `json:"grid_col"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            string           `json:"id"`
+	Name          string           `json:"name"`
+	Description   *string          `json:"description"`
+	LocationID    *string          `json:"location_id"`
+	Status        string           `json:"status"`
+	Manufacturer  *string          `json:"manufacturer"`
+	Model         *string          `json:"model"`
+	Serial        *string          `json:"serial"`
+	PurchasePrice *float64         `json:"purchase_price"`
+	PurchasedAt   *string          `json:"purchased_at"`
+	Warranty      *string          `json:"warranty"`
+	Insured       bool             `json:"insured"`
+	Notes         *string          `json:"notes"`
+	AssetID       *string          `json:"asset_id"`
+	LabelIDs      []string         `json:"label_ids"`
+	Tier          string           `json:"tier"`
+	GridRow       *int             `json:"grid_row"`
+	GridCol       *int             `json:"grid_col"`
+	CustomFields  []CustomFieldRow `json:"custom_fields"`
+	CreatedAt     time.Time        `json:"created_at"`
+	UpdatedAt     time.Time        `json:"updated_at"`
+}
+
+// CustomFieldRow is the API representation of a custom field value on an item.
+type CustomFieldRow struct {
+	Key       string  `json:"key"`
+	Label     string  `json:"label"`
+	Value     *string `json:"value"`
+	ValueType string  `json:"value_type"`
+	Unit      *string `json:"unit"`
+}
+
+// CustomFieldInput is the request shape for setting a custom field value on an item.
+type CustomFieldInput struct {
+	Key       string  `json:"key" minLength:"1"`
+	Label     string  `json:"label" minLength:"1"`
+	Value     *string `json:"value,omitempty"`
+	ValueType string  `json:"value_type,omitempty" enum:"text,number,date"`
+	Unit      *string `json:"unit,omitempty"`
 }
 
 // ItemsOutput is the response body listing items.
@@ -63,23 +83,24 @@ type ItemIDInput struct {
 
 // ItemBody is the shared request body for creating and updating items.
 type ItemBody struct {
-	Name          string   `json:"name" minLength:"1"`
-	Description   *string  `json:"description,omitempty"`
-	LocationID    *string  `json:"location_id,omitempty"`
-	Status        string   `json:"status,omitempty"`
-	Manufacturer  *string  `json:"manufacturer,omitempty"`
-	Model         *string  `json:"model,omitempty"`
-	Serial        *string  `json:"serial,omitempty"`
-	PurchasePrice *float64 `json:"purchase_price,omitempty"`
-	PurchasedAt   *string  `json:"purchased_at,omitempty"`
-	Warranty      *string  `json:"warranty,omitempty"`
-	Insured       bool     `json:"insured,omitempty"`
-	Notes         *string  `json:"notes,omitempty"`
-	AssetID       *string  `json:"asset_id,omitempty"`
-	LabelIDs      []string `json:"label_ids,omitempty"`
-	Tier          string   `json:"tier,omitempty" enum:"quick,full"`
-	GridRow       *int     `json:"grid_row,omitempty"`
-	GridCol       *int     `json:"grid_col,omitempty"`
+	Name          string             `json:"name" minLength:"1"`
+	Description   *string            `json:"description,omitempty"`
+	LocationID    *string            `json:"location_id,omitempty"`
+	Status        string             `json:"status,omitempty"`
+	Manufacturer  *string            `json:"manufacturer,omitempty"`
+	Model         *string            `json:"model,omitempty"`
+	Serial        *string            `json:"serial,omitempty"`
+	PurchasePrice *float64           `json:"purchase_price,omitempty"`
+	PurchasedAt   *string            `json:"purchased_at,omitempty"`
+	Warranty      *string            `json:"warranty,omitempty"`
+	Insured       bool               `json:"insured,omitempty"`
+	Notes         *string            `json:"notes,omitempty"`
+	AssetID       *string            `json:"asset_id,omitempty"`
+	LabelIDs      []string           `json:"label_ids,omitempty"`
+	Tier          string             `json:"tier,omitempty" enum:"quick,full"`
+	GridRow       *int               `json:"grid_row,omitempty"`
+	GridCol       *int               `json:"grid_col,omitempty"`
+	CustomFields  []CustomFieldInput `json:"custom_fields,omitempty"`
 }
 
 // CreateItemInput is the request body for creating an item.
@@ -97,14 +118,22 @@ const itemSelectSQL = `
 	       i.manufacturer, i.model, i.serial,
 	       i.purchase_price, i.purchased_at::text, i.warranty,
 	       i.insured, i.notes, i.asset_id,
-	       COALESCE(array_agg(il.label_id::text ORDER BY il.label_id) FILTER (WHERE il.label_id IS NOT NULL), '{}'),
+	       COALESCE(array_agg(DISTINCT il.label_id::text) FILTER (WHERE il.label_id IS NOT NULL), '{}'),
 	       i.tier, i.grid_row, i.grid_col,
+	       COALESCE(
+	           jsonb_agg(DISTINCT jsonb_build_object(
+	               'key', cf.field_key, 'label', cf.label, 'value', cf.value,
+	               'value_type', cf.value_type, 'unit', cf.unit
+	           )) FILTER (WHERE cf.id IS NOT NULL), '[]'
+	       ),
 	       i.created_at, i.updated_at
 	FROM items i
-	LEFT JOIN item_labels il ON il.item_id = i.id`
+	LEFT JOIN item_labels il ON il.item_id = i.id
+	LEFT JOIN item_custom_fields cf ON cf.item_id = i.id`
 
 func scanItem(row pgx.Row) (ItemRow, error) {
 	var it ItemRow
+	var customFieldsJSON []byte
 	err := row.Scan(
 		&it.ID, &it.Name, &it.Description, &it.LocationID, &it.Status,
 		&it.Manufacturer, &it.Model, &it.Serial,
@@ -112,9 +141,16 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 		&it.Insured, &it.Notes, &it.AssetID,
 		&it.LabelIDs,
 		&it.Tier, &it.GridRow, &it.GridCol,
+		&customFieldsJSON,
 		&it.CreatedAt, &it.UpdatedAt,
 	)
-	return it, err
+	if err != nil {
+		return it, err
+	}
+	if err := json.Unmarshal(customFieldsJSON, &it.CustomFields); err != nil {
+		return it, err
+	}
+	return it, nil
 }
 
 // ListItems returns items for the active home, filtered by optional query params.
@@ -253,6 +289,9 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to assign label")
 		}
 	}
+	if err := insertCustomFields(ctx, qtx, itemID, b.CustomFields); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to commit")
 	}
@@ -313,6 +352,12 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 			return nil, huma.NewError(http.StatusInternalServerError, "failed to assign label")
 		}
 	}
+	if err := qtx.DeleteItemCustomFields(ctx, input.ID); err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to clear custom fields")
+	}
+	if err := insertCustomFields(ctx, qtx, input.ID, b.CustomFields); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to commit")
 	}
@@ -332,6 +377,29 @@ func (h *Handler) DeleteItem(ctx context.Context, input *ItemIDInput) (*struct{}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete item")
 	}
 	return nil, nil
+}
+
+// insertCustomFields writes the given custom field values for itemID, defaulting
+// an empty ValueType to "text" and preserving the given order via sort_order.
+func insertCustomFields(ctx context.Context, qtx *store.Queries, itemID string, fields []CustomFieldInput) error {
+	for i, cf := range fields {
+		valueType := cf.ValueType
+		if valueType == "" {
+			valueType = "text"
+		}
+		if err := qtx.InsertItemCustomField(ctx, store.InsertItemCustomFieldParams{
+			ItemID:    itemID,
+			FieldKey:  cf.Key,
+			Label:     cf.Label,
+			Value:     cf.Value,
+			ValueType: valueType,
+			Unit:      cf.Unit,
+			SortOrder: int32(i),
+		}); err != nil {
+			return huma.NewError(http.StatusInternalServerError, "failed to save custom field")
+		}
+	}
+	return nil
 }
 
 // validateGridPlacement defaults tier to "full" and, if a grid cell is set,

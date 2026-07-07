@@ -204,6 +204,21 @@ private fun ItemDetailContent(vm: ItemDetailViewModel, item: Item) {
             }
         }
 
+        if (item.customFields.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    item.customFields.forEachIndexed { index, field ->
+                        FactRow(field.label, isLast = index == item.customFields.lastIndex) {
+                            Text(
+                                field.value?.let { v -> field.unit?.let { u -> "$v $u" } ?: v } ?: "—",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         item.notes?.takeIf { it.isNotBlank() }?.let { notes ->
             Column {
                 Text(

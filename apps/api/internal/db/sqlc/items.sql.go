@@ -96,6 +96,15 @@ func (q *Queries) DeleteItem(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteItemCustomFields = `-- name: DeleteItemCustomFields :exec
+DELETE FROM item_custom_fields WHERE item_id = $1
+`
+
+func (q *Queries) DeleteItemCustomFields(ctx context.Context, itemID string) error {
+	_, err := q.db.Exec(ctx, deleteItemCustomFields, itemID)
+	return err
+}
+
 const deleteItemLabels = `-- name: DeleteItemLabels :exec
 DELETE FROM item_labels WHERE item_id = $1
 `
@@ -120,6 +129,34 @@ func (q *Queries) GetMaxGridCell(ctx context.Context, locationID *string) (GetMa
 	var i GetMaxGridCellRow
 	err := row.Scan(&i.MaxRow, &i.MaxCol)
 	return i, err
+}
+
+const insertItemCustomField = `-- name: InsertItemCustomField :exec
+INSERT INTO item_custom_fields (item_id, field_key, label, value, value_type, unit, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertItemCustomFieldParams struct {
+	ItemID    string  `json:"item_id"`
+	FieldKey  string  `json:"field_key"`
+	Label     string  `json:"label"`
+	Value     *string `json:"value"`
+	ValueType string  `json:"value_type"`
+	Unit      *string `json:"unit"`
+	SortOrder int32   `json:"sort_order"`
+}
+
+func (q *Queries) InsertItemCustomField(ctx context.Context, arg InsertItemCustomFieldParams) error {
+	_, err := q.db.Exec(ctx, insertItemCustomField,
+		arg.ItemID,
+		arg.FieldKey,
+		arg.Label,
+		arg.Value,
+		arg.ValueType,
+		arg.Unit,
+		arg.SortOrder,
+	)
+	return err
 }
 
 const insertItemLabel = `-- name: InsertItemLabel :exec
