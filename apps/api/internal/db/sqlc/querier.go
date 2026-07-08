@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	AdvanceMaintenanceSchedule(ctx context.Context, arg AdvanceMaintenanceScheduleParams) error
 	CompleteSetup(ctx context.Context) error
+	CountAllExpiringWarranties(ctx context.Context) (int64, error)
 	CountAllItems(ctx context.Context) (int64, error)
 	CountAllLabels(ctx context.Context) (int64, error)
 	CountAllLocations(ctx context.Context) (int64, error)
@@ -19,6 +20,7 @@ type Querier interface {
 	// two apart (e.g. 1 & 3, or 2 & 4), so its implied second slot (slot + 2)
 	// must also be checked against. For a single-slot request pass slot2 = slot.
 	CountConflictingBreakerSlots(ctx context.Context, arg CountConflictingBreakerSlotsParams) (int64, error)
+	CountExpiringWarrantiesByHome(ctx context.Context, homeID string) (int64, error)
 	CountHomeOwners(ctx context.Context, homeID string) (int64, error)
 	CountItemsByHome(ctx context.Context, homeID string) (int64, error)
 	CountLabelsByHome(ctx context.Context, homeID string) (int64, error)

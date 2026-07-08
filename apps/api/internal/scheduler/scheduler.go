@@ -144,6 +144,7 @@ func (s *Scheduler) run() {
 	}
 
 	s.runScheduleReminders(ctx)
+	s.runWarrantyReminders(ctx)
 }
 
 func (s *Scheduler) runScheduleReminders(ctx context.Context) {
@@ -260,5 +261,113 @@ func (s *Scheduler) runScheduleReminders(ctx context.Context) {
 		  )
 	`); err != nil {
 		log.Printf("scheduler: cleanup orphan schedule reminders: %v", err)
+	}
+}
+
+func (s *Scheduler) runWarrantyReminders(ctx context.Context) {
+	type itemRow struct {
+		id                string
+		homeID            string
+		name              string
+		warrantyExpiresAt time.Time
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, home_id, name, warranty_expires_at
+		FROM items
+		WHERE warranty_expires_at IS NOT NULL
+	`)
+	if err != nil {
+		log.Printf("scheduler: list items with warranty expiration: %v", err)
+		return
+	}
+	var items []itemRow
+	for rows.Next() {
+		var it itemRow
+		if err := rows.Scan(&it.id, &it.homeID, &it.name, &it.warrantyExpiresAt); err != nil {
+			log.Printf("scheduler: scan item: %v", err)
+			rows.Close()
+			return
+		}
+		items = append(items, it)
+	}
+	rows.Close()
+
+	memberRows, err := s.pool.Query(ctx, `SELECT home_id, user_id FROM home_members`)
+	if err != nil {
+		log.Printf("scheduler: list home members: %v", err)
+		return
+	}
+	homeMembers := map[string][]int64{}
+	for memberRows.Next() {
+		var homeID string
+		var userID int64
+		if err := memberRows.Scan(&homeID, &userID); err != nil {
+			log.Printf("scheduler: scan member: %v", err)
+			memberRows.Close()
+			return
+		}
+		homeMembers[homeID] = append(homeMembers[homeID], userID)
+	}
+	memberRows.Close()
+
+	now := time.Now()
+	warnWindow := now.AddDate(0, 0, 30)
+
+	for _, it := range items {
+		key := "warranty_expiring_" + it.id
+		expired := it.warrantyExpiresAt.Before(now)
+		expiringSoon := !expired && it.warrantyExpiresAt.Before(warnWindow)
+		shouldRemind := expired || expiringSoon
+
+		var tone, title, body string
+		if expired {
+			tone = "danger"
+			title = it.name + " warranty expired"
+			days := int(now.Sub(it.warrantyExpiresAt).Hours() / 24)
+			body = fmt.Sprintf("Warranty expired %d day(s) ago", days)
+		} else if expiringSoon {
+			tone = "warn"
+			title = it.name + " warranty expiring soon"
+			days := int(it.warrantyExpiresAt.Sub(now).Hours() / 24)
+			body = fmt.Sprintf("Warranty expires in %d day(s)", days)
+		}
+
+		for _, uid := range homeMembers[it.homeID] {
+			var execErr error
+			if shouldRemind {
+				// Re-show the reminder if the tone escalates (warn → danger)
+				_, execErr = s.pool.Exec(ctx, `
+					INSERT INTO reminders (user_id, key, title, body, tone)
+					VALUES ($1, $2, $3, $4, $5)
+					ON CONFLICT (user_id, key) DO UPDATE
+					SET title = EXCLUDED.title,
+					    body = EXCLUDED.body,
+					    tone = EXCLUDED.tone,
+					    dismissed_at = CASE WHEN reminders.tone != EXCLUDED.tone THEN NULL ELSE reminders.dismissed_at END,
+					    snoozed_until = CASE WHEN reminders.tone != EXCLUDED.tone THEN NULL ELSE reminders.snoozed_until END,
+					    updated_at = NOW()
+				`, uid, key, title, body, tone)
+			} else {
+				_, execErr = s.pool.Exec(ctx, `
+					DELETE FROM reminders WHERE user_id = $1 AND key = $2
+				`, uid, key)
+			}
+			if execErr != nil {
+				log.Printf("scheduler: sync warranty reminder %s for user %d: %v", key, uid, execErr)
+			}
+		}
+	}
+
+	// Remove reminders for items that no longer exist or no longer have a warranty expiration date
+	if _, err := s.pool.Exec(ctx, `
+		DELETE FROM reminders
+		WHERE key LIKE 'warranty_expiring_%'
+		  AND NOT EXISTS (
+		      SELECT 1 FROM items i
+		      WHERE 'warranty_expiring_' || i.id::text = reminders.key AND i.warranty_expires_at IS NOT NULL
+		  )
+	`); err != nil {
+		log.Printf("scheduler: cleanup orphan warranty reminders: %v", err)
 	}
 }

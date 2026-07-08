@@ -21,27 +21,28 @@ import (
 
 // ItemRow is the API representation of an inventory item.
 type ItemRow struct {
-	ID            string           `json:"id"`
-	Name          string           `json:"name"`
-	Description   *string          `json:"description"`
-	LocationID    *string          `json:"location_id"`
-	Status        string           `json:"status"`
-	Manufacturer  *string          `json:"manufacturer"`
-	Model         *string          `json:"model"`
-	Serial        *string          `json:"serial"`
-	PurchasePrice *float64         `json:"purchase_price"`
-	PurchasedAt   *string          `json:"purchased_at"`
-	Warranty      *string          `json:"warranty"`
-	Insured       bool             `json:"insured"`
-	Notes         *string          `json:"notes"`
-	AssetID       *string          `json:"asset_id"`
-	LabelIDs      []string         `json:"label_ids"`
-	Tier          string           `json:"tier"`
-	GridRow       *int             `json:"grid_row"`
-	GridCol       *int             `json:"grid_col"`
-	CustomFields  []CustomFieldRow `json:"custom_fields"`
-	CreatedAt     time.Time        `json:"created_at"`
-	UpdatedAt     time.Time        `json:"updated_at"`
+	ID                string           `json:"id"`
+	Name              string           `json:"name"`
+	Description       *string          `json:"description"`
+	LocationID        *string          `json:"location_id"`
+	Status            string           `json:"status"`
+	Manufacturer      *string          `json:"manufacturer"`
+	Model             *string          `json:"model"`
+	Serial            *string          `json:"serial"`
+	PurchasePrice     *float64         `json:"purchase_price"`
+	PurchasedAt       *string          `json:"purchased_at"`
+	Warranty          *string          `json:"warranty"`
+	WarrantyExpiresAt *string          `json:"warranty_expires_at"`
+	Insured           bool             `json:"insured"`
+	Notes             *string          `json:"notes"`
+	AssetID           *string          `json:"asset_id"`
+	LabelIDs          []string         `json:"label_ids"`
+	Tier              string           `json:"tier"`
+	GridRow           *int             `json:"grid_row"`
+	GridCol           *int             `json:"grid_col"`
+	CustomFields      []CustomFieldRow `json:"custom_fields"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
 }
 
 // CustomFieldRow is the API representation of a custom field value on an item.
@@ -83,24 +84,25 @@ type ItemIDInput struct {
 
 // ItemBody is the shared request body for creating and updating items.
 type ItemBody struct {
-	Name          string             `json:"name" minLength:"1"`
-	Description   *string            `json:"description,omitempty"`
-	LocationID    *string            `json:"location_id,omitempty"`
-	Status        string             `json:"status,omitempty"`
-	Manufacturer  *string            `json:"manufacturer,omitempty"`
-	Model         *string            `json:"model,omitempty"`
-	Serial        *string            `json:"serial,omitempty"`
-	PurchasePrice *float64           `json:"purchase_price,omitempty"`
-	PurchasedAt   *string            `json:"purchased_at,omitempty"`
-	Warranty      *string            `json:"warranty,omitempty"`
-	Insured       bool               `json:"insured,omitempty"`
-	Notes         *string            `json:"notes,omitempty"`
-	AssetID       *string            `json:"asset_id,omitempty"`
-	LabelIDs      []string           `json:"label_ids,omitempty"`
-	Tier          string             `json:"tier,omitempty" enum:"quick,full"`
-	GridRow       *int               `json:"grid_row,omitempty"`
-	GridCol       *int               `json:"grid_col,omitempty"`
-	CustomFields  []CustomFieldInput `json:"custom_fields,omitempty"`
+	Name              string             `json:"name" minLength:"1"`
+	Description       *string            `json:"description,omitempty"`
+	LocationID        *string            `json:"location_id,omitempty"`
+	Status            string             `json:"status,omitempty"`
+	Manufacturer      *string            `json:"manufacturer,omitempty"`
+	Model             *string            `json:"model,omitempty"`
+	Serial            *string            `json:"serial,omitempty"`
+	PurchasePrice     *float64           `json:"purchase_price,omitempty"`
+	PurchasedAt       *string            `json:"purchased_at,omitempty"`
+	Warranty          *string            `json:"warranty,omitempty"`
+	WarrantyExpiresAt *string            `json:"warranty_expires_at,omitempty"`
+	Insured           bool               `json:"insured,omitempty"`
+	Notes             *string            `json:"notes,omitempty"`
+	AssetID           *string            `json:"asset_id,omitempty"`
+	LabelIDs          []string           `json:"label_ids,omitempty"`
+	Tier              string             `json:"tier,omitempty" enum:"quick,full"`
+	GridRow           *int               `json:"grid_row,omitempty"`
+	GridCol           *int               `json:"grid_col,omitempty"`
+	CustomFields      []CustomFieldInput `json:"custom_fields,omitempty"`
 }
 
 // CreateItemInput is the request body for creating an item.
@@ -116,7 +118,7 @@ type UpdateItemInput struct {
 const itemSelectSQL = `
 	SELECT i.id, i.name, i.description, i.location_id, i.status,
 	       i.manufacturer, i.model, i.serial,
-	       i.purchase_price, i.purchased_at::text, i.warranty,
+	       i.purchase_price, i.purchased_at::text, i.warranty, i.warranty_expires_at::text,
 	       i.insured, i.notes, i.asset_id,
 	       COALESCE(array_agg(DISTINCT il.label_id::text) FILTER (WHERE il.label_id IS NOT NULL), '{}'),
 	       i.tier, i.grid_row, i.grid_col,
@@ -137,7 +139,7 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 	err := row.Scan(
 		&it.ID, &it.Name, &it.Description, &it.LocationID, &it.Status,
 		&it.Manufacturer, &it.Model, &it.Serial,
-		&it.PurchasePrice, &it.PurchasedAt, &it.Warranty,
+		&it.PurchasePrice, &it.PurchasedAt, &it.Warranty, &it.WarrantyExpiresAt,
 		&it.Insured, &it.Notes, &it.AssetID,
 		&it.LabelIDs,
 		&it.Tier, &it.GridRow, &it.GridCol,
@@ -258,23 +260,24 @@ func (h *Handler) CreateItem(ctx context.Context, input *CreateItemInput) (*Item
 	qtx := h.q.WithTx(tx)
 
 	itemID, err := qtx.CreateItem(ctx, store.CreateItemParams{
-		Name:          b.Name,
-		Description:   b.Description,
-		LocationID:    b.LocationID,
-		Status:        b.Status,
-		Manufacturer:  b.Manufacturer,
-		Model:         b.Model,
-		Serial:        b.Serial,
-		PurchasePrice: toNullNumeric(b.PurchasePrice),
-		PurchasedAt:   parseDatePtr(b.PurchasedAt),
-		Warranty:      b.Warranty,
-		Insured:       b.Insured,
-		Notes:         b.Notes,
-		AssetID:       b.AssetID,
-		HomeID:        homeID,
-		Tier:          b.Tier,
-		GridRow:       toNullInt4(b.GridRow),
-		GridCol:       toNullInt4(b.GridCol),
+		Name:              b.Name,
+		Description:       b.Description,
+		LocationID:        b.LocationID,
+		Status:            b.Status,
+		Manufacturer:      b.Manufacturer,
+		Model:             b.Model,
+		Serial:            b.Serial,
+		PurchasePrice:     toNullNumeric(b.PurchasePrice),
+		PurchasedAt:       parseDatePtr(b.PurchasedAt),
+		Warranty:          b.Warranty,
+		WarrantyExpiresAt: parseDatePtr(b.WarrantyExpiresAt),
+		Insured:           b.Insured,
+		Notes:             b.Notes,
+		AssetID:           b.AssetID,
+		HomeID:            homeID,
+		Tier:              b.Tier,
+		GridRow:           toNullInt4(b.GridRow),
+		GridCol:           toNullInt4(b.GridCol),
 	})
 	if err != nil {
 		if isUniqueViolation(err, "items_asset_id_key") {
@@ -319,23 +322,24 @@ func (h *Handler) UpdateItem(ctx context.Context, input *UpdateItemInput) (*Item
 	qtx := h.q.WithTx(tx)
 
 	if err := qtx.UpdateItem(ctx, store.UpdateItemParams{
-		ID:            input.ID,
-		Name:          b.Name,
-		Description:   b.Description,
-		LocationID:    b.LocationID,
-		Status:        b.Status,
-		Manufacturer:  b.Manufacturer,
-		Model:         b.Model,
-		Serial:        b.Serial,
-		PurchasePrice: toNullNumeric(b.PurchasePrice),
-		PurchasedAt:   parseDatePtr(b.PurchasedAt),
-		Warranty:      b.Warranty,
-		Insured:       b.Insured,
-		Notes:         b.Notes,
-		AssetID:       b.AssetID,
-		Tier:          b.Tier,
-		GridRow:       toNullInt4(b.GridRow),
-		GridCol:       toNullInt4(b.GridCol),
+		ID:                input.ID,
+		Name:              b.Name,
+		Description:       b.Description,
+		LocationID:        b.LocationID,
+		Status:            b.Status,
+		Manufacturer:      b.Manufacturer,
+		Model:             b.Model,
+		Serial:            b.Serial,
+		PurchasePrice:     toNullNumeric(b.PurchasePrice),
+		PurchasedAt:       parseDatePtr(b.PurchasedAt),
+		Warranty:          b.Warranty,
+		WarrantyExpiresAt: parseDatePtr(b.WarrantyExpiresAt),
+		Insured:           b.Insured,
+		Notes:             b.Notes,
+		AssetID:           b.AssetID,
+		Tier:              b.Tier,
+		GridRow:           toNullInt4(b.GridRow),
+		GridCol:           toNullInt4(b.GridCol),
 	}); err != nil {
 		if isUniqueViolation(err, "items_asset_id_key") {
 			return nil, huma.NewError(http.StatusConflict, "asset ID is already in use")

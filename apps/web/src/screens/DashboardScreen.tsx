@@ -100,6 +100,7 @@ export function DashboardScreen() {
         { label: 'Locations', value: stats.total_locations, delta: null },
         { label: 'Labels', value: stats.total_labels, delta: null },
         { label: 'Total value', value: formatCurrency(stats.total_value), delta: null },
+        { label: 'Warranties expiring', value: stats.total_expiring_warranties, delta: null },
       ]
     : [];
 
@@ -124,9 +125,9 @@ export function DashboardScreen() {
       </Group>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
         {statsLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
+          ? Array.from({ length: 5 }).map((_, i) => (
               <Paper key={i} withBorder p={14} radius="md" style={{ minHeight: 72 }}>
                 <Center h={44}>
                   <Loader size="xs" />

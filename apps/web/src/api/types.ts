@@ -55,6 +55,7 @@ export interface Item {
   purchase_price: number | null;
   purchased_at: string | null;
   warranty: string | null;
+  warranty_expires_at: string | null;
   insured: boolean;
   notes: string | null;
   asset_id: string | null;
@@ -83,6 +84,7 @@ export interface DashboardStats {
   total_locations: number;
   total_labels: number;
   total_value: number;
+  total_expiring_warranties: number;
 }
 
 export interface SystemStatus {
@@ -105,6 +107,7 @@ export interface CreateItemInput {
   purchase_price?: number;
   purchased_at?: string;
   warranty?: string;
+  warranty_expires_at?: string;
   insured?: boolean;
   notes?: string;
   asset_id?: string | null;
@@ -126,6 +129,7 @@ export interface UpdateItemInput {
   purchase_price?: number;
   purchased_at?: string;
   warranty?: string;
+  warranty_expires_at?: string;
   insured?: boolean;
   notes?: string;
   asset_id?: string | null;

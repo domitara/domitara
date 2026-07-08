@@ -86,6 +86,7 @@ interface ItemFormState {
     val purchasePrice: MutableStateFlow<String>
     val purchasedAt: MutableStateFlow<String>
     val warranty: MutableStateFlow<String>
+    val warrantyExpiresAt: MutableStateFlow<String>
     val insured: MutableStateFlow<Boolean>
     val notes: MutableStateFlow<String>
     val assetId: MutableStateFlow<String>
@@ -127,6 +128,7 @@ fun ItemFormFields(
     val purchasePrice by vm.purchasePrice.collectAsStateWithLifecycle()
     val purchasedAt by vm.purchasedAt.collectAsStateWithLifecycle()
     val warranty by vm.warranty.collectAsStateWithLifecycle()
+    val warrantyExpiresAt by vm.warrantyExpiresAt.collectAsStateWithLifecycle()
     val insured by vm.insured.collectAsStateWithLifecycle()
     val notes by vm.notes.collectAsStateWithLifecycle()
     val assetId by vm.assetId.collectAsStateWithLifecycle()
@@ -262,6 +264,13 @@ fun ItemFormFields(
         value = warranty,
         onValueChange = { vm.warranty.value = it },
         label = { Text("Warranty") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = warrantyExpiresAt,
+        onValueChange = { vm.warrantyExpiresAt.value = it },
+        label = { Text("Warranty expires (YYYY-MM-DD)") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )

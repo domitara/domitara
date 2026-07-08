@@ -1,16 +1,16 @@
 -- name: CreateItem :one
 INSERT INTO items (name, description, location_id, status, manufacturer, model, serial,
-                   purchase_price, purchased_at, warranty, insured, notes, asset_id, home_id,
+                   purchase_price, purchased_at, warranty, warranty_expires_at, insured, notes, asset_id, home_id,
                    tier, grid_row, grid_col)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 RETURNING id;
 
 -- name: UpdateItem :exec
 UPDATE items SET name=$2, description=$3, location_id=$4, status=$5,
                  manufacturer=$6, model=$7, serial=$8,
-                 purchase_price=$9, purchased_at=$10, warranty=$11,
-                 insured=$12, notes=$13, asset_id=$14,
-                 tier=$15, grid_row=$16, grid_col=$17, updated_at=NOW()
+                 purchase_price=$9, purchased_at=$10, warranty=$11, warranty_expires_at=$12,
+                 insured=$13, notes=$14, asset_id=$15,
+                 tier=$16, grid_row=$17, grid_col=$18, updated_at=NOW()
 WHERE id=$1;
 
 -- name: DeleteItem :exec
@@ -27,6 +27,16 @@ SELECT COUNT(*) FROM items WHERE home_id = $1 AND tier != 'quick';
 
 -- name: CountAllItems :one
 SELECT COUNT(*) FROM items WHERE tier != 'quick';
+
+-- name: CountExpiringWarrantiesByHome :one
+SELECT COUNT(*) FROM items
+WHERE home_id = $1 AND tier != 'quick'
+  AND warranty_expires_at IS NOT NULL AND warranty_expires_at <= NOW() + INTERVAL '30 days';
+
+-- name: CountAllExpiringWarranties :one
+SELECT COUNT(*) FROM items
+WHERE tier != 'quick'
+  AND warranty_expires_at IS NOT NULL AND warranty_expires_at <= NOW() + INTERVAL '30 days';
 
 -- name: GetMaxGridCell :one
 SELECT COALESCE(MAX(grid_row), -1)::int AS max_row, COALESCE(MAX(grid_col), -1)::int AS max_col

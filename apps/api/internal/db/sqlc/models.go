@@ -116,26 +116,27 @@ type HomePhoto struct {
 }
 
 type Item struct {
-	ID            string             `json:"id"`
-	HomeID        string             `json:"home_id"`
-	Name          string             `json:"name"`
-	Description   *string            `json:"description"`
-	LocationID    *string            `json:"location_id"`
-	Status        string             `json:"status"`
-	Manufacturer  *string            `json:"manufacturer"`
-	Model         *string            `json:"model"`
-	Serial        *string            `json:"serial"`
-	PurchasePrice pgtype.Numeric     `json:"purchase_price"`
-	PurchasedAt   *time.Time         `json:"purchased_at"`
-	Warranty      *string            `json:"warranty"`
-	Insured       bool               `json:"insured"`
-	Notes         *string            `json:"notes"`
-	AssetID       *string            `json:"asset_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	Tier          string             `json:"tier"`
-	GridRow       pgtype.Int4        `json:"grid_row"`
-	GridCol       pgtype.Int4        `json:"grid_col"`
+	ID                string             `json:"id"`
+	HomeID            string             `json:"home_id"`
+	Name              string             `json:"name"`
+	Description       *string            `json:"description"`
+	LocationID        *string            `json:"location_id"`
+	Status            string             `json:"status"`
+	Manufacturer      *string            `json:"manufacturer"`
+	Model             *string            `json:"model"`
+	Serial            *string            `json:"serial"`
+	PurchasePrice     pgtype.Numeric     `json:"purchase_price"`
+	PurchasedAt       *time.Time         `json:"purchased_at"`
+	Warranty          *string            `json:"warranty"`
+	Insured           bool               `json:"insured"`
+	Notes             *string            `json:"notes"`
+	AssetID           *string            `json:"asset_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Tier              string             `json:"tier"`
+	GridRow           pgtype.Int4        `json:"grid_row"`
+	GridCol           pgtype.Int4        `json:"grid_col"`
+	WarrantyExpiresAt *time.Time         `json:"warranty_expires_at"`
 }
 
 type ItemCustomField struct {

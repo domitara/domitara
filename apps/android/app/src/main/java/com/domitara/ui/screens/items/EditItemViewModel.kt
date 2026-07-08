@@ -48,6 +48,7 @@ class EditItemViewModel(
     override val purchasePrice = MutableStateFlow("")
     override val purchasedAt = MutableStateFlow("")
     override val warranty = MutableStateFlow("")
+    override val warrantyExpiresAt = MutableStateFlow("")
     override val insured = MutableStateFlow(false)
     override val notes = MutableStateFlow("")
     override val assetId = MutableStateFlow("")
@@ -96,6 +97,7 @@ class EditItemViewModel(
         purchasePrice.value = item.purchasePrice?.toString() ?: ""
         purchasedAt.value = item.purchasedAt ?: ""
         warranty.value = item.warranty ?: ""
+        warrantyExpiresAt.value = item.warrantyExpiresAt ?: ""
         insured.value = item.insured
         notes.value = item.notes ?: ""
         assetId.value = item.assetId ?: ""
@@ -168,6 +170,7 @@ class EditItemViewModel(
                         purchasePrice = purchasePrice.value.toDoubleOrNull(),
                         purchasedAt = purchasedAt.value.ifBlank { null },
                         warranty = warranty.value.trim().ifBlank { null },
+                        warrantyExpiresAt = warrantyExpiresAt.value.ifBlank { null },
                         insured = insured.value,
                         notes = notes.value.trim().ifBlank { null },
                         assetId = assetId.value.trim().ifBlank { null },

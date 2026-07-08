@@ -12,12 +12,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAllExpiringWarranties = `-- name: CountAllExpiringWarranties :one
+SELECT COUNT(*) FROM items
+WHERE tier != 'quick'
+  AND warranty_expires_at IS NOT NULL AND warranty_expires_at <= NOW() + INTERVAL '30 days'
+`
+
+func (q *Queries) CountAllExpiringWarranties(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllExpiringWarranties)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countAllItems = `-- name: CountAllItems :one
 SELECT COUNT(*) FROM items WHERE tier != 'quick'
 `
 
 func (q *Queries) CountAllItems(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countAllItems)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countExpiringWarrantiesByHome = `-- name: CountExpiringWarrantiesByHome :one
+SELECT COUNT(*) FROM items
+WHERE home_id = $1 AND tier != 'quick'
+  AND warranty_expires_at IS NOT NULL AND warranty_expires_at <= NOW() + INTERVAL '30 days'
+`
+
+func (q *Queries) CountExpiringWarrantiesByHome(ctx context.Context, homeID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countExpiringWarrantiesByHome, homeID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -36,30 +62,31 @@ func (q *Queries) CountItemsByHome(ctx context.Context, homeID string) (int64, e
 
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (name, description, location_id, status, manufacturer, model, serial,
-                   purchase_price, purchased_at, warranty, insured, notes, asset_id, home_id,
+                   purchase_price, purchased_at, warranty, warranty_expires_at, insured, notes, asset_id, home_id,
                    tier, grid_row, grid_col)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 RETURNING id
 `
 
 type CreateItemParams struct {
-	Name          string         `json:"name"`
-	Description   *string        `json:"description"`
-	LocationID    *string        `json:"location_id"`
-	Status        string         `json:"status"`
-	Manufacturer  *string        `json:"manufacturer"`
-	Model         *string        `json:"model"`
-	Serial        *string        `json:"serial"`
-	PurchasePrice pgtype.Numeric `json:"purchase_price"`
-	PurchasedAt   *time.Time     `json:"purchased_at"`
-	Warranty      *string        `json:"warranty"`
-	Insured       bool           `json:"insured"`
-	Notes         *string        `json:"notes"`
-	AssetID       *string        `json:"asset_id"`
-	HomeID        string         `json:"home_id"`
-	Tier          string         `json:"tier"`
-	GridRow       pgtype.Int4    `json:"grid_row"`
-	GridCol       pgtype.Int4    `json:"grid_col"`
+	Name              string         `json:"name"`
+	Description       *string        `json:"description"`
+	LocationID        *string        `json:"location_id"`
+	Status            string         `json:"status"`
+	Manufacturer      *string        `json:"manufacturer"`
+	Model             *string        `json:"model"`
+	Serial            *string        `json:"serial"`
+	PurchasePrice     pgtype.Numeric `json:"purchase_price"`
+	PurchasedAt       *time.Time     `json:"purchased_at"`
+	Warranty          *string        `json:"warranty"`
+	WarrantyExpiresAt *time.Time     `json:"warranty_expires_at"`
+	Insured           bool           `json:"insured"`
+	Notes             *string        `json:"notes"`
+	AssetID           *string        `json:"asset_id"`
+	HomeID            string         `json:"home_id"`
+	Tier              string         `json:"tier"`
+	GridRow           pgtype.Int4    `json:"grid_row"`
+	GridCol           pgtype.Int4    `json:"grid_col"`
 }
 
 func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (string, error) {
@@ -74,6 +101,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (string,
 		arg.PurchasePrice,
 		arg.PurchasedAt,
 		arg.Warranty,
+		arg.WarrantyExpiresAt,
 		arg.Insured,
 		arg.Notes,
 		arg.AssetID,
@@ -176,30 +204,31 @@ func (q *Queries) InsertItemLabel(ctx context.Context, arg InsertItemLabelParams
 const updateItem = `-- name: UpdateItem :exec
 UPDATE items SET name=$2, description=$3, location_id=$4, status=$5,
                  manufacturer=$6, model=$7, serial=$8,
-                 purchase_price=$9, purchased_at=$10, warranty=$11,
-                 insured=$12, notes=$13, asset_id=$14,
-                 tier=$15, grid_row=$16, grid_col=$17, updated_at=NOW()
+                 purchase_price=$9, purchased_at=$10, warranty=$11, warranty_expires_at=$12,
+                 insured=$13, notes=$14, asset_id=$15,
+                 tier=$16, grid_row=$17, grid_col=$18, updated_at=NOW()
 WHERE id=$1
 `
 
 type UpdateItemParams struct {
-	ID            string         `json:"id"`
-	Name          string         `json:"name"`
-	Description   *string        `json:"description"`
-	LocationID    *string        `json:"location_id"`
-	Status        string         `json:"status"`
-	Manufacturer  *string        `json:"manufacturer"`
-	Model         *string        `json:"model"`
-	Serial        *string        `json:"serial"`
-	PurchasePrice pgtype.Numeric `json:"purchase_price"`
-	PurchasedAt   *time.Time     `json:"purchased_at"`
-	Warranty      *string        `json:"warranty"`
-	Insured       bool           `json:"insured"`
-	Notes         *string        `json:"notes"`
-	AssetID       *string        `json:"asset_id"`
-	Tier          string         `json:"tier"`
-	GridRow       pgtype.Int4    `json:"grid_row"`
-	GridCol       pgtype.Int4    `json:"grid_col"`
+	ID                string         `json:"id"`
+	Name              string         `json:"name"`
+	Description       *string        `json:"description"`
+	LocationID        *string        `json:"location_id"`
+	Status            string         `json:"status"`
+	Manufacturer      *string        `json:"manufacturer"`
+	Model             *string        `json:"model"`
+	Serial            *string        `json:"serial"`
+	PurchasePrice     pgtype.Numeric `json:"purchase_price"`
+	PurchasedAt       *time.Time     `json:"purchased_at"`
+	Warranty          *string        `json:"warranty"`
+	WarrantyExpiresAt *time.Time     `json:"warranty_expires_at"`
+	Insured           bool           `json:"insured"`
+	Notes             *string        `json:"notes"`
+	AssetID           *string        `json:"asset_id"`
+	Tier              string         `json:"tier"`
+	GridRow           pgtype.Int4    `json:"grid_row"`
+	GridCol           pgtype.Int4    `json:"grid_col"`
 }
 
 func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) error {
@@ -215,6 +244,7 @@ func (q *Queries) UpdateItem(ctx context.Context, arg UpdateItemParams) error {
 		arg.PurchasePrice,
 		arg.PurchasedAt,
 		arg.Warranty,
+		arg.WarrantyExpiresAt,
 		arg.Insured,
 		arg.Notes,
 		arg.AssetID,

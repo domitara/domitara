@@ -120,6 +120,8 @@ private fun StatsGrid(stats: DashboardStats) {
             StatTile("Labels", stats.totalLabels.toString(), Modifier.weight(1f))
             StatTile("Total Value", formatCurrencyWhole(stats.totalValue), Modifier.weight(1f))
         }
+        Spacer(Modifier.height(12.dp))
+        StatTile("Warranties Expiring", stats.totalExpiringWarranties.toString(), Modifier.fillMaxWidth())
     }
 }
 
