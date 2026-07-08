@@ -1,6 +1,7 @@
 package com.domitara.ui.common
 
 import androidx.compose.ui.graphics.Color
+import com.domitara.data.dto.Location
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.abs
@@ -55,6 +56,20 @@ fun parseHexColor(hex: String?, fallback: Color = Color(0xFF888888)): Color {
         fallback
     }
 }
+
+/** Flattens locations into parent-before-children order (alphabetical within each level), paired with nesting depth. */
+fun List<Location>.sortedWithDepth(): List<Pair<Location, Int>> {
+    val byParent = groupBy { it.parentId }
+    fun flatten(parentId: String?, depth: Int): List<Pair<Location, Int>> =
+        (byParent[parentId] ?: emptyList()).sortedBy { it.name }.flatMap { loc ->
+            listOf(loc to depth) + flatten(loc.id, depth + 1)
+        }
+    return flatten(null, 0)
+}
+
+/** Indents a location name to reflect its nesting depth in a flat dropdown list, e.g. depth 2 -> "    ↳ Shelf A". */
+fun indentedLocationLabel(name: String, depth: Int): String =
+    if (depth == 0) name else "${"    ".repeat(depth)}↳ $name"
 
 /** Trims an ISO timestamp to its date portion (YYYY-MM-DD) for display. */
 fun shortDate(iso: String?): String {

@@ -1,7 +1,6 @@
 package com.domitara.ui.screens.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,6 +74,7 @@ import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LabelValue
 import com.domitara.ui.common.LoadingState
 import com.domitara.ui.common.PhotoViewerDialog
+import com.domitara.ui.common.rememberPhotoCapture
 import com.domitara.ui.common.formatBytes
 import com.domitara.ui.common.formatCurrency
 import com.domitara.ui.common.parseHexColor
@@ -190,23 +190,17 @@ private fun PhotosTab(vm: HomeDetailViewModel) {
     var photoToView by remember { mutableStateOf<HomePhoto?>(null) }
     var uploadError by remember { mutableStateOf<String?>(null) }
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            uploadError = null
-            vm.addPhoto(uri) { uploadError = it }
-        }
+    val photoCapture = rememberPhotoCapture { uri ->
+        uploadError = null
+        vm.addPhoto(uri) { uploadError = it }
     }
 
     Column(Modifier.fillMaxSize()) {
-        UploadBar(
-            label = "Upload photo",
+        PhotoUploadBar(
             uploading = uploading,
             error = uploadError,
-            onClick = {
-                picker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                )
-            },
+            onTakePhoto = photoCapture.takePhoto,
+            onPickFromGallery = photoCapture.pickFromGallery,
         )
         Box(Modifier.weight(1f).fillMaxSize()) {
             when (val s = state) {
@@ -469,6 +463,43 @@ private fun UploadBar(
             }
             Spacer(Modifier.width(8.dp))
             Text(if (uploading) "Uploading…" else label)
+        }
+        if (error != null) {
+            Spacer(Modifier.size(4.dp))
+            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun PhotoUploadBar(
+    uploading: Boolean,
+    error: String?,
+    onTakePhoto: () -> Unit,
+    onPickFromGallery: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Box {
+            FilledTonalButton(onClick = { menuOpen = true }, enabled = !uploading) {
+                if (uploading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.Add, contentDescription = null)
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(if (uploading) "Uploading…" else "Upload photo")
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text("Take photo") },
+                    onClick = { menuOpen = false; onTakePhoto() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Choose from library") },
+                    onClick = { menuOpen = false; onPickFromGallery() },
+                )
+            }
         }
         if (error != null) {
             Spacer(Modifier.size(4.dp))

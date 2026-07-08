@@ -52,6 +52,8 @@ import com.domitara.ui.common.Async
 import com.domitara.ui.common.EmptyState
 import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LoadingState
+import com.domitara.ui.common.indentedLocationLabel
+import com.domitara.ui.common.sortedWithDepth
 import com.domitara.ui.screens.items.ItemRow
 
 private data class TreeRow(val location: Location, val depth: Int, val hasChildren: Boolean)
@@ -433,15 +435,17 @@ private fun AddLocationDialog(
                                 { Icon(Icons.Filled.Check, contentDescription = "Selected") }
                             } else null,
                         )
-                        locations.filter { it.locationType == LocationType.ROOM }.sortedBy { it.name }.forEach { loc ->
-                            DropdownMenuItem(
-                                text = { Text(loc.name) },
-                                onClick = { parentId = loc.id; parentMenuExpanded = false },
-                                trailingIcon = if (parentId == loc.id) {
-                                    { Icon(Icons.Filled.Check, contentDescription = "Selected") }
-                                } else null,
-                            )
-                        }
+                        locations.sortedWithDepth()
+                            .filter { (loc, _) -> loc.locationType == LocationType.ROOM }
+                            .forEach { (loc, depth) ->
+                                DropdownMenuItem(
+                                    text = { Text(indentedLocationLabel(loc.name, depth)) },
+                                    onClick = { parentId = loc.id; parentMenuExpanded = false },
+                                    trailingIcon = if (parentId == loc.id) {
+                                        { Icon(Icons.Filled.Check, contentDescription = "Selected") }
+                                    } else null,
+                                )
+                            }
                     }
                 }
                 OutlinedTextField(
