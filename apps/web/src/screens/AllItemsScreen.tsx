@@ -12,6 +12,7 @@ import {
   Loader,
   Center,
   Switch,
+  Select,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -34,11 +35,25 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import { useItems, useLabels, useLocations } from '../api/queries';
 import { getLocationChain, formatCurrency } from '../utils';
-import type { Item } from '../api/types';
+import type { Item, ItemStatus } from '../api/types';
 
 interface AllItemsScreenProps {
   filterLocationId?: string;
   filterLabelId?: string;
+}
+
+type InsuredFilter = 'insured' | 'uninsured' | null;
+type WarrantyFilter = 'expiring' | 'expired' | null;
+const WARRANTY_WARN_DAYS = 30;
+
+function matchesWarrantyFilter(item: Item, filter: WarrantyFilter): boolean {
+  if (!filter) return true;
+  if (!item.warranty_expires_at) return false;
+  const expiresAt = new Date(item.warranty_expires_at).getTime();
+  const now = Date.now();
+  if (filter === 'expired') return expiresAt < now;
+  const warnAt = now + WARRANTY_WARN_DAYS * 24 * 60 * 60 * 1000;
+  return expiresAt >= now && expiresAt <= warnAt;
 }
 
 export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScreenProps) {
@@ -50,6 +65,9 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
     new Set<string>(filterLabelId ? [filterLabelId] : [])
   );
   const [includeQuick, setIncludeQuick] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<ItemStatus | null>(null);
+  const [insuredFilter, setInsuredFilter] = useState<InsuredFilter>(null);
+  const [warrantyFilter, setWarrantyFilter] = useState<WarrantyFilter>(null);
 
   const { data: allItems = [], isLoading } = useItems({
     ...(filterLocationId ? { locationId: filterLocationId } : {}),
@@ -63,8 +81,15 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
   const items = useMemo(() => {
     let xs = allItems;
     if (activeLabels.size > 0) xs = xs.filter((i) => i.label_ids.some((l) => activeLabels.has(l)));
+    if (statusFilter) xs = xs.filter((i) => i.status === statusFilter);
+    if (insuredFilter)
+      xs = xs.filter((i) => (insuredFilter === 'insured' ? i.insured : !i.insured));
+    if (warrantyFilter) xs = xs.filter((i) => matchesWarrantyFilter(i, warrantyFilter));
     return xs;
-  }, [allItems, activeLabels]);
+  }, [allItems, activeLabels, statusFilter, insuredFilter, warrantyFilter]);
+
+  const hasActiveFilters =
+    activeLabels.size > 0 || !!search || !!statusFilter || !!insuredFilter || !!warrantyFilter;
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -193,19 +218,59 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           <Button variant="default" size="sm" leftSection={<IconCalendar size={14} />}>
             Date
           </Button>
+          <Select
+            placeholder="All statuses"
+            size="sm"
+            w={140}
+            clearable
+            data={[
+              { value: 'owned', label: 'Owned' },
+              { value: 'loaned', label: 'Loaned' },
+              { value: 'missing', label: 'Missing' },
+            ]}
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v as ItemStatus | null)}
+          />
+          <Select
+            placeholder="Insured"
+            size="sm"
+            w={130}
+            clearable
+            data={[
+              { value: 'insured', label: 'Insured' },
+              { value: 'uninsured', label: 'Not insured' },
+            ]}
+            value={insuredFilter}
+            onChange={(v) => setInsuredFilter(v as InsuredFilter)}
+          />
+          <Select
+            placeholder="Warranty"
+            size="sm"
+            w={150}
+            clearable
+            data={[
+              { value: 'expiring', label: 'Expiring soon' },
+              { value: 'expired', label: 'Expired' },
+            ]}
+            value={warrantyFilter}
+            onChange={(v) => setWarrantyFilter(v as WarrantyFilter)}
+          />
           <Switch
             size="sm"
             label="Show quick items"
             checked={includeQuick}
             onChange={(e) => setIncludeQuick(e.currentTarget.checked)}
           />
-          {(activeLabels.size > 0 || search) && (
+          {hasActiveFilters && (
             <Button
               variant="subtle"
               size="sm"
               onClick={() => {
                 setActiveLabels(new Set());
                 setSearch('');
+                setStatusFilter(null);
+                setInsuredFilter(null);
+                setWarrantyFilter(null);
               }}
             >
               Clear filters
@@ -291,13 +356,9 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           }}
         >
           <IconBox size={36} color="var(--dt-gray-5)" />
-          <Text fw={600}>
-            No items {search || activeLabels.size > 0 ? 'match these filters' : 'yet'}
-          </Text>
+          <Text fw={600}>No items {hasActiveFilters ? 'match these filters' : 'yet'}</Text>
           <Text size="sm" c="dimmed">
-            {search || activeLabels.size > 0
-              ? 'Try clearing filters.'
-              : 'Add your first item to get started.'}
+            {hasActiveFilters ? 'Try clearing filters.' : 'Add your first item to get started.'}
           </Text>
           <Button
             size="sm"

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.domitara.data.api.toUserMessage
 import com.domitara.data.dto.Item
+import com.domitara.data.dto.ItemStatus
 import com.domitara.data.dto.Label
 import com.domitara.data.dto.Location
 import com.domitara.data.repository.DataRepository
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /** Whether the item list renders as a vertical list or a grid of cards. */
@@ -41,6 +43,22 @@ enum class DateFilter(val label: String, val days: Long?) {
     YEAR("Last year", 365),
 }
 
+/** Warranty status window, applied client-side against `warrantyExpiresAt`. */
+enum class WarrantyFilter(val label: String) {
+    ANY("Any"),
+    EXPIRING_SOON("Expiring soon"),
+    EXPIRED("Expired"),
+}
+
+private const val WARRANTY_WARN_DAYS = 30L
+
+/** Extra filters bundled together so [AllItemsViewModel.displayedItems] can combine them as one flow. */
+private data class ExtraFilters(
+    val status: ItemStatus?,
+    val insured: Boolean?,
+    val warranty: WarrantyFilter,
+)
+
 class AllItemsViewModel(
     private val repo: DataRepository,
     private val activeHome: StateFlow<String?>,
@@ -53,6 +71,9 @@ class AllItemsViewModel(
     val sortOrder = MutableStateFlow(SortOrder.RECENT)
     val viewMode = MutableStateFlow(ViewMode.LIST)
     val includeQuick = MutableStateFlow(false)
+    val statusFilter = MutableStateFlow<ItemStatus?>(null)
+    val insuredFilter = MutableStateFlow<Boolean?>(null)
+    val warrantyFilter = MutableStateFlow(WarrantyFilter.ANY)
 
     private val _items = MutableStateFlow<Async<List<Item>>>(Async.Loading)
 
@@ -62,14 +83,19 @@ class AllItemsViewModel(
     private val _locations = MutableStateFlow<List<Location>>(emptyList())
     val locations: StateFlow<List<Location>> = _locations.asStateFlow()
 
+    private val extraFilters: StateFlow<ExtraFilters> =
+        combine(statusFilter, insuredFilter, warrantyFilter) { status, insured, warranty ->
+            ExtraFilters(status, insured, warranty)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, ExtraFilters(null, null, WarrantyFilter.ANY))
+
     /**
-     * Items with label + date filters applied and the chosen sort order. Search
-     * and location are filtered server-side (see [reload]); labels, date window,
-     * and sort are applied here so toggling them doesn't refetch.
+     * Items with label + date + status/insured/warranty filters applied and the
+     * chosen sort order. Search and location are filtered server-side (see
+     * [reload]); everything else is applied here so toggling them doesn't refetch.
      */
     val displayedItems: StateFlow<Async<List<Item>>> =
-        combine(_items, selectedLabels, dateFilter, sortOrder) { items, labels, date, sort ->
-            if (items is Async.Success) Async.Success(applyFilters(items.data, labels, date, sort))
+        combine(_items, selectedLabels, dateFilter, sortOrder, extraFilters) { items, labels, date, sort, extra ->
+            if (items is Async.Success) Async.Success(applyFilters(items.data, labels, date, sort, extra))
             else items
         }.stateIn(viewModelScope, SharingStarted.Eagerly, Async.Loading)
 
@@ -114,18 +140,26 @@ class AllItemsViewModel(
     fun setSortOrder(s: SortOrder) { sortOrder.value = s }
     fun setViewMode(m: ViewMode) { viewMode.value = m }
     fun setIncludeQuick(v: Boolean) { includeQuick.value = v }
+    fun setStatusFilter(s: ItemStatus?) { statusFilter.value = s }
+    fun setInsuredFilter(v: Boolean?) { insuredFilter.value = v }
+    fun setWarrantyFilter(f: WarrantyFilter) { warrantyFilter.value = f }
 
-    /** Resets every filter (search, location, labels, date) to its default. */
+    /** Resets every filter (search, location, labels, date, status, insured, warranty) to its default. */
     fun clearFilters() {
         query.value = ""
         selectedLocation.value = null
         selectedLabels.value = emptySet()
         dateFilter.value = DateFilter.ANY
+        statusFilter.value = null
+        insuredFilter.value = null
+        warrantyFilter.value = WarrantyFilter.ANY
     }
 
     val hasActiveFilters: Boolean
         get() = query.value.isNotBlank() || selectedLocation.value != null ||
-            selectedLabels.value.isNotEmpty() || dateFilter.value != DateFilter.ANY
+            selectedLabels.value.isNotEmpty() || dateFilter.value != DateFilter.ANY ||
+            statusFilter.value != null || insuredFilter.value != null ||
+            warrantyFilter.value != WarrantyFilter.ANY
 
     fun reloadNow() {
         viewModelScope.launch { reload(query.value, selectedLocation.value, includeQuick.value) }
@@ -147,18 +181,35 @@ class AllItemsViewModel(
         labels: Set<String>,
         date: DateFilter,
         sort: SortOrder,
+        extra: ExtraFilters,
     ): List<Item> {
         val cutoff = date.days?.let { Instant.now().minus(it, ChronoUnit.DAYS) }
         val filtered = items.filter { item ->
             (labels.isEmpty() || item.labelIds.any { it in labels }) &&
                 (cutoff == null ||
-                    runCatching { Instant.parse(item.createdAt).isAfter(cutoff) }.getOrDefault(false))
+                    runCatching { Instant.parse(item.createdAt).isAfter(cutoff) }.getOrDefault(false)) &&
+                (extra.status == null || item.status == extra.status) &&
+                (extra.insured == null || item.insured == extra.insured) &&
+                matchesWarrantyFilter(item, extra.warranty)
         }
         return when (sort) {
             SortOrder.RECENT -> filtered.sortedByDescending { it.createdAt }
             SortOrder.OLDEST -> filtered.sortedBy { it.createdAt }
             SortOrder.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
             SortOrder.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
+        }
+    }
+
+    private fun matchesWarrantyFilter(item: Item, filter: WarrantyFilter): Boolean {
+        if (filter == WarrantyFilter.ANY) return true
+        val expiresAt = item.warrantyExpiresAt?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: return false
+        val today = LocalDate.now()
+        return when (filter) {
+            WarrantyFilter.EXPIRED -> expiresAt.isBefore(today)
+            WarrantyFilter.EXPIRING_SOON ->
+                !expiresAt.isBefore(today) && !expiresAt.isAfter(today.plusDays(WARRANTY_WARN_DAYS))
+            WarrantyFilter.ANY -> true
         }
     }
 }

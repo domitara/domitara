@@ -108,6 +108,7 @@ export function AddItemScreen() {
   const [purchasePrice, setPurchasePrice] = useState<number | string>('');
   const [purchasedAt, setPurchasedAt] = useState('');
   const [warranty, setWarranty] = useState('');
+  const [warrantyExpiresAt, setWarrantyExpiresAt] = useState('');
   const [insured, setInsured] = useState(false);
 
   // Asset ID
@@ -235,6 +236,7 @@ export function AddItemScreen() {
         purchase_price: typeof purchasePrice === 'number' ? purchasePrice : undefined,
         purchased_at: purchasedAt || undefined,
         warranty: warranty.trim() || undefined,
+        warranty_expires_at: warrantyExpiresAt || undefined,
         insured,
         notes: notes.trim() || undefined,
         asset_id: assetId.trim() || null,
@@ -728,12 +730,20 @@ export function AddItemScreen() {
                 onChange={(e) => setPurchasedAt(e.currentTarget.value)}
               />
             </SimpleGrid>
-            <TextInput
-              label="Warranty"
-              placeholder="e.g. 2 years · Expires Jan 2027"
-              value={warranty}
-              onChange={(e) => setWarranty(e.currentTarget.value)}
-            />
+            <SimpleGrid cols={2} spacing={12}>
+              <TextInput
+                label="Warranty"
+                placeholder="e.g. 2 years · Expires Jan 2027"
+                value={warranty}
+                onChange={(e) => setWarranty(e.currentTarget.value)}
+              />
+              <TextInput
+                label="Warranty expires"
+                type="date"
+                value={warrantyExpiresAt}
+                onChange={(e) => setWarrantyExpiresAt(e.currentTarget.value)}
+              />
+            </SimpleGrid>
             <Switch
               label="Insured"
               description="This item is covered by an insurance policy"

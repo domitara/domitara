@@ -495,6 +495,10 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
                       </Text>
                       <Text size="sm">{item.warranty ?? '—'}</Text>
                       <Text size="sm" c="dimmed">
+                        Warranty expires
+                      </Text>
+                      <Text size="sm">{formatDate(item.warranty_expires_at)}</Text>
+                      <Text size="sm" c="dimmed">
                         Purchase price
                       </Text>
                       <Text size="sm" className="mono">

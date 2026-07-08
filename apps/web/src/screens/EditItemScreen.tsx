@@ -126,11 +126,18 @@ function EditForm({ item }: { item: Item }) {
   const [serial, setSerial] = useState(item.serial ?? '');
 
   // Purchase & value — start expanded if any field is populated
-  const hasPurchase = !!(item.purchase_price || item.purchased_at || item.warranty || item.insured);
+  const hasPurchase = !!(
+    item.purchase_price ||
+    item.purchased_at ||
+    item.warranty ||
+    item.warranty_expires_at ||
+    item.insured
+  );
   const [showPurchase, setShowPurchase] = useState(hasPurchase);
   const [purchasePrice, setPurchasePrice] = useState<number | string>(item.purchase_price ?? '');
   const [purchasedAt, setPurchasedAt] = useState(item.purchased_at ?? '');
   const [warranty, setWarranty] = useState(item.warranty ?? '');
+  const [warrantyExpiresAt, setWarrantyExpiresAt] = useState(item.warranty_expires_at ?? '');
   const [insured, setInsured] = useState(item.insured);
 
   // Notes — start expanded if populated
@@ -256,6 +263,7 @@ function EditForm({ item }: { item: Item }) {
           purchase_price: typeof purchasePrice === 'number' ? purchasePrice : undefined,
           purchased_at: purchasedAt || undefined,
           warranty: warranty.trim() || undefined,
+          warranty_expires_at: warrantyExpiresAt || undefined,
           insured,
           notes: notes.trim() || undefined,
           asset_id: assetId.trim() || null,
@@ -754,12 +762,20 @@ function EditForm({ item }: { item: Item }) {
                 onChange={(e) => setPurchasedAt(e.currentTarget.value)}
               />
             </SimpleGrid>
-            <TextInput
-              label="Warranty"
-              placeholder="e.g. 2 years · Expires Jan 2027"
-              value={warranty}
-              onChange={(e) => setWarranty(e.currentTarget.value)}
-            />
+            <SimpleGrid cols={2} spacing={12}>
+              <TextInput
+                label="Warranty"
+                placeholder="e.g. 2 years · Expires Jan 2027"
+                value={warranty}
+                onChange={(e) => setWarranty(e.currentTarget.value)}
+              />
+              <TextInput
+                label="Warranty expires"
+                type="date"
+                value={warrantyExpiresAt}
+                onChange={(e) => setWarrantyExpiresAt(e.currentTarget.value)}
+              />
+            </SimpleGrid>
             <Switch
               label="Insured"
               description="This item is covered by an insurance policy"

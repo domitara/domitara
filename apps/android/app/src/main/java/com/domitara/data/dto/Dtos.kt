@@ -194,6 +194,7 @@ data class DashboardStats(
     val totalLocations: Int,
     val totalLabels: Int,
     val totalValue: Double,
+    val totalExpiringWarranties: Int = 0,
 )
 
 @Serializable
@@ -209,6 +210,7 @@ data class Item(
     val purchasePrice: Double? = null,
     val purchasedAt: String? = null,
     val warranty: String? = null,
+    val warrantyExpiresAt: String? = null,
     val insured: Boolean = false,
     val notes: String? = null,
     val assetId: String? = null,
@@ -439,6 +441,7 @@ data class CreateItemInput(
     val purchasePrice: Double? = null,
     val purchasedAt: String? = null,
     val warranty: String? = null,
+    val warrantyExpiresAt: String? = null,
     val insured: Boolean = false,
     val notes: String? = null,
     val assetId: String? = null,

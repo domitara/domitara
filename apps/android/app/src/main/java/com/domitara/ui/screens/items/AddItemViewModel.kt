@@ -41,6 +41,7 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
     override val purchasePrice = MutableStateFlow("")
     override val purchasedAt = MutableStateFlow("")
     override val warranty = MutableStateFlow("")
+    override val warrantyExpiresAt = MutableStateFlow("")
     override val insured = MutableStateFlow(false)
     override val notes = MutableStateFlow("")
     override val assetId = MutableStateFlow(generateAssetId())
@@ -129,6 +130,7 @@ class AddItemViewModel(private val repo: DataRepository) : ViewModel(), ItemForm
                         purchasePrice = purchasePrice.value.toDoubleOrNull(),
                         purchasedAt = purchasedAt.value.ifBlank { null },
                         warranty = warranty.value.trim().ifBlank { null },
+                        warrantyExpiresAt = warrantyExpiresAt.value.ifBlank { null },
                         insured = insured.value,
                         notes = notes.value.trim().ifBlank { null },
                         assetId = assetId.value.trim().ifBlank { null },

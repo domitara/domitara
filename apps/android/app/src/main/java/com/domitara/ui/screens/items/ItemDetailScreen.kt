@@ -200,7 +200,8 @@ private fun ItemDetailContent(vm: ItemDetailViewModel, item: Item) {
                 FactRow("Manufacturer") { Text(item.manufacturer ?: "—", style = MaterialTheme.typography.bodyMedium) }
                 FactRow("Model") { Text(item.model ?: "—", style = MaterialTheme.typography.bodyMedium) }
                 FactRow("Serial") { Text(item.serial ?: "—", style = MaterialTheme.typography.bodyMedium) }
-                FactRow("Warranty", isLast = true) { Text(item.warranty ?: "—", style = MaterialTheme.typography.bodyMedium) }
+                FactRow("Warranty") { Text(item.warranty ?: "—", style = MaterialTheme.typography.bodyMedium) }
+                FactRow("Warranty expires", isLast = true) { Text(shortDate(item.warrantyExpiresAt), style = MaterialTheme.typography.bodyMedium) }
             }
         }
 

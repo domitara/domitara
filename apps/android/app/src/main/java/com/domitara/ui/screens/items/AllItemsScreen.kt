@@ -22,9 +22,12 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -45,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.domitara.data.dto.ItemStatus
 import com.domitara.di.appViewModel
 import com.domitara.ui.common.Async
 import com.domitara.ui.common.GridViewIcon
@@ -71,6 +75,9 @@ fun AllItemsScreen(onOpenItem: (String) -> Unit, onAddItem: () -> Unit = {}) {
     val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
     val viewMode by vm.viewMode.collectAsStateWithLifecycle()
     val includeQuick by vm.includeQuick.collectAsStateWithLifecycle()
+    val statusFilter by vm.statusFilter.collectAsStateWithLifecycle()
+    val insuredFilter by vm.insuredFilter.collectAsStateWithLifecycle()
+    val warrantyFilter by vm.warrantyFilter.collectAsStateWithLifecycle()
 
     val labelsById = remember(labels) { labels.associateBy { it.id } }
     val locationNames = remember(locations) { locations.associate { it.id to it.name } }
@@ -125,6 +132,41 @@ fun AllItemsScreen(onOpenItem: (String) -> Unit, onAddItem: () -> Unit = {}) {
                     options = SortOrder.entries.map { it.label to it },
                     selectedValue = sortOrder,
                     onSelect = vm::setSortOrder,
+                )
+                DropdownFilter(
+                    label = statusFilter?.let {
+                        it.name.lowercase().replaceFirstChar { c -> c.uppercase() }
+                    } ?: "All statuses",
+                    leadingIcon = Icons.Filled.Info,
+                    active = statusFilter != null,
+                    options = buildList {
+                        add("All statuses" to null)
+                        ItemStatus.entries.forEach {
+                            add(it.name.lowercase().replaceFirstChar { c -> c.uppercase() } to it)
+                        }
+                    },
+                    selectedValue = statusFilter,
+                    onSelect = vm::setStatusFilter,
+                )
+                DropdownFilter(
+                    label = when (insuredFilter) {
+                        true -> "Insured"
+                        false -> "Not insured"
+                        null -> "Insured?"
+                    },
+                    leadingIcon = Icons.Filled.CheckCircle,
+                    active = insuredFilter != null,
+                    options = listOf("Any" to null, "Insured" to true, "Not insured" to false),
+                    selectedValue = insuredFilter,
+                    onSelect = vm::setInsuredFilter,
+                )
+                DropdownFilter(
+                    label = if (warrantyFilter == WarrantyFilter.ANY) "Warranty" else warrantyFilter.label,
+                    leadingIcon = Icons.Filled.Warning,
+                    active = warrantyFilter != WarrantyFilter.ANY,
+                    options = WarrantyFilter.entries.map { it.label to it },
+                    selectedValue = warrantyFilter,
+                    onSelect = vm::setWarrantyFilter,
                 )
                 FilterChip(
                     selected = includeQuick,
