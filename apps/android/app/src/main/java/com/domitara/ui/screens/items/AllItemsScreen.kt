@@ -52,6 +52,8 @@ import com.domitara.ui.common.SortIcon
 import com.domitara.ui.common.EmptyState
 import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LoadingState
+import com.domitara.ui.common.indentedLocationLabel
+import com.domitara.ui.common.sortedWithDepth
 
 @Composable
 fun AllItemsScreen(onOpenItem: (String) -> Unit, onAddItem: () -> Unit = {}) {
@@ -105,7 +107,9 @@ fun AllItemsScreen(onOpenItem: (String) -> Unit, onAddItem: () -> Unit = {}) {
                     active = selectedLocation != null,
                     options = buildList {
                         add("All locations" to null)
-                        locations.sortedBy { it.name }.forEach { add(it.name to it.id) }
+                        locations.sortedWithDepth().forEach { (loc, depth) ->
+                            add(indentedLocationLabel(loc.name, depth) to loc.id)
+                        }
                     },
                     selectedValue = selectedLocation,
                     onSelect = vm::setLocation,

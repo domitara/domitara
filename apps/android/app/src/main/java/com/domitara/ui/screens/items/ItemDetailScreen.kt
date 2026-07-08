@@ -3,7 +3,6 @@ package com.domitara.ui.screens.items
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +27,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,6 +66,7 @@ import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LabelChip
 import com.domitara.ui.common.LoadingState
 import com.domitara.ui.common.PhotoViewerDialog
+import com.domitara.ui.common.rememberPhotoCapture
 import com.domitara.ui.common.StatusBadge
 import com.domitara.ui.common.avatarColor
 import com.domitara.ui.common.formatBytes
@@ -263,12 +265,11 @@ private fun PhotoCarousel(
     var photoIndex by remember(itemId) { mutableIntStateOf(0) }
     var viewerOpen by remember { mutableStateOf(false) }
     var uploadError by remember { mutableStateOf<String?>(null) }
+    var addMenuOpen by remember { mutableStateOf(false) }
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            uploadError = null
-            vm.addPhoto(uri) { uploadError = it }
-        }
+    val photoCapture = rememberPhotoCapture { uri ->
+        uploadError = null
+        vm.addPhoto(uri) { uploadError = it }
     }
 
     val photos = (photosState as? Async.Success)?.data ?: emptyList()
@@ -321,17 +322,29 @@ private fun PhotoCarousel(
                 enabled = photos.size > 1 && photoIndex < photos.size - 1,
             ) { Text("›", style = MaterialTheme.typography.titleMedium) }
             Spacer(Modifier.width(8.dp))
-            TextButton(
-                onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                enabled = !uploading,
-            ) {
-                if (uploading) {
-                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            Box {
+                TextButton(
+                    onClick = { addMenuOpen = true },
+                    enabled = !uploading,
+                ) {
+                    if (uploading) {
+                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (uploading) "Uploading…" else "Add photo")
                 }
-                Spacer(Modifier.width(4.dp))
-                Text(if (uploading) "Uploading…" else "Add photo")
+                DropdownMenu(expanded = addMenuOpen, onDismissRequest = { addMenuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Take photo") },
+                        onClick = { addMenuOpen = false; photoCapture.takePhoto() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Choose from library") },
+                        onClick = { addMenuOpen = false; photoCapture.pickFromGallery() },
+                    )
+                }
             }
             if (current != null) {
                 IconButton(onClick = {

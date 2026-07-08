@@ -47,7 +47,9 @@ import com.domitara.data.dto.Label
 import com.domitara.data.dto.Location
 import com.domitara.data.dto.LocationType
 import com.domitara.ui.common.ColorDot
+import com.domitara.ui.common.indentedLocationLabel
 import com.domitara.ui.common.parseHexColor
+import com.domitara.ui.common.sortedWithDepth
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Preset label colors offered when creating a label inline, mirroring the web app. */
@@ -312,9 +314,9 @@ private fun LocationPicker(
                     { Icon(Icons.Filled.Check, contentDescription = "Selected") }
                 } else null,
             )
-            locations.sortedBy { it.name }.forEach { loc ->
+            locations.sortedWithDepth().forEach { (loc, depth) ->
                 DropdownMenuItem(
-                    text = { Text(loc.name) },
+                    text = { Text(indentedLocationLabel(loc.name, depth)) },
                     onClick = { onSelect(loc.id); expanded = false },
                     trailingIcon = if (selectedId == loc.id) {
                         { Icon(Icons.Filled.Check, contentDescription = "Selected") }
@@ -395,9 +397,9 @@ private fun NewLocationForm(locations: List<Location>, onCreate: (name: String, 
                     text = { Text("Top-level") },
                     onClick = { parentId = null; parentExpanded = false },
                 )
-                locations.sortedBy { it.name }.forEach { loc ->
+                locations.sortedWithDepth().forEach { (loc, depth) ->
                     DropdownMenuItem(
-                        text = { Text(loc.name) },
+                        text = { Text(indentedLocationLabel(loc.name, depth)) },
                         onClick = { parentId = loc.id; parentExpanded = false },
                     )
                 }
