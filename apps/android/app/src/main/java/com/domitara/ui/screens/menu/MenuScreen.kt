@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.domitara.BuildConfig
 import com.domitara.data.dto.User
 import com.domitara.di.LocalAppContainer
 import com.domitara.di.appViewModel
@@ -100,12 +101,20 @@ fun MenuDrawer(
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
 
-            // Server version sits right below logout.
+            // App and server version sit right below logout, so a build can be
+            // identified at a glance (e.g. when sideloading CI debug builds).
+            Text(
+                text = "App v${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
             Text(
                 text = version?.let { "Server v$it" } ?: "Server …",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
