@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -33,11 +35,25 @@ jobs:
       - name: Install SDK platform
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Derive dev version
+        # Debug builds don't go through android-release.yml's tag-based
+        # versioning, so every CI build otherwise looks like the same
+        # hardcoded "1.0.0" default. Stamp the latest release tag plus the
+        # run number and commit so a sideloaded debug build is identifiable.
+        id: ver
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "name=${LAST_TAG#v}-dev.${{ github.run_number }}+$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
       - name: Lint, test, assemble
         working-directory: apps/android
         run: |
           chmod +x ./gradlew
-          ./gradlew lintDebug testDebugUnitTest assembleDebug --no-daemon --stacktrace
+          ./gradlew lintDebug testDebugUnitTest assembleDebug --no-daemon --stacktrace \
+            -PversionName="${{ steps.ver.outputs.name }}" \
+            -PversionCode="${{ steps.ver.outputs.code }}"
 
       - name: Upload debug APK
         if: success()
