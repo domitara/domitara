@@ -24,6 +24,7 @@ type PhotoRow struct {
 	Filename    string    `json:"filename"`
 	ContentType string    `json:"content_type"`
 	URL         string    `json:"url"`
+	IsCover     bool      `json:"is_cover"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -60,10 +61,28 @@ func (h *Handler) ListItemPhotos(ctx context.Context, input *PhotoItemIDInput) (
 	for i, p := range rows {
 		photos[i] = PhotoRow{
 			ID: p.ID, ItemID: p.ItemID, Filename: p.Filename, ContentType: p.ContentType,
-			URL: "/uploads/" + p.FilePath, CreatedAt: p.CreatedAt.Time,
+			URL: "/uploads/" + p.FilePath, IsCover: p.IsCover, CreatedAt: p.CreatedAt.Time,
 		}
 	}
 	return &PhotosOutput{Body: photos}, nil
+}
+
+// SetPhotoCover marks a photo as the item's cover photo, unsetting any previous cover.
+func (h *Handler) SetPhotoCover(ctx context.Context, input *DeletePhotoInput) (*struct{}, error) {
+	if _, err := apimw.RequireAuth(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := h.q.GetItemPhotoFilePath(ctx, store.GetItemPhotoFilePathParams{
+		ID: input.PhotoID, ItemID: input.ItemID,
+	}); err != nil {
+		return nil, huma.NewError(http.StatusNotFound, "photo not found")
+	}
+	if err := h.q.SetItemPhotoCover(ctx, store.SetItemPhotoCoverParams{
+		ItemID: input.ItemID, ID: input.PhotoID,
+	}); err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to set cover photo")
+	}
+	return nil, nil
 }
 
 // DeletePhoto removes a photo record and its file from disk.
@@ -71,7 +90,7 @@ func (h *Handler) DeletePhoto(ctx context.Context, input *DeletePhotoInput) (*st
 	if _, err := apimw.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
-	filePath, err := h.q.GetItemPhotoFilePath(ctx, store.GetItemPhotoFilePathParams{
+	photo, err := h.q.GetItemPhotoFilePath(ctx, store.GetItemPhotoFilePathParams{
 		ID: input.PhotoID, ItemID: input.ItemID,
 	})
 	if err != nil {
@@ -80,7 +99,10 @@ func (h *Handler) DeletePhoto(ctx context.Context, input *DeletePhotoInput) (*st
 	if err := h.q.DeleteItemPhoto(ctx, input.PhotoID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete photo")
 	}
-	_ = os.Remove(filepath.Join(h.uploadDir, filePath))
+	_ = os.Remove(filepath.Join(h.uploadDir, photo.FilePath))
+	if photo.IsCover {
+		_ = h.q.PromoteOldestPhotoToCover(ctx, input.ItemID)
+	}
 	return nil, nil
 }
 
@@ -123,9 +145,15 @@ func (h *Handler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	count, err := h.q.CountItemPhotos(r.Context(), itemID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to check existing photos")
+		return
+	}
+
 	base := sanitizeFilename(strings.TrimSuffix(header.Filename, filepath.Ext(header.Filename)))
 	rec, err := h.q.CreateItemPhoto(r.Context(), store.CreateItemPhotoParams{
-		ItemID: itemID, Filename: base + ext, ContentType: ct,
+		ItemID: itemID, Filename: base + ext, ContentType: ct, IsCover: count == 0,
 	})
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to create photo record")
@@ -160,7 +188,7 @@ func (h *Handler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 
 	row := PhotoRow{
 		ID: rec.ID, ItemID: rec.ItemID, Filename: rec.Filename, ContentType: rec.ContentType,
-		URL: "/uploads/" + relPath, CreatedAt: rec.CreatedAt.Time,
+		URL: "/uploads/" + relPath, IsCover: rec.IsCover, CreatedAt: rec.CreatedAt.Time,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

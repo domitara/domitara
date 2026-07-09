@@ -27,6 +27,8 @@ import {
   IconPhoto,
   IconFile,
   IconDownload,
+  IconStar,
+  IconStarFilled,
 } from '@tabler/icons-react';
 import { Fragment, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -39,6 +41,7 @@ import {
   useItemPhotos,
   useUploadPhoto,
   useDeletePhoto,
+  useSetCoverPhoto,
   useItemDocuments,
   useUploadDocument,
   useDeleteDocument,
@@ -60,6 +63,7 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
   const { data: photos = [] } = useItemPhotos(itemId);
   const uploadPhoto = useUploadPhoto(itemId);
   const deletePhoto = useDeletePhoto(itemId);
+  const setCoverPhoto = useSetCoverPhoto(itemId);
   const { data: documents = [] } = useItemDocuments(itemId);
   const uploadDocument = useUploadDocument(itemId);
   const deleteDocument = useDeleteDocument(itemId);
@@ -252,31 +256,54 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
                 </div>
               )}
               {currentPhoto && (
-                <ActionIcon
-                  variant="filled"
-                  color="red"
-                  size="sm"
-                  style={{ position: 'absolute', top: 6, right: 6 }}
-                  onClick={() =>
-                    modals.openConfirmModal({
-                      title: 'Delete photo',
-                      children: (
-                        <Text size="sm">
-                          Are you sure you want to delete this photo? This cannot be undone.
-                        </Text>
-                      ),
-                      labels: { confirm: 'Delete', cancel: 'Cancel' },
-                      confirmProps: { color: 'red' },
-                      onConfirm: () => {
-                        deletePhoto.mutate(currentPhoto.id, {
-                          onSuccess: () => setPhotoIndex(Math.max(0, photoIndex - 1)),
-                        });
-                      },
-                    })
-                  }
-                >
-                  <IconTrash size={12} />
-                </ActionIcon>
+                <Group gap={6} style={{ position: 'absolute', top: 6, right: 6 }}>
+                  {photos.length > 1 && !currentPhoto.is_cover && (
+                    <ActionIcon
+                      variant="filled"
+                      color="yellow"
+                      size="sm"
+                      title="Set as cover photo"
+                      onClick={() => setCoverPhoto.mutate(currentPhoto.id)}
+                    >
+                      <IconStar size={12} />
+                    </ActionIcon>
+                  )}
+                  {currentPhoto.is_cover && photos.length > 1 && (
+                    <ActionIcon
+                      variant="filled"
+                      color="yellow"
+                      size="sm"
+                      disabled
+                      title="Cover photo"
+                    >
+                      <IconStarFilled size={12} />
+                    </ActionIcon>
+                  )}
+                  <ActionIcon
+                    variant="filled"
+                    color="red"
+                    size="sm"
+                    onClick={() =>
+                      modals.openConfirmModal({
+                        title: 'Delete photo',
+                        children: (
+                          <Text size="sm">
+                            Are you sure you want to delete this photo? This cannot be undone.
+                          </Text>
+                        ),
+                        labels: { confirm: 'Delete', cancel: 'Cancel' },
+                        confirmProps: { color: 'red' },
+                        onConfirm: () => {
+                          deletePhoto.mutate(currentPhoto.id, {
+                            onSuccess: () => setPhotoIndex(Math.max(0, photoIndex - 1)),
+                          });
+                        },
+                      })
+                    }
+                  >
+                    <IconTrash size={12} />
+                  </ActionIcon>
+                </Group>
               )}
             </Paper>
             <Group gap={6} justify="center">

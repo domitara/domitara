@@ -174,6 +174,7 @@ type ItemPhoto struct {
 	ContentType string             `json:"content_type"`
 	FilePath    string             `json:"file_path"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	IsCover     bool               `json:"is_cover"`
 }
 
 type Label struct {

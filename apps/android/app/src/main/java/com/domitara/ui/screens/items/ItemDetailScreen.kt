@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -344,6 +345,22 @@ private fun PhotoCarousel(
                     DropdownMenuItem(
                         text = { Text("Choose from library") },
                         onClick = { addMenuOpen = false; photoCapture.pickFromGallery() },
+                    )
+                }
+            }
+            if (current != null && photos.size > 1) {
+                IconButton(
+                    onClick = { vm.setCoverPhoto(current.id) },
+                    enabled = !current.isCover,
+                ) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = if (current.isCover) "Cover photo" else "Set as cover photo",
+                        tint = if (current.isCover) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        },
                     )
                 }
             }

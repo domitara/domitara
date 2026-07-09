@@ -231,6 +231,8 @@ class DataRepository(
     }
     suspend fun deleteItemPhoto(itemId: String, photoId: String) =
         call { it.deleteItemPhoto(itemId, photoId) }
+    suspend fun setItemPhotoCover(itemId: String, photoId: String) =
+        call { it.setItemPhotoCover(itemId, photoId) }
     suspend fun listItemDocuments(itemId: String) = call { it.listItemDocuments(itemId) }
     suspend fun uploadItemDocument(itemId: String, uri: Uri) = call { svc ->
         svc.uploadItemDocument(itemId, readUploadPart(uri, "document"))

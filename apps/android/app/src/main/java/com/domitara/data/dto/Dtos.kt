@@ -219,6 +219,7 @@ data class Item(
     val gridRow: Int? = null,
     val gridCol: Int? = null,
     val customFields: List<CustomField> = emptyList(),
+    val coverPhotoUrl: String? = null,
     val createdAt: String,
     val updatedAt: String,
 )
@@ -239,6 +240,7 @@ data class ItemPhoto(
     val filename: String,
     val contentType: String,
     val url: String,
+    val isCover: Boolean = false,
     val createdAt: String,
 )
 

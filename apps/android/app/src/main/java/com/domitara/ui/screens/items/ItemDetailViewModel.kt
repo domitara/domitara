@@ -130,6 +130,20 @@ class ItemDetailViewModel(
         }
     }
 
+    fun setCoverPhoto(photoId: String) {
+        viewModelScope.launch {
+            runCatching { repo.setItemPhotoCover(itemId, photoId) }
+                .onSuccess {
+                    (_photos.value as? Async.Success)?.let { cur ->
+                        _photos.value = Async.Success(
+                            cur.data.map { it.copy(isCover = it.id == photoId) },
+                        )
+                    }
+                }
+                .onFailure { _actionError.value = it.toUserMessage() }
+        }
+    }
+
     /** Uploads a picked document for this item. [onError] receives a message on failure. */
     fun addDocument(uri: Uri, onError: (String) -> Unit = {}) {
         if (_uploadingDocument.value) return

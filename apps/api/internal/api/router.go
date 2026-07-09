@@ -183,6 +183,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	// Item photos — list and delete through HUMA; upload is a raw chi handler (multipart)
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/items/{itemId}/photos", Summary: "List item photos", Security: bearerAuth}, h.ListItemPhotos)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/items/{itemId}/photos/{photoId}", Summary: "Delete item photo", DefaultStatus: 204, Security: bearerAuth}, h.DeletePhoto)
+	huma.Register(api, huma.Operation{Method: http.MethodPatch, Path: "/api/v1/items/{itemId}/photos/{photoId}/cover", Summary: "Set item cover photo", DefaultStatus: 204, Security: bearerAuth}, h.SetPhotoCover)
 	r.Post("/api/v1/items/{itemId}/photos", h.UploadPhoto)
 
 	// Item documents — same pattern as photos

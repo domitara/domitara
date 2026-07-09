@@ -382,6 +382,18 @@ export function useUploadPhoto(itemId: string) {
   });
 }
 
+export function useSetCoverPhoto(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (photoId: string) => api.patch(`/items/${itemId}/photos/${photoId}/cover`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: photoKeys.byItem(itemId) });
+      qc.invalidateQueries({ queryKey: itemKeys.byId(itemId) });
+      qc.invalidateQueries({ queryKey: itemKeys.all });
+    },
+  });
+}
+
 export function useDeletePhoto(itemId: string) {
   const qc = useQueryClient();
   return useMutation({
