@@ -68,6 +68,7 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          build-args: VERSION=${{ needs.release.outputs.version || inputs.version }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.release.outputs.version || inputs.version }}-amd64
 
   build-arm64:
@@ -92,6 +93,7 @@ jobs:
           context: .
           platforms: linux/arm64
           push: true
+          build-args: VERSION=${{ needs.release.outputs.version || inputs.version }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.release.outputs.version || inputs.version }}-arm64
 
   manifest:

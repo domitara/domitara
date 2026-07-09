@@ -17,6 +17,7 @@ RUN pnpm --filter @app/web build
 
 # ---- Stage 2: Go API ----
 FROM golang:1.25-alpine AS api-builder
+ARG VERSION=dev
 WORKDIR /app
 
 COPY apps/api/go.mod apps/api/go.sum ./
@@ -25,7 +26,7 @@ RUN go mod download
 COPY apps/api/ ./
 COPY --from=web-builder /workspace/apps/api/internal/web/dist ./internal/web/dist
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X github.com/domitara/domitara/apps/api/internal/version.Version=${VERSION}" -o /bin/server ./cmd/server
 
 # ---- Stage 3: Final ----
 FROM alpine:3.21
