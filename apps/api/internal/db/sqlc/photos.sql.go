@@ -7,29 +7,59 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countItemPhotos = `-- name: CountItemPhotos :one
+SELECT count(*) FROM item_photos WHERE item_id = $1
+`
+
+func (q *Queries) CountItemPhotos(ctx context.Context, itemID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countItemPhotos, itemID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createItemPhoto = `-- name: CreateItemPhoto :one
-INSERT INTO item_photos (item_id, filename, content_type, file_path)
-VALUES ($1, $2, $3, 'pending')
-RETURNING id, item_id, filename, content_type, file_path, created_at
+INSERT INTO item_photos (item_id, filename, content_type, file_path, is_cover)
+VALUES ($1, $2, $3, 'pending', $4)
+RETURNING id, item_id, filename, content_type, file_path, is_cover, created_at
 `
 
 type CreateItemPhotoParams struct {
 	ItemID      string `json:"item_id"`
 	Filename    string `json:"filename"`
 	ContentType string `json:"content_type"`
+	IsCover     bool   `json:"is_cover"`
 }
 
-func (q *Queries) CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams) (ItemPhoto, error) {
-	row := q.db.QueryRow(ctx, createItemPhoto, arg.ItemID, arg.Filename, arg.ContentType)
-	var i ItemPhoto
+type CreateItemPhotoRow struct {
+	ID          string             `json:"id"`
+	ItemID      string             `json:"item_id"`
+	Filename    string             `json:"filename"`
+	ContentType string             `json:"content_type"`
+	FilePath    string             `json:"file_path"`
+	IsCover     bool               `json:"is_cover"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams) (CreateItemPhotoRow, error) {
+	row := q.db.QueryRow(ctx, createItemPhoto,
+		arg.ItemID,
+		arg.Filename,
+		arg.ContentType,
+		arg.IsCover,
+	)
+	var i CreateItemPhotoRow
 	err := row.Scan(
 		&i.ID,
 		&i.ItemID,
 		&i.Filename,
 		&i.ContentType,
 		&i.FilePath,
+		&i.IsCover,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -45,7 +75,7 @@ func (q *Queries) DeleteItemPhoto(ctx context.Context, id string) error {
 }
 
 const getItemPhotoFilePath = `-- name: GetItemPhotoFilePath :one
-SELECT file_path FROM item_photos WHERE id = $1 AND item_id = $2
+SELECT file_path, is_cover FROM item_photos WHERE id = $1 AND item_id = $2
 `
 
 type GetItemPhotoFilePathParams struct {
@@ -53,33 +83,49 @@ type GetItemPhotoFilePathParams struct {
 	ItemID string `json:"item_id"`
 }
 
-func (q *Queries) GetItemPhotoFilePath(ctx context.Context, arg GetItemPhotoFilePathParams) (string, error) {
+type GetItemPhotoFilePathRow struct {
+	FilePath string `json:"file_path"`
+	IsCover  bool   `json:"is_cover"`
+}
+
+func (q *Queries) GetItemPhotoFilePath(ctx context.Context, arg GetItemPhotoFilePathParams) (GetItemPhotoFilePathRow, error) {
 	row := q.db.QueryRow(ctx, getItemPhotoFilePath, arg.ID, arg.ItemID)
-	var file_path string
-	err := row.Scan(&file_path)
-	return file_path, err
+	var i GetItemPhotoFilePathRow
+	err := row.Scan(&i.FilePath, &i.IsCover)
+	return i, err
 }
 
 const listItemPhotos = `-- name: ListItemPhotos :many
-SELECT id, item_id, filename, content_type, file_path, created_at
+SELECT id, item_id, filename, content_type, file_path, is_cover, created_at
 FROM item_photos WHERE item_id = $1 ORDER BY created_at ASC
 `
 
-func (q *Queries) ListItemPhotos(ctx context.Context, itemID string) ([]ItemPhoto, error) {
+type ListItemPhotosRow struct {
+	ID          string             `json:"id"`
+	ItemID      string             `json:"item_id"`
+	Filename    string             `json:"filename"`
+	ContentType string             `json:"content_type"`
+	FilePath    string             `json:"file_path"`
+	IsCover     bool               `json:"is_cover"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListItemPhotos(ctx context.Context, itemID string) ([]ListItemPhotosRow, error) {
 	rows, err := q.db.Query(ctx, listItemPhotos, itemID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ItemPhoto
+	var items []ListItemPhotosRow
 	for rows.Next() {
-		var i ItemPhoto
+		var i ListItemPhotosRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ItemID,
 			&i.Filename,
 			&i.ContentType,
 			&i.FilePath,
+			&i.IsCover,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -90,6 +136,32 @@ func (q *Queries) ListItemPhotos(ctx context.Context, itemID string) ([]ItemPhot
 		return nil, err
 	}
 	return items, nil
+}
+
+const promoteOldestPhotoToCover = `-- name: PromoteOldestPhotoToCover :exec
+UPDATE item_photos ip SET is_cover = true
+WHERE ip.item_id = $1 AND ip.id = (
+    SELECT id FROM item_photos WHERE item_id = $1 ORDER BY created_at ASC LIMIT 1
+)
+`
+
+func (q *Queries) PromoteOldestPhotoToCover(ctx context.Context, itemID string) error {
+	_, err := q.db.Exec(ctx, promoteOldestPhotoToCover, itemID)
+	return err
+}
+
+const setItemPhotoCover = `-- name: SetItemPhotoCover :exec
+UPDATE item_photos SET is_cover = (id = $2) WHERE item_id = $1
+`
+
+type SetItemPhotoCoverParams struct {
+	ItemID string `json:"item_id"`
+	ID     string `json:"id"`
+}
+
+func (q *Queries) SetItemPhotoCover(ctx context.Context, arg SetItemPhotoCoverParams) error {
+	_, err := q.db.Exec(ctx, setItemPhotoCover, arg.ItemID, arg.ID)
+	return err
 }
 
 const updateItemPhotoPath = `-- name: UpdateItemPhotoPath :exec

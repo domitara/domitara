@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -16,10 +17,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Label
+import com.domitara.di.LocalAppContainer
 import com.domitara.ui.common.Avatar
 import com.domitara.ui.common.LabelChips
 import com.domitara.ui.common.StatusBadge
@@ -33,10 +37,11 @@ fun ItemGridCard(
     locationName: String?,
     onClick: () -> Unit,
 ) {
+    val container = LocalAppContainer.current
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
-        // Thumbnail placeholder tinted from the item's deterministic avatar color.
+        // Cover photo when available, otherwise a placeholder tinted from the item's avatar color.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -45,7 +50,17 @@ fun ItemGridCard(
                 .background(avatarColor(item.id).copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
-            Avatar(item.id, item.name, size = 48)
+            if (item.coverPhotoUrl != null) {
+                AsyncImage(
+                    model = container.dataRepository.absoluteUrl(item.coverPhotoUrl),
+                    imageLoader = container.imageLoader,
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Avatar(item.id, item.name, size = 48)
+            }
             Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.TopEnd) {
                 StatusBadge(item.status)
             }

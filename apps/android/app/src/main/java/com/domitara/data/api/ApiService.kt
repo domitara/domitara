@@ -188,6 +188,9 @@ interface ApiService {
     @DELETE("items/{itemId}/photos/{photoId}")
     suspend fun deleteItemPhoto(@Path("itemId") itemId: String, @Path("photoId") photoId: String)
 
+    @PATCH("items/{itemId}/photos/{photoId}/cover")
+    suspend fun setItemPhotoCover(@Path("itemId") itemId: String, @Path("photoId") photoId: String)
+
     @GET("items/{itemId}/documents")
     suspend fun listItemDocuments(@Path("itemId") itemId: String): List<ItemDocument>
 

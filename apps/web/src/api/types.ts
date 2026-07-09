@@ -64,6 +64,7 @@ export interface Item {
   grid_row: number | null;
   grid_col: number | null;
   custom_fields: CustomField[];
+  cover_photo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -176,6 +177,7 @@ export interface ItemPhoto {
   filename: string;
   content_type: string;
   url: string;
+  is_cover: boolean;
   created_at: string;
 }
 

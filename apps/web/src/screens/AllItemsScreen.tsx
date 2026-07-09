@@ -447,8 +447,16 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
                 >
                   {selected.has(it.id) && <IconCheck size={11} color="#fff" />}
                 </span>
-                <div className="row-thumb ph-1">
-                  <IconBox size={16} color="rgba(255,255,255,.7)" />
+                <div className={`row-thumb ${it.cover_photo_url ? '' : 'ph-1'}`}>
+                  {it.cover_photo_url ? (
+                    <img
+                      src={it.cover_photo_url}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <IconBox size={16} color="rgba(255,255,255,.7)" />
+                  )}
                 </div>
                 <div>
                   <Group gap={6} wrap="nowrap">
@@ -625,7 +633,15 @@ export function ItemCard({
       }}
     >
       <div className={`item-card-thumb ${ph}`}>
-        <IconBox size={32} color="rgba(255,255,255,.65)" />
+        {item.cover_photo_url ? (
+          <img
+            src={item.cover_photo_url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <IconBox size={32} color="rgba(255,255,255,.65)" />
+        )}
         <div className="item-card-thumb-overlay">
           {item.status === 'loaned' && (
             <span

@@ -41,6 +41,7 @@ type ItemRow struct {
 	GridRow           *int             `json:"grid_row"`
 	GridCol           *int             `json:"grid_col"`
 	CustomFields      []CustomFieldRow `json:"custom_fields"`
+	CoverPhotoURL     *string          `json:"cover_photo_url"`
 	CreatedAt         time.Time        `json:"created_at"`
 	UpdatedAt         time.Time        `json:"updated_at"`
 }
@@ -114,7 +115,8 @@ type UpdateItemInput struct {
 	Body ItemBody
 }
 
-// sqlc not used here: COALESCE(array_agg(...) FILTER (...), '{}') generates interface{} in sqlc pgx/v5 mode
+// sqlc not used here: COALESCE(array_agg(...) FILTER (...), '{}') generates interface{} in sqlc pgx/v5 mode.
+// Also joins the cover photo (at most one row per item) to embed cover_photo_url.
 const itemSelectSQL = `
 	SELECT i.id, i.name, i.description, i.location_id, i.status,
 	       i.manufacturer, i.model, i.serial,
@@ -128,14 +130,17 @@ const itemSelectSQL = `
 	               'value_type', cf.value_type, 'unit', cf.unit
 	           )) FILTER (WHERE cf.id IS NOT NULL), '[]'
 	       ),
+	       MAX(cp.file_path),
 	       i.created_at, i.updated_at
 	FROM items i
 	LEFT JOIN item_labels il ON il.item_id = i.id
-	LEFT JOIN item_custom_fields cf ON cf.item_id = i.id`
+	LEFT JOIN item_custom_fields cf ON cf.item_id = i.id
+	LEFT JOIN item_photos cp ON cp.item_id = i.id AND cp.is_cover`
 
 func scanItem(row pgx.Row) (ItemRow, error) {
 	var it ItemRow
 	var customFieldsJSON []byte
+	var coverPhotoPath *string
 	err := row.Scan(
 		&it.ID, &it.Name, &it.Description, &it.LocationID, &it.Status,
 		&it.Manufacturer, &it.Model, &it.Serial,
@@ -144,6 +149,7 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 		&it.LabelIDs,
 		&it.Tier, &it.GridRow, &it.GridCol,
 		&customFieldsJSON,
+		&coverPhotoPath,
 		&it.CreatedAt, &it.UpdatedAt,
 	)
 	if err != nil {
@@ -151,6 +157,10 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 	}
 	if err := json.Unmarshal(customFieldsJSON, &it.CustomFields); err != nil {
 		return it, err
+	}
+	if coverPhotoPath != nil {
+		url := "/uploads/" + *coverPhotoPath
+		it.CoverPhotoURL = &url
 	}
 	return it, nil
 }

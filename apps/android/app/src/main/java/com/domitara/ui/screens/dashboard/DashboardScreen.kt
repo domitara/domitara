@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -23,14 +25,18 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.domitara.data.dto.DashboardStats
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Reminder
 import com.domitara.data.dto.ReminderTone
+import com.domitara.di.LocalAppContainer
 import com.domitara.di.appViewModel
 import com.domitara.ui.common.ActionErrorHost
 import com.domitara.ui.common.Async
@@ -162,9 +168,20 @@ private fun ReminderCard(reminder: Reminder, onDismiss: () -> Unit, onSnooze: (I
 
 @Composable
 private fun RecentItemCard(item: Item, onClick: () -> Unit) {
+    val container = LocalAppContainer.current
     Card(Modifier.width(140.dp).clickable(onClick = onClick)) {
         Column(Modifier.padding(12.dp)) {
-            Avatar(item.id, item.name, size = 36)
+            if (item.coverPhotoUrl != null) {
+                AsyncImage(
+                    model = container.dataRepository.absoluteUrl(item.coverPhotoUrl),
+                    imageLoader = container.imageLoader,
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(36.dp).clip(CircleShape),
+                )
+            } else {
+                Avatar(item.id, item.name, size = 36)
+            }
             Spacer(Modifier.height(8.dp))
             Text(
                 item.name,
