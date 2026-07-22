@@ -12,6 +12,11 @@ import (
 
 const cookieMaxAge = 86400 // 24 hours, matches JWT expiry
 
+// refreshCookieMaxAge matches service.RefreshTokenTTL. The refresh cookie is
+// scoped to the auth path so it isn't sent on every ordinary request.
+const refreshCookieMaxAge = 90 * 86400
+const refreshCookiePath = "/api/v1/auth"
+
 // Handler holds the dependencies shared by all API request handlers.
 type Handler struct {
 	q             *store.Queries
@@ -52,6 +57,22 @@ func (h *Handler) setAuthCookies(w http.ResponseWriter, token string, role strin
 func (h *Handler) clearAuthCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: "token", Value: "", MaxAge: -1, Path: "/"})
 	http.SetCookie(w, &http.Cookie{Name: "logged_in", Value: "", MaxAge: -1, Path: "/"})
+	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: "", MaxAge: -1, Path: refreshCookiePath})
+}
+
+// setRefreshCookie sets the long-lived refresh token cookie used to silently
+// mint new access tokens. It is httpOnly and scoped to the auth path so it is
+// never sent on ordinary API requests, only login/refresh/logout.
+func (h *Handler) setRefreshCookie(w http.ResponseWriter, refreshToken string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		HttpOnly: true,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+		Path:     refreshCookiePath,
+		MaxAge:   refreshCookieMaxAge,
+	})
 }
 
 // UserResponse omits sensitive fields.

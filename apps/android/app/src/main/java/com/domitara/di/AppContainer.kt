@@ -5,6 +5,7 @@ import coil.ImageLoader
 import com.domitara.data.api.ActiveHomeInterceptor
 import com.domitara.data.api.ApiProvider
 import com.domitara.data.api.AuthInterceptor
+import com.domitara.data.api.TokenAuthenticator
 import com.domitara.data.repository.ActiveHomeHolder
 import com.domitara.data.repository.AuthRepository
 import com.domitara.data.repository.DataRepository
@@ -39,19 +40,10 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
     private val tokenHolder = TokenHolder()
     private val activeHomeHolder = ActiveHomeHolder()
 
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(AuthInterceptor { tokenHolder.session?.token })
-        .addInterceptor(ActiveHomeInterceptor { activeHomeHolder.homeId })
-        // Any authenticated request that comes back 401 means the session is no
-        // longer valid (expired/revoked token); sign out so the auth gate routes
-        // back to login instead of trapping the user behind endless retries.
-        .addInterceptor { chain ->
-            val response = chain.proceed(chain.request())
-            if (response.code == 401 && chain.request().header("Authorization") != null) {
-                logout()
-            }
-            response
-        }
+    // Bare client: no auth header, no 401-handling authenticator. Used only for
+    // login/refresh/logout, which must never recurse back into themselves via
+    // the authenticator below.
+    private val authClient: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         })
@@ -59,9 +51,19 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    val authRepository = AuthRepository(authClient, sessionStore, tokenHolder, activeHomeStore)
+
+    // Authenticated client: attaches the bearer token to every request and,
+    // on a 401, silently refreshes it and retries instead of forcing the user
+    // back to the login screen (see TokenAuthenticator).
+    private val client: OkHttpClient = authClient.newBuilder()
+        .addInterceptor(AuthInterceptor { tokenHolder.session?.token })
+        .addInterceptor(ActiveHomeInterceptor { activeHomeHolder.homeId })
+        .authenticator(TokenAuthenticator(tokenHolder, authRepository))
+        .build()
+
     private val apiProvider = ApiProvider(client)
 
-    val authRepository = AuthRepository(client, sessionStore, tokenHolder, activeHomeStore)
     val dataRepository = DataRepository(apiProvider, tokenHolder, context.applicationContext)
 
     /** Coil loader that reuses the auth'd OkHttp client so protected media (home

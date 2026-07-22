@@ -43,6 +43,7 @@ type Querier interface {
 	CreateMaintenanceLog(ctx context.Context, arg CreateMaintenanceLogParams) (CreateMaintenanceLogRow, error)
 	CreateMaintenanceSchedule(ctx context.Context, arg CreateMaintenanceScheduleParams) (CreateMaintenanceScheduleRow, error)
 	CreatePanel(ctx context.Context, arg CreatePanelParams) (ElectricalPanel, error)
+	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteBreaker(ctx context.Context, id string) error
 	DeleteFloorPlanArea(ctx context.Context, id string) error
@@ -80,6 +81,7 @@ type Querier interface {
 	GetMaxGridCell(ctx context.Context, locationID *string) (GetMaxGridCellRow, error)
 	GetPanel(ctx context.Context, id string) (ElectricalPanel, error)
 	GetPanelHomeID(ctx context.Context, id string) (string, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSystemStatus(ctx context.Context) (bool, error)
 	GetSystemStatusForUpdate(ctx context.Context) (bool, error)
 	GetUser(ctx context.Context, id int64) (User, error)
@@ -105,6 +107,9 @@ type Querier interface {
 	ListReminders(ctx context.Context, userID int64) ([]ListRemindersRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	PromoteOldestPhotoToCover(ctx context.Context, itemID string) error
+	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
+	RevokeRefreshToken(ctx context.Context, id int64) error
+	RevokeRefreshTokenByHash(ctx context.Context, tokenHash string) error
 	SetItemPhotoCover(ctx context.Context, arg SetItemPhotoCoverParams) error
 	SnoozeReminder(ctx context.Context, arg SnoozeReminderParams) (int64, error)
 	UpdateBreaker(ctx context.Context, arg UpdateBreakerParams) (ElectricalBreaker, error)

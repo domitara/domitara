@@ -340,6 +340,12 @@ data class ElectricalBreaker(
 @Serializable
 data class LoginRequest(val email: String, val password: String)
 
+/** Body for `/auth/refresh` and `/auth/logout` — sent because, unlike a
+ *  browser, the mobile client has no cookie jar attaching the httpOnly
+ *  refresh_token cookie automatically. */
+@Serializable
+data class RefreshTokenRequest(val refreshToken: String)
+
 @Serializable
 data class AddMemberInput(val email: String)
 

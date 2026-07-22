@@ -99,9 +99,14 @@ func (h *Handler) Setup(ctx context.Context, input *SetupInput) (*AuthOutput, er
 	if err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to sign token")
 	}
+	refreshToken, err := h.issueRefreshToken(ctx, user.ID)
+	if err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to issue refresh token")
+	}
 
 	if w := apimw.GetResponseWriter(ctx); w != nil {
 		h.setAuthCookies(w, token, user.Role)
+		h.setRefreshCookie(w, refreshToken)
 	}
 	return &AuthOutput{Body: userResponse(user)}, nil
 }

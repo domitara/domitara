@@ -16,15 +16,18 @@ type contextKey struct{ name string }
 var (
 	ctxClaims         = &contextKey{"claims"}
 	ctxResponseWriter = &contextKey{"response-writer"}
+	ctxRequest        = &contextKey{"request"}
 	// CtxActiveHome is the context key for the active home ID.
 	CtxActiveHome = &contextKey{"active-home"}
 )
 
-// WithResponseWriter stores the http.ResponseWriter in the request context so
-// handlers can set cookies without needing the raw http.Handler signature.
+// WithResponseWriter stores the http.ResponseWriter and the raw *http.Request
+// in the request context so huma handlers (whose signature only gives them
+// typed input structs) can still set cookies or read raw cookies directly.
 func WithResponseWriter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), ctxResponseWriter, w)
+		ctx = context.WithValue(ctx, ctxRequest, r)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -33,6 +36,12 @@ func WithResponseWriter(next http.Handler) http.Handler {
 func GetResponseWriter(ctx context.Context) http.ResponseWriter {
 	w, _ := ctx.Value(ctxResponseWriter).(http.ResponseWriter)
 	return w
+}
+
+// GetRequest retrieves the *http.Request stored by WithResponseWriter.
+func GetRequest(ctx context.Context) *http.Request {
+	r, _ := ctx.Value(ctxRequest).(*http.Request)
+	return r
 }
 
 // OptionalAuth silently extracts a valid JWT into the context. It checks the
