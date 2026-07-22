@@ -3,6 +3,9 @@
 package service
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strconv"
 	"time"
@@ -77,7 +80,33 @@ func VerifyToken(tokenStr, secret string) (Claims, error) {
 	return *c, nil
 }
 
-// TokenExpiry returns the Unix expiration timestamp for a newly issued token.
+// TokenExpiry returns the Unix expiration timestamp for a newly issued access token.
 func TokenExpiry() int64 {
 	return time.Now().Add(24 * time.Hour).Unix()
+}
+
+// RefreshTokenTTL is how long a refresh token remains valid since it was
+// issued (or last rotated). Long-lived by design: it exists so a client can
+// silently mint new access tokens and stay signed in without re-entering
+// credentials, as long as it's used at least this often.
+const RefreshTokenTTL = 90 * 24 * time.Hour
+
+// NewRefreshToken generates a cryptographically random opaque refresh token.
+// Unlike the access token it is not a JWT: it carries no claims and is only
+// meaningful when looked up against its hashed record in the database, which
+// is what makes it revocable.
+func NewRefreshToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// HashRefreshToken returns the SHA-256 hex digest of a refresh token, which is
+// what gets stored/looked-up in the database so a leaked database never
+// exposes usable tokens.
+func HashRefreshToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }

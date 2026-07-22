@@ -50,3 +50,35 @@ func TestTokenExpiry(t *testing.T) {
 		t.Error("expiry should be at least 23h in the future")
 	}
 }
+
+func TestNewRefreshToken_UniqueAndNonEmpty(t *testing.T) {
+	a, err := NewRefreshToken()
+	if err != nil {
+		t.Fatalf("NewRefreshToken: %v", err)
+	}
+	b, err := NewRefreshToken()
+	if err != nil {
+		t.Fatalf("NewRefreshToken: %v", err)
+	}
+	if a == "" || b == "" {
+		t.Fatal("want non-empty tokens")
+	}
+	if a == b {
+		t.Error("want distinct tokens on each call")
+	}
+}
+
+func TestHashRefreshToken_Deterministic(t *testing.T) {
+	tok, err := NewRefreshToken()
+	if err != nil {
+		t.Fatalf("NewRefreshToken: %v", err)
+	}
+	first := HashRefreshToken(tok)
+	second := HashRefreshToken(tok)
+	if first != second {
+		t.Error("want the same hash for the same token")
+	}
+	if first == tok {
+		t.Error("hash should not equal the raw token")
+	}
+}

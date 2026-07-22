@@ -38,7 +38,7 @@ import com.domitara.ui.theme.DangerRed
 
 @Composable
 fun LoginScreen() {
-    val vm = appViewModel { LoginViewModel(it.authRepository) }
+    val vm = appViewModel { LoginViewModel(it.authRepository, it.sessionStore) }
 
     Surface(Modifier.fillMaxSize()) {
         Column(

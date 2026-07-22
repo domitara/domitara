@@ -17,6 +17,7 @@ import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
 import com.domitara.data.dto.HomeDocumentType
 import com.domitara.data.dto.LoginRequest
+import com.domitara.data.dto.RefreshTokenRequest
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
 import com.domitara.data.dto.UpdateDocumentTypeInput
@@ -54,14 +55,23 @@ class ActiveHomeHolder {
 }
 
 private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
-// Anchor to a cookie-name boundary (start of header or after a delimiter) so a
-// cookie like `csrf_token=...` can't be mistaken for the auth `token` cookie.
-private val TOKEN_REGEX = Regex("(?:^|[;,\\s])token=([^;,\\s]+)")
+
+/** Builds a regex anchored to a cookie-name boundary (start of header or
+ *  after a delimiter) so e.g. a `csrf_token=...` cookie can't be mistaken for
+ *  a same-suffixed cookie name. */
+private fun cookieRegex(name: String) = Regex("(?:^|[;,\\s])${Regex.escape(name)}=([^;,\\s]+)")
+private val TOKEN_REGEX = cookieRegex("token")
+private val REFRESH_TOKEN_REGEX = cookieRegex("refresh_token")
 
 /**
- * Handles login/logout. Login is a raw OkHttp call (not Retrofit) so we can read
- * the JWT out of the `Set-Cookie` response header — the API does not return the
- * token in the body. Mirrors the old RN login flow.
+ * Handles login/logout/refresh. These are raw OkHttp calls (not Retrofit) so
+ * we can read the JWT and refresh token out of the `Set-Cookie` response
+ * headers — the API does not return them in the body. Mirrors the old RN
+ * login flow.
+ *
+ * Uses a bare [client] with no auth interceptor or [com.domitara.data.api.TokenAuthenticator]
+ * attached: [refresh] is itself what the authenticator calls into, so reusing
+ * the authenticated client here would recurse back into this class on a 401.
  */
 class AuthRepository(
     private val client: OkHttpClient,
@@ -73,6 +83,7 @@ class AuthRepository(
         withContext(Dispatchers.IO) {
             runCatching {
                 val base = serverUrlRaw.trim().trimEnd('/')
+                sessionStore.rememberServerUrl(base)
                 val body = AppJson.encodeToString(LoginRequest(email, password))
                     .toRequestBody(JSON_MEDIA)
                 val request = Request.Builder()
@@ -87,24 +98,86 @@ class AuthRepository(
                             unauthorized = resp.code == 401,
                         )
                     }
-                    val token = extractToken(resp.headers("Set-Cookie"))
+                    val token = extractCookie(resp.headers("Set-Cookie"), TOKEN_REGEX)
                         ?: throw ApiException("No token in response")
-                    val session = Session(base, token)
+                    val refreshToken = extractCookie(resp.headers("Set-Cookie"), REFRESH_TOKEN_REGEX)
+                        ?: throw ApiException("No refresh token in response")
+                    val session = Session(base, token, refreshToken)
                     sessionStore.save(session)
                     tokenHolder.session = session
                 }
             }
         }
 
+    /**
+     * Exchanges the current refresh token for a new access token, rotating
+     * the refresh token in the process (the server invalidates the old one).
+     * Called by [com.domitara.data.api.TokenAuthenticator] when a request comes
+     * back 401. On a network failure the local session is left untouched (no
+     * point signing the user out just because they're offline); a definitive
+     * rejection from the server (refresh token expired/revoked) does sign
+     * them out, since it means the server no longer honors this device.
+     */
+    suspend fun refresh(): Result<Session> = withContext(Dispatchers.IO) {
+        runCatching {
+            val current = tokenHolder.session ?: sessionStore.current()
+                ?: throw ApiException("No session", unauthorized = true)
+            val body = AppJson.encodeToString(RefreshTokenRequest(current.refreshToken))
+                .toRequestBody(JSON_MEDIA)
+            val request = Request.Builder()
+                .url("${current.serverUrl}/api/v1/auth/refresh")
+                .post(body)
+                .build()
+            client.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    if (resp.code == 401 || resp.code == 403) {
+                        signOutLocally()
+                    }
+                    throw ApiException(
+                        message = parseError(resp.body?.string()) ?: "Session expired",
+                        status = resp.code,
+                        unauthorized = true,
+                    )
+                }
+                val token = extractCookie(resp.headers("Set-Cookie"), TOKEN_REGEX)
+                    ?: throw ApiException("No token in refresh response")
+                val refreshToken = extractCookie(resp.headers("Set-Cookie"), REFRESH_TOKEN_REGEX)
+                    ?: current.refreshToken
+                val session = Session(current.serverUrl, token, refreshToken)
+                sessionStore.save(session)
+                tokenHolder.session = session
+                session
+            }
+        }
+    }
+
     suspend fun logout() {
+        val current = tokenHolder.session ?: sessionStore.current()
+        if (current != null) {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val body = AppJson.encodeToString(RefreshTokenRequest(current.refreshToken))
+                        .toRequestBody(JSON_MEDIA)
+                    val request = Request.Builder()
+                        .url("${current.serverUrl}/api/v1/auth/logout")
+                        .post(body)
+                        .build()
+                    client.newCall(request).execute().close()
+                }
+            }
+        }
+        signOutLocally()
+    }
+
+    private suspend fun signOutLocally() {
         sessionStore.clear()
         activeHomeStore.clear()
         tokenHolder.session = null
     }
 
-    private fun extractToken(setCookieHeaders: List<String>): String? {
+    private fun extractCookie(setCookieHeaders: List<String>, regex: Regex): String? {
         for (header in setCookieHeaders) {
-            val m = TOKEN_REGEX.find(header)
+            val m = regex.find(header)
             if (m != null) return m.groupValues[1]
         }
         return null

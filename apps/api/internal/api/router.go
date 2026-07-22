@@ -106,6 +106,9 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 		Method: http.MethodPost, Path: "/api/v1/auth/logout", Summary: "Logout", DefaultStatus: 204,
 	}, h.Logout)
 	huma.Register(api, huma.Operation{
+		Method: http.MethodPost, Path: "/api/v1/auth/refresh", Summary: "Refresh access token", DefaultStatus: 200,
+	}, h.Refresh)
+	huma.Register(api, huma.Operation{
 		Method: http.MethodGet, Path: "/api/v1/auth/me", Summary: "Current user", Security: bearerAuth,
 	}, h.Me)
 	huma.Register(api, huma.Operation{
