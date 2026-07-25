@@ -52,7 +52,12 @@ import com.domitara.ui.theme.WarnAmber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(onOpenItem: (String) -> Unit) {
+fun DashboardScreen(
+    onOpenItem: (String) -> Unit,
+    onOpenItems: () -> Unit = {},
+    onOpenLocations: () -> Unit = {},
+    onOpenLabels: () -> Unit = {},
+) {
     val vm = appViewModel { DashboardViewModel(it.dataRepository, it.activeHomeId) }
     val state by vm.state.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
@@ -66,6 +71,9 @@ fun DashboardScreen(onOpenItem: (String) -> Unit) {
                 is Async.Success -> DashboardContent(
                     data = s.data,
                     onOpenItem = onOpenItem,
+                    onOpenItems = onOpenItems,
+                    onOpenLocations = onOpenLocations,
+                    onOpenLabels = onOpenLabels,
                     onDismiss = vm::dismiss,
                     onSnooze = { id, days -> vm.snooze(id, days) },
                 )
@@ -78,6 +86,9 @@ fun DashboardScreen(onOpenItem: (String) -> Unit) {
 private fun DashboardContent(
     data: DashboardData,
     onOpenItem: (String) -> Unit,
+    onOpenItems: () -> Unit,
+    onOpenLocations: () -> Unit,
+    onOpenLabels: () -> Unit,
     onDismiss: (String) -> Unit,
     onSnooze: (String, Int) -> Unit,
 ) {
@@ -85,7 +96,14 @@ private fun DashboardContent(
         contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item { StatsGrid(data.stats) }
+        item {
+            StatsGrid(
+                stats = data.stats,
+                onOpenItems = onOpenItems,
+                onOpenLocations = onOpenLocations,
+                onOpenLabels = onOpenLabels,
+            )
+        }
 
         if (data.reminders.isNotEmpty()) {
             item { SectionHeader("Needs Attention") }
@@ -115,25 +133,35 @@ private fun DashboardContent(
 }
 
 @Composable
-private fun StatsGrid(stats: DashboardStats) {
+private fun StatsGrid(
+    stats: DashboardStats,
+    onOpenItems: () -> Unit,
+    onOpenLocations: () -> Unit,
+    onOpenLabels: () -> Unit,
+) {
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("Items", stats.totalItems.toString(), Modifier.weight(1f))
-            StatTile("Locations", stats.totalLocations.toString(), Modifier.weight(1f))
+            StatTile("Items", stats.totalItems.toString(), Modifier.weight(1f), onClick = onOpenItems)
+            StatTile("Locations", stats.totalLocations.toString(), Modifier.weight(1f), onClick = onOpenLocations)
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile("Labels", stats.totalLabels.toString(), Modifier.weight(1f))
+            StatTile("Labels", stats.totalLabels.toString(), Modifier.weight(1f), onClick = onOpenLabels)
             StatTile("Total Value", formatCurrencyWhole(stats.totalValue), Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
-        StatTile("Warranties Expiring", stats.totalExpiringWarranties.toString(), Modifier.fillMaxWidth())
+        StatTile(
+            "Warranties Expiring",
+            stats.totalExpiringWarranties.toString(),
+            Modifier.fillMaxWidth(),
+            onClick = onOpenItems,
+        )
     }
 }
 
 @Composable
-private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier) {
+private fun StatTile(label: String, value: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    Card(if (onClick != null) modifier.clickable(onClick = onClick) else modifier) {
         Column(Modifier.padding(16.dp)) {
             Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
             Text(

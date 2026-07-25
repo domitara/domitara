@@ -1,6 +1,7 @@
 package com.domitara.ui
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,8 +25,24 @@ import com.domitara.ui.screens.search.SearchScreen
 fun AppNavHost(navController: NavHostController) {
     val openItem: (String) -> Unit = { id -> navController.navigate(Routes.itemDetail(id)) }
 
+    // Mirrors the bottom nav bar's tab-switch semantics (see AppRoot.goTo) so that
+    // jumping to a tab from the dashboard behaves the same as tapping it directly.
+    val goToTab: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
+
     NavHost(navController = navController, startDestination = Routes.DASHBOARD) {
-        composable(Routes.DASHBOARD) { DashboardScreen(onOpenItem = openItem) }
+        composable(Routes.DASHBOARD) {
+            DashboardScreen(
+                onOpenItem = openItem,
+                onOpenItems = { goToTab(Routes.ITEMS) },
+                onOpenLocations = { goToTab(Routes.LOCATIONS) },
+                onOpenLabels = { goToTab(Routes.LABELS) },
+            )
+        }
         composable(Routes.ITEMS) {
             AllItemsScreen(onOpenItem = openItem, onAddItem = { navController.navigate(Routes.ITEM_NEW) })
         }
