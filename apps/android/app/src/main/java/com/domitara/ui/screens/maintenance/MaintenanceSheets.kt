@@ -8,17 +8,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +40,9 @@ import com.domitara.data.dto.CreateScheduleInput
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.MaintenanceSchedule
 import com.domitara.data.dto.UpdateScheduleInput
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 private val FREQUENCY_UNITS = listOf("days", "weeks", "months", "years")
 
@@ -166,12 +176,10 @@ fun ScheduleEditorSheet(
                 )
             }
 
-            OutlinedTextField(
+            DatePickerField(
                 value = nextDue,
                 onValueChange = { nextDue = it },
-                label = { Text("Next due (YYYY-MM-DD)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                label = "Next due (YYYY-MM-DD)",
             )
 
             OutlinedTextField(
@@ -227,15 +235,117 @@ private fun SheetColumn(content: @Composable () -> Unit) {
     ) { content() }
 }
 
+private const val NO_ITEM_LABEL = "No specific item"
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ItemDropdown(items: List<Item>, selectedId: String?, onSelect: (String?) -> Unit) {
-    Dropdown(
-        label = "Item",
-        selectedText = items.firstOrNull { it.id == selectedId }?.name ?: "No specific item",
-        options = listOf("No specific item" to null) + items.map { it.name to it.id },
-        onSelect = onSelect,
+    var expanded by remember { mutableStateOf(false) }
+    var query by remember(selectedId, items) {
+        mutableStateOf(items.firstOrNull { it.id == selectedId }?.name ?: NO_ITEM_LABEL)
+    }
+    val filtered = remember(query, items) {
+        if (query.isBlank()) items else items.filter { it.name.contains(query, ignoreCase = true) }
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = {
+                query = it
+                expanded = true
+            },
+            label = { Text("Item") },
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+                query = items.firstOrNull { it.id == selectedId }?.name ?: NO_ITEM_LABEL
+            },
+        ) {
+            DropdownMenuItem(
+                text = { Text(NO_ITEM_LABEL) },
+                onClick = {
+                    onSelect(null)
+                    query = NO_ITEM_LABEL
+                    expanded = false
+                },
+            )
+            filtered.forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(item.name) },
+                    onClick = {
+                        onSelect(item.id)
+                        query = item.name
+                        expanded = false
+                    },
+                )
+            }
+            if (filtered.isEmpty()) {
+                DropdownMenuItem(text = { Text("No matches") }, onClick = {}, enabled = false)
+            }
+        }
+    }
+}
+
+/** Text field for an ISO date (YYYY-MM-DD) with a trailing button to pick the date from a calendar. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerField(value: String, onValueChange: (String) -> Unit, label: String) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        trailingIcon = {
+            IconButton(onClick = { showPicker = true }) {
+                Icon(Icons.Filled.DateRange, contentDescription = "Pick date")
+            }
+        },
         modifier = Modifier.fillMaxWidth(),
     )
+
+    if (showPicker) {
+        val initialMillis = runCatching { LocalDate.parse(value.trim()) }.getOrNull()
+            ?.atStartOfDay(ZoneOffset.UTC)
+            ?.toInstant()
+            ?.toEpochMilli()
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            val picked = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            onValueChange(picked.toString())
+                        }
+                        showPicker = false
+                    },
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
