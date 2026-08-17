@@ -28,7 +28,7 @@ func GenerateThumbnail(srcPath, dstPath, contentType string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var src image.Image
 	switch contentType {
@@ -64,6 +64,6 @@ func GenerateThumbnail(srcPath, dstPath, contentType string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	return jpeg.Encode(out, dst, &jpeg.Options{Quality: 82})
 }
