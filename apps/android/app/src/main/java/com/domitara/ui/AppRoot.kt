@@ -32,6 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.domitara.data.session.Session
 import com.domitara.di.LocalAppContainer
+import com.domitara.notifications.RequestNotificationPermission
 import com.domitara.ui.common.BoxIcon
 import com.domitara.ui.common.LoadingState
 import com.domitara.ui.common.TagIcon
@@ -72,6 +73,8 @@ private val tabs = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScaffold() {
+    RequestNotificationPermission()
+
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
