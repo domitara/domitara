@@ -16,6 +16,7 @@ import (
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
+	"github.com/domitara/domitara/apps/api/internal/imaging"
 )
 
 // ---- response types ----
@@ -67,12 +68,13 @@ type HomeMembersOutput struct{ Body []HomeMemberRow }
 
 // HomePhotoRow is the API representation of a home photo.
 type HomePhotoRow struct {
-	ID          string    `json:"id"`
-	HomeID      string    `json:"home_id"`
-	Filename    string    `json:"filename"`
-	ContentType string    `json:"content_type"`
-	URL         string    `json:"url"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	HomeID       string    `json:"home_id"`
+	Filename     string    `json:"filename"`
+	ContentType  string    `json:"content_type"`
+	URL          string    `json:"url"`
+	ThumbnailURL string    `json:"thumbnail_url"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // HomePhotosOutput is the response body listing home photos.
@@ -528,9 +530,10 @@ func (h *Handler) ListHomePhotos(ctx context.Context, input *HomeIDInput) (*Home
 	}
 	photos := make([]HomePhotoRow, len(rows))
 	for i, p := range rows {
+		url := "/uploads/" + p.FilePath
 		photos[i] = HomePhotoRow{
 			ID: p.ID, HomeID: p.HomeID, Filename: p.Filename, ContentType: p.ContentType,
-			URL: "/uploads/" + p.FilePath, CreatedAt: p.CreatedAt.Time,
+			URL: url, ThumbnailURL: thumbnailURL(url, p.ThumbnailPath), CreatedAt: p.CreatedAt.Time,
 		}
 	}
 	return &HomePhotosOutput{Body: photos}, nil
@@ -545,7 +548,7 @@ func (h *Handler) DeleteHomePhoto(ctx context.Context, input *DeleteHomePhotoInp
 	if _, err := h.requireHomeMember(ctx, input.ID, claims.Sub); err != nil {
 		return nil, err
 	}
-	filePath, err := h.q.GetHomePhotoFilePath(ctx, store.GetHomePhotoFilePathParams{
+	photo, err := h.q.GetHomePhotoFilePath(ctx, store.GetHomePhotoFilePathParams{
 		ID: input.PhotoID, HomeID: input.ID,
 	})
 	if err != nil {
@@ -554,7 +557,10 @@ func (h *Handler) DeleteHomePhoto(ctx context.Context, input *DeleteHomePhotoInp
 	if err := h.q.DeleteHomePhoto(ctx, input.PhotoID); err != nil {
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete photo")
 	}
-	_ = os.Remove(filepath.Join(h.uploadDir, filePath))
+	_ = os.Remove(filepath.Join(h.uploadDir, photo.FilePath))
+	if photo.ThumbnailPath != nil {
+		_ = os.Remove(filepath.Join(h.uploadDir, *photo.ThumbnailPath))
+	}
 	return nil, nil
 }
 
@@ -630,18 +636,28 @@ func (h *Handler) UploadHomePhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var thumbnailPath *string
+	thumbRelPath := "homes/" + homeID + "/" + rec.ID + "_thumb.jpg"
+	if err := imaging.GenerateThumbnail(absPath, filepath.Join(h.uploadDir, thumbRelPath), ct); err == nil {
+		thumbnailPath = &thumbRelPath
+	}
+
 	if err := h.q.UpdateHomePhotoPath(r.Context(), store.UpdateHomePhotoPathParams{
-		FilePath: relPath, ID: rec.ID,
+		FilePath: relPath, ThumbnailPath: thumbnailPath, ID: rec.ID,
 	}); err != nil {
 		_ = h.q.DeleteHomePhoto(r.Context(), rec.ID)
 		_ = os.Remove(absPath)
+		if thumbnailPath != nil {
+			_ = os.Remove(filepath.Join(h.uploadDir, *thumbnailPath))
+		}
 		writeJSONError(w, http.StatusInternalServerError, "failed to update photo record")
 		return
 	}
 
+	url := "/uploads/" + relPath
 	row := HomePhotoRow{
 		ID: rec.ID, HomeID: rec.HomeID, Filename: rec.Filename, ContentType: rec.ContentType,
-		URL: "/uploads/" + relPath, CreatedAt: rec.CreatedAt.Time,
+		URL: url, ThumbnailURL: thumbnailURL(url, thumbnailPath), CreatedAt: rec.CreatedAt.Time,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

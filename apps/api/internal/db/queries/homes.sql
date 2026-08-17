@@ -67,19 +67,19 @@ ON CONFLICT (home_id, user_id) DO UPDATE SET role = EXCLUDED.role;
 DELETE FROM home_members WHERE home_id = $1 AND user_id = $2;
 
 -- name: ListHomePhotos :many
-SELECT id, home_id, filename, content_type, file_path, created_at
+SELECT id, home_id, filename, content_type, file_path, thumbnail_path, created_at
 FROM home_photos WHERE home_id = $1 ORDER BY created_at ASC;
 
 -- name: GetHomePhotoFilePath :one
-SELECT file_path FROM home_photos WHERE id = $1 AND home_id = $2;
+SELECT file_path, thumbnail_path FROM home_photos WHERE id = $1 AND home_id = $2;
 
 -- name: CreateHomePhoto :one
 INSERT INTO home_photos (home_id, filename, content_type, file_path)
 VALUES ($1, $2, $3, 'pending')
-RETURNING id, home_id, filename, content_type, file_path, created_at;
+RETURNING id, home_id, filename, content_type, file_path, thumbnail_path, created_at;
 
 -- name: UpdateHomePhotoPath :exec
-UPDATE home_photos SET file_path = $1 WHERE id = $2;
+UPDATE home_photos SET file_path = $1, thumbnail_path = $2 WHERE id = $3;
 
 -- name: DeleteHomePhoto :exec
 DELETE FROM home_photos WHERE id = $1;

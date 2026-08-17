@@ -450,7 +450,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
                 <div className={`row-thumb ${it.cover_photo_url ? '' : 'ph-1'}`}>
                   {it.cover_photo_url ? (
                     <img
-                      src={it.cover_photo_url}
+                      src={it.cover_photo_thumbnail_url ?? it.cover_photo_url}
                       alt=""
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -635,7 +635,7 @@ export function ItemCard({
       <div className={`item-card-thumb ${ph}`}>
         {item.cover_photo_url ? (
           <img
-            src={item.cover_photo_url}
+            src={item.cover_photo_thumbnail_url ?? item.cover_photo_url}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />

@@ -107,12 +107,13 @@ type HomeMember struct {
 }
 
 type HomePhoto struct {
-	ID          string             `json:"id"`
-	HomeID      string             `json:"home_id"`
-	Filename    string             `json:"filename"`
-	ContentType string             `json:"content_type"`
-	FilePath    string             `json:"file_path"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID            string             `json:"id"`
+	HomeID        string             `json:"home_id"`
+	Filename      string             `json:"filename"`
+	ContentType   string             `json:"content_type"`
+	FilePath      string             `json:"file_path"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ThumbnailPath *string            `json:"thumbnail_path"`
 }
 
 type Item struct {
@@ -168,13 +169,14 @@ type ItemLabel struct {
 }
 
 type ItemPhoto struct {
-	ID          string             `json:"id"`
-	ItemID      string             `json:"item_id"`
-	Filename    string             `json:"filename"`
-	ContentType string             `json:"content_type"`
-	FilePath    string             `json:"file_path"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	IsCover     bool               `json:"is_cover"`
+	ID            string             `json:"id"`
+	ItemID        string             `json:"item_id"`
+	Filename      string             `json:"filename"`
+	ContentType   string             `json:"content_type"`
+	FilePath      string             `json:"file_path"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	IsCover       bool               `json:"is_cover"`
+	ThumbnailPath *string            `json:"thumbnail_path"`
 }
 
 type Label struct {
