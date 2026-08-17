@@ -143,6 +143,7 @@ data class HomePhoto(
     val filename: String,
     val contentType: String,
     val url: String,
+    val thumbnailUrl: String,
     val createdAt: String,
 )
 
@@ -220,6 +221,7 @@ data class Item(
     val gridCol: Int? = null,
     val customFields: List<CustomField> = emptyList(),
     val coverPhotoUrl: String? = null,
+    val coverPhotoThumbnailUrl: String? = null,
     val createdAt: String,
     val updatedAt: String,
 )
@@ -240,6 +242,7 @@ data class ItemPhoto(
     val filename: String,
     val contentType: String,
     val url: String,
+    val thumbnailUrl: String,
     val isCover: Boolean = false,
     val createdAt: String,
 )

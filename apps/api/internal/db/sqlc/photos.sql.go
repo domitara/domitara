@@ -25,7 +25,7 @@ func (q *Queries) CountItemPhotos(ctx context.Context, itemID string) (int64, er
 const createItemPhoto = `-- name: CreateItemPhoto :one
 INSERT INTO item_photos (item_id, filename, content_type, file_path, is_cover)
 VALUES ($1, $2, $3, 'pending', $4)
-RETURNING id, item_id, filename, content_type, file_path, is_cover, created_at
+RETURNING id, item_id, filename, content_type, file_path, thumbnail_path, is_cover, created_at
 `
 
 type CreateItemPhotoParams struct {
@@ -36,13 +36,14 @@ type CreateItemPhotoParams struct {
 }
 
 type CreateItemPhotoRow struct {
-	ID          string             `json:"id"`
-	ItemID      string             `json:"item_id"`
-	Filename    string             `json:"filename"`
-	ContentType string             `json:"content_type"`
-	FilePath    string             `json:"file_path"`
-	IsCover     bool               `json:"is_cover"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID            string             `json:"id"`
+	ItemID        string             `json:"item_id"`
+	Filename      string             `json:"filename"`
+	ContentType   string             `json:"content_type"`
+	FilePath      string             `json:"file_path"`
+	ThumbnailPath *string            `json:"thumbnail_path"`
+	IsCover       bool               `json:"is_cover"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams) (CreateItemPhotoRow, error) {
@@ -59,6 +60,7 @@ func (q *Queries) CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams
 		&i.Filename,
 		&i.ContentType,
 		&i.FilePath,
+		&i.ThumbnailPath,
 		&i.IsCover,
 		&i.CreatedAt,
 	)
@@ -75,7 +77,7 @@ func (q *Queries) DeleteItemPhoto(ctx context.Context, id string) error {
 }
 
 const getItemPhotoFilePath = `-- name: GetItemPhotoFilePath :one
-SELECT file_path, is_cover FROM item_photos WHERE id = $1 AND item_id = $2
+SELECT file_path, thumbnail_path, is_cover FROM item_photos WHERE id = $1 AND item_id = $2
 `
 
 type GetItemPhotoFilePathParams struct {
@@ -84,30 +86,32 @@ type GetItemPhotoFilePathParams struct {
 }
 
 type GetItemPhotoFilePathRow struct {
-	FilePath string `json:"file_path"`
-	IsCover  bool   `json:"is_cover"`
+	FilePath      string  `json:"file_path"`
+	ThumbnailPath *string `json:"thumbnail_path"`
+	IsCover       bool    `json:"is_cover"`
 }
 
 func (q *Queries) GetItemPhotoFilePath(ctx context.Context, arg GetItemPhotoFilePathParams) (GetItemPhotoFilePathRow, error) {
 	row := q.db.QueryRow(ctx, getItemPhotoFilePath, arg.ID, arg.ItemID)
 	var i GetItemPhotoFilePathRow
-	err := row.Scan(&i.FilePath, &i.IsCover)
+	err := row.Scan(&i.FilePath, &i.ThumbnailPath, &i.IsCover)
 	return i, err
 }
 
 const listItemPhotos = `-- name: ListItemPhotos :many
-SELECT id, item_id, filename, content_type, file_path, is_cover, created_at
+SELECT id, item_id, filename, content_type, file_path, thumbnail_path, is_cover, created_at
 FROM item_photos WHERE item_id = $1 ORDER BY created_at ASC
 `
 
 type ListItemPhotosRow struct {
-	ID          string             `json:"id"`
-	ItemID      string             `json:"item_id"`
-	Filename    string             `json:"filename"`
-	ContentType string             `json:"content_type"`
-	FilePath    string             `json:"file_path"`
-	IsCover     bool               `json:"is_cover"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID            string             `json:"id"`
+	ItemID        string             `json:"item_id"`
+	Filename      string             `json:"filename"`
+	ContentType   string             `json:"content_type"`
+	FilePath      string             `json:"file_path"`
+	ThumbnailPath *string            `json:"thumbnail_path"`
+	IsCover       bool               `json:"is_cover"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) ListItemPhotos(ctx context.Context, itemID string) ([]ListItemPhotosRow, error) {
@@ -125,6 +129,7 @@ func (q *Queries) ListItemPhotos(ctx context.Context, itemID string) ([]ListItem
 			&i.Filename,
 			&i.ContentType,
 			&i.FilePath,
+			&i.ThumbnailPath,
 			&i.IsCover,
 			&i.CreatedAt,
 		); err != nil {
@@ -165,15 +170,16 @@ func (q *Queries) SetItemPhotoCover(ctx context.Context, arg SetItemPhotoCoverPa
 }
 
 const updateItemPhotoPath = `-- name: UpdateItemPhotoPath :exec
-UPDATE item_photos SET file_path = $1 WHERE id = $2
+UPDATE item_photos SET file_path = $1, thumbnail_path = $2 WHERE id = $3
 `
 
 type UpdateItemPhotoPathParams struct {
-	FilePath string `json:"file_path"`
-	ID       string `json:"id"`
+	FilePath      string  `json:"file_path"`
+	ThumbnailPath *string `json:"thumbnail_path"`
+	ID            string  `json:"id"`
 }
 
 func (q *Queries) UpdateItemPhotoPath(ctx context.Context, arg UpdateItemPhotoPathParams) error {
-	_, err := q.db.Exec(ctx, updateItemPhotoPath, arg.FilePath, arg.ID)
+	_, err := q.db.Exec(ctx, updateItemPhotoPath, arg.FilePath, arg.ThumbnailPath, arg.ID)
 	return err
 }

@@ -141,7 +141,7 @@ func (q *Queries) CreateHomeDocument(ctx context.Context, arg CreateHomeDocument
 const createHomePhoto = `-- name: CreateHomePhoto :one
 INSERT INTO home_photos (home_id, filename, content_type, file_path)
 VALUES ($1, $2, $3, 'pending')
-RETURNING id, home_id, filename, content_type, file_path, created_at
+RETURNING id, home_id, filename, content_type, file_path, thumbnail_path, created_at
 `
 
 type CreateHomePhotoParams struct {
@@ -150,15 +150,26 @@ type CreateHomePhotoParams struct {
 	ContentType string `json:"content_type"`
 }
 
-func (q *Queries) CreateHomePhoto(ctx context.Context, arg CreateHomePhotoParams) (HomePhoto, error) {
+type CreateHomePhotoRow struct {
+	ID            string             `json:"id"`
+	HomeID        string             `json:"home_id"`
+	Filename      string             `json:"filename"`
+	ContentType   string             `json:"content_type"`
+	FilePath      string             `json:"file_path"`
+	ThumbnailPath *string            `json:"thumbnail_path"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateHomePhoto(ctx context.Context, arg CreateHomePhotoParams) (CreateHomePhotoRow, error) {
 	row := q.db.QueryRow(ctx, createHomePhoto, arg.HomeID, arg.Filename, arg.ContentType)
-	var i HomePhoto
+	var i CreateHomePhotoRow
 	err := row.Scan(
 		&i.ID,
 		&i.HomeID,
 		&i.Filename,
 		&i.ContentType,
 		&i.FilePath,
+		&i.ThumbnailPath,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -313,7 +324,7 @@ func (q *Queries) GetHomeMemberRole(ctx context.Context, arg GetHomeMemberRolePa
 }
 
 const getHomePhotoFilePath = `-- name: GetHomePhotoFilePath :one
-SELECT file_path FROM home_photos WHERE id = $1 AND home_id = $2
+SELECT file_path, thumbnail_path FROM home_photos WHERE id = $1 AND home_id = $2
 `
 
 type GetHomePhotoFilePathParams struct {
@@ -321,11 +332,16 @@ type GetHomePhotoFilePathParams struct {
 	HomeID string `json:"home_id"`
 }
 
-func (q *Queries) GetHomePhotoFilePath(ctx context.Context, arg GetHomePhotoFilePathParams) (string, error) {
+type GetHomePhotoFilePathRow struct {
+	FilePath      string  `json:"file_path"`
+	ThumbnailPath *string `json:"thumbnail_path"`
+}
+
+func (q *Queries) GetHomePhotoFilePath(ctx context.Context, arg GetHomePhotoFilePathParams) (GetHomePhotoFilePathRow, error) {
 	row := q.db.QueryRow(ctx, getHomePhotoFilePath, arg.ID, arg.HomeID)
-	var file_path string
-	err := row.Scan(&file_path)
-	return file_path, err
+	var i GetHomePhotoFilePathRow
+	err := row.Scan(&i.FilePath, &i.ThumbnailPath)
+	return i, err
 }
 
 const listHomeDocuments = `-- name: ListHomeDocuments :many
@@ -407,25 +423,36 @@ func (q *Queries) ListHomeMembers(ctx context.Context, homeID string) ([]ListHom
 }
 
 const listHomePhotos = `-- name: ListHomePhotos :many
-SELECT id, home_id, filename, content_type, file_path, created_at
+SELECT id, home_id, filename, content_type, file_path, thumbnail_path, created_at
 FROM home_photos WHERE home_id = $1 ORDER BY created_at ASC
 `
 
-func (q *Queries) ListHomePhotos(ctx context.Context, homeID string) ([]HomePhoto, error) {
+type ListHomePhotosRow struct {
+	ID            string             `json:"id"`
+	HomeID        string             `json:"home_id"`
+	Filename      string             `json:"filename"`
+	ContentType   string             `json:"content_type"`
+	FilePath      string             `json:"file_path"`
+	ThumbnailPath *string            `json:"thumbnail_path"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListHomePhotos(ctx context.Context, homeID string) ([]ListHomePhotosRow, error) {
 	rows, err := q.db.Query(ctx, listHomePhotos, homeID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []HomePhoto
+	var items []ListHomePhotosRow
 	for rows.Next() {
-		var i HomePhoto
+		var i ListHomePhotosRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.HomeID,
 			&i.Filename,
 			&i.ContentType,
 			&i.FilePath,
+			&i.ThumbnailPath,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -626,16 +653,17 @@ func (q *Queries) UpdateHomeDocumentType(ctx context.Context, arg UpdateHomeDocu
 }
 
 const updateHomePhotoPath = `-- name: UpdateHomePhotoPath :exec
-UPDATE home_photos SET file_path = $1 WHERE id = $2
+UPDATE home_photos SET file_path = $1, thumbnail_path = $2 WHERE id = $3
 `
 
 type UpdateHomePhotoPathParams struct {
-	FilePath string `json:"file_path"`
-	ID       string `json:"id"`
+	FilePath      string  `json:"file_path"`
+	ThumbnailPath *string `json:"thumbnail_path"`
+	ID            string  `json:"id"`
 }
 
 func (q *Queries) UpdateHomePhotoPath(ctx context.Context, arg UpdateHomePhotoPathParams) error {
-	_, err := q.db.Exec(ctx, updateHomePhotoPath, arg.FilePath, arg.ID)
+	_, err := q.db.Exec(ctx, updateHomePhotoPath, arg.FilePath, arg.ThumbnailPath, arg.ID)
 	return err
 }
 

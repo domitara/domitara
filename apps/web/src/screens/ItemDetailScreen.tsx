@@ -242,11 +242,19 @@ export function ItemDetailScreen({ itemId }: ItemDetailScreenProps) {
               style={{ overflow: 'hidden', aspectRatio: '4/3', position: 'relative' }}
             >
               {currentPhoto ? (
-                <img
-                  src={currentPhoto.url}
-                  alt={currentPhoto.filename}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
+                <a
+                  href={currentPhoto.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open full-size photo"
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                >
+                  <img
+                    src={currentPhoto.thumbnail_url}
+                    alt={currentPhoto.filename}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
               ) : (
                 <div
                   className="item-card-thumb ph-1"

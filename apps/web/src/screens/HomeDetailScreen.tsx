@@ -423,7 +423,14 @@ function PhotosTab({ homeId }: { homeId: string }) {
           {photos.map((p) => (
             <Grid.Col key={p.id} span={{ base: 6, sm: 4, md: 3 }}>
               <Paper withBorder radius="md" style={{ overflow: 'hidden', position: 'relative' }}>
-                <Image src={p.url} alt={p.filename} h={160} fit="cover" />
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open full-size photo"
+                >
+                  <Image src={p.thumbnail_url} alt={p.filename} h={160} fit="cover" />
+                </a>
                 <ActionIcon
                   size="sm"
                   color="red"

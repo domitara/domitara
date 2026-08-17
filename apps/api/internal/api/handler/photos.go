@@ -15,17 +15,19 @@ import (
 
 	apimw "github.com/domitara/domitara/apps/api/internal/api/middleware"
 	store "github.com/domitara/domitara/apps/api/internal/db/sqlc"
+	"github.com/domitara/domitara/apps/api/internal/imaging"
 )
 
 // PhotoRow is the API representation of an item photo.
 type PhotoRow struct {
-	ID          string    `json:"id"`
-	ItemID      string    `json:"item_id"`
-	Filename    string    `json:"filename"`
-	ContentType string    `json:"content_type"`
-	URL         string    `json:"url"`
-	IsCover     bool      `json:"is_cover"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	ItemID       string    `json:"item_id"`
+	Filename     string    `json:"filename"`
+	ContentType  string    `json:"content_type"`
+	URL          string    `json:"url"`
+	ThumbnailURL string    `json:"thumbnail_url"`
+	IsCover      bool      `json:"is_cover"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // PhotosOutput is the response body listing item photos.
@@ -59,9 +61,11 @@ func (h *Handler) ListItemPhotos(ctx context.Context, input *PhotoItemIDInput) (
 	}
 	photos := make([]PhotoRow, len(rows))
 	for i, p := range rows {
+		url := "/uploads/" + p.FilePath
 		photos[i] = PhotoRow{
 			ID: p.ID, ItemID: p.ItemID, Filename: p.Filename, ContentType: p.ContentType,
-			URL: "/uploads/" + p.FilePath, IsCover: p.IsCover, CreatedAt: p.CreatedAt.Time,
+			URL: url, ThumbnailURL: thumbnailURL(url, p.ThumbnailPath),
+			IsCover: p.IsCover, CreatedAt: p.CreatedAt.Time,
 		}
 	}
 	return &PhotosOutput{Body: photos}, nil
@@ -100,6 +104,9 @@ func (h *Handler) DeletePhoto(ctx context.Context, input *DeletePhotoInput) (*st
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete photo")
 	}
 	_ = os.Remove(filepath.Join(h.uploadDir, photo.FilePath))
+	if photo.ThumbnailPath != nil {
+		_ = os.Remove(filepath.Join(h.uploadDir, *photo.ThumbnailPath))
+	}
 	if photo.IsCover {
 		_ = h.q.PromoteOldestPhotoToCover(ctx, input.ItemID)
 	}
@@ -177,18 +184,29 @@ func (h *Handler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var thumbnailPath *string
+	thumbRelPath := itemID + "/" + rec.ID + "_thumb.jpg"
+	if err := imaging.GenerateThumbnail(absPath, filepath.Join(h.uploadDir, thumbRelPath), ct); err == nil {
+		thumbnailPath = &thumbRelPath
+	}
+
 	if err := h.q.UpdateItemPhotoPath(r.Context(), store.UpdateItemPhotoPathParams{
-		FilePath: relPath, ID: rec.ID,
+		FilePath: relPath, ThumbnailPath: thumbnailPath, ID: rec.ID,
 	}); err != nil {
 		_ = h.q.DeleteItemPhoto(r.Context(), rec.ID)
 		_ = os.Remove(absPath)
+		if thumbnailPath != nil {
+			_ = os.Remove(filepath.Join(h.uploadDir, *thumbnailPath))
+		}
 		writeJSONError(w, http.StatusInternalServerError, "failed to update photo record")
 		return
 	}
 
+	url := "/uploads/" + relPath
 	row := PhotoRow{
 		ID: rec.ID, ItemID: rec.ItemID, Filename: rec.Filename, ContentType: rec.ContentType,
-		URL: "/uploads/" + relPath, IsCover: rec.IsCover, CreatedAt: rec.CreatedAt.Time,
+		URL: url, ThumbnailURL: thumbnailURL(url, thumbnailPath),
+		IsCover: rec.IsCover, CreatedAt: rec.CreatedAt.Time,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

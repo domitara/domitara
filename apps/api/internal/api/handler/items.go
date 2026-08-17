@@ -21,29 +21,30 @@ import (
 
 // ItemRow is the API representation of an inventory item.
 type ItemRow struct {
-	ID                string           `json:"id"`
-	Name              string           `json:"name"`
-	Description       *string          `json:"description"`
-	LocationID        *string          `json:"location_id"`
-	Status            string           `json:"status"`
-	Manufacturer      *string          `json:"manufacturer"`
-	Model             *string          `json:"model"`
-	Serial            *string          `json:"serial"`
-	PurchasePrice     *float64         `json:"purchase_price"`
-	PurchasedAt       *string          `json:"purchased_at"`
-	Warranty          *string          `json:"warranty"`
-	WarrantyExpiresAt *string          `json:"warranty_expires_at"`
-	Insured           bool             `json:"insured"`
-	Notes             *string          `json:"notes"`
-	AssetID           *string          `json:"asset_id"`
-	LabelIDs          []string         `json:"label_ids"`
-	Tier              string           `json:"tier"`
-	GridRow           *int             `json:"grid_row"`
-	GridCol           *int             `json:"grid_col"`
-	CustomFields      []CustomFieldRow `json:"custom_fields"`
-	CoverPhotoURL     *string          `json:"cover_photo_url"`
-	CreatedAt         time.Time        `json:"created_at"`
-	UpdatedAt         time.Time        `json:"updated_at"`
+	ID                     string           `json:"id"`
+	Name                   string           `json:"name"`
+	Description            *string          `json:"description"`
+	LocationID             *string          `json:"location_id"`
+	Status                 string           `json:"status"`
+	Manufacturer           *string          `json:"manufacturer"`
+	Model                  *string          `json:"model"`
+	Serial                 *string          `json:"serial"`
+	PurchasePrice          *float64         `json:"purchase_price"`
+	PurchasedAt            *string          `json:"purchased_at"`
+	Warranty               *string          `json:"warranty"`
+	WarrantyExpiresAt      *string          `json:"warranty_expires_at"`
+	Insured                bool             `json:"insured"`
+	Notes                  *string          `json:"notes"`
+	AssetID                *string          `json:"asset_id"`
+	LabelIDs               []string         `json:"label_ids"`
+	Tier                   string           `json:"tier"`
+	GridRow                *int             `json:"grid_row"`
+	GridCol                *int             `json:"grid_col"`
+	CustomFields           []CustomFieldRow `json:"custom_fields"`
+	CoverPhotoURL          *string          `json:"cover_photo_url"`
+	CoverPhotoThumbnailURL *string          `json:"cover_photo_thumbnail_url"`
+	CreatedAt              time.Time        `json:"created_at"`
+	UpdatedAt              time.Time        `json:"updated_at"`
 }
 
 // CustomFieldRow is the API representation of a custom field value on an item.
@@ -130,7 +131,7 @@ const itemSelectSQL = `
 	               'value_type', cf.value_type, 'unit', cf.unit
 	           )) FILTER (WHERE cf.id IS NOT NULL), '[]'
 	       ),
-	       MAX(cp.file_path),
+	       MAX(cp.file_path), MAX(cp.thumbnail_path),
 	       i.created_at, i.updated_at
 	FROM items i
 	LEFT JOIN item_labels il ON il.item_id = i.id
@@ -141,6 +142,7 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 	var it ItemRow
 	var customFieldsJSON []byte
 	var coverPhotoPath *string
+	var coverPhotoThumbnailPath *string
 	err := row.Scan(
 		&it.ID, &it.Name, &it.Description, &it.LocationID, &it.Status,
 		&it.Manufacturer, &it.Model, &it.Serial,
@@ -149,7 +151,7 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 		&it.LabelIDs,
 		&it.Tier, &it.GridRow, &it.GridCol,
 		&customFieldsJSON,
-		&coverPhotoPath,
+		&coverPhotoPath, &coverPhotoThumbnailPath,
 		&it.CreatedAt, &it.UpdatedAt,
 	)
 	if err != nil {
@@ -161,6 +163,10 @@ func scanItem(row pgx.Row) (ItemRow, error) {
 	if coverPhotoPath != nil {
 		url := "/uploads/" + *coverPhotoPath
 		it.CoverPhotoURL = &url
+	}
+	if coverPhotoThumbnailPath != nil {
+		url := "/uploads/" + *coverPhotoThumbnailPath
+		it.CoverPhotoThumbnailURL = &url
 	}
 	return it, nil
 }
