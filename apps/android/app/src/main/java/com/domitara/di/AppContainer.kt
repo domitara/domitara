@@ -14,6 +14,13 @@ import com.domitara.data.dto.User
 import com.domitara.data.session.ActiveHomeStore
 import com.domitara.data.session.Session
 import com.domitara.data.session.SessionStore
+import com.domitara.notifications.ReminderCheckWorker
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +33,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import java.util.concurrent.TimeUnit
 
 /**
  * Manual dependency container (in place of Hilt — keeps the build free of
@@ -34,6 +40,8 @@ import java.util.concurrent.TimeUnit
  * with ViewModels via [LocalAppContainer].
  */
 class AppContainer(context: Context, private val appScope: CoroutineScope) {
+
+    private val appContext = context.applicationContext
 
     val sessionStore = SessionStore(context.applicationContext)
     val activeHomeStore = ActiveHomeStore(context.applicationContext)
@@ -122,10 +130,30 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
                             .getOrNull()?.firstOrNull()?.let { activeHomeStore.set(it.id) }
                     }
                     refreshUser()
+                    scheduleReminderChecks()
                 } else {
                     _currentUser.value = null
+                    cancelReminderChecks()
                 }
             }
             .launchIn(appScope)
+    }
+
+    /** Enqueues the periodic background reminder check (see [ReminderCheckWorker]);
+     *  a no-op if it's already scheduled. */
+    private fun scheduleReminderChecks() {
+        val request = PeriodicWorkRequestBuilder<ReminderCheckWorker>(6, TimeUnit.HOURS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(appContext)
+            .enqueueUniquePeriodicWork(REMINDER_CHECK_WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+    }
+
+    private fun cancelReminderChecks() {
+        WorkManager.getInstance(appContext).cancelUniqueWork(REMINDER_CHECK_WORK_NAME)
+    }
+
+    private companion object {
+        const val REMINDER_CHECK_WORK_NAME = "reminder_check"
     }
 }
