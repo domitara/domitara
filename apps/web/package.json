@@ -25,6 +25,7 @@
     "@tanstack/router-devtools": "^1.166.13",
     "jotai": "^2.20.0",
     "konva": "^10.3.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-konva": "^19.2.4",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^9",
     "@tanstack/router-plugin": "^1.167.35",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.3.4",

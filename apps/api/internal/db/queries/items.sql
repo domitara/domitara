@@ -16,6 +16,12 @@ WHERE id=$1;
 -- name: DeleteItem :exec
 DELETE FROM items WHERE id = $1;
 
+-- name: ListItemIDsMissingAssetID :many
+SELECT id FROM items WHERE home_id = $1 AND tier != 'quick' AND asset_id IS NULL;
+
+-- name: SetItemAssetID :exec
+UPDATE items SET asset_id = $2, updated_at = NOW() WHERE id = $1;
+
 -- name: DeleteItemLabels :exec
 DELETE FROM item_labels WHERE item_id = $1;
 

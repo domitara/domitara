@@ -13,6 +13,7 @@ import {
   Center,
   Switch,
   Select,
+  Modal,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -35,6 +36,7 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import { useItems, useLabels, useLocations } from '../api/queries';
 import { getLocationChain, formatCurrency } from '../utils';
+import { ItemLabelsPrintView } from '../components/ItemLabelsPrintView';
 import type { Item, ItemStatus } from '../api/types';
 
 interface AllItemsScreenProps {
@@ -68,6 +70,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
   const [statusFilter, setStatusFilter] = useState<ItemStatus | null>(null);
   const [insuredFilter, setInsuredFilter] = useState<InsuredFilter>(null);
   const [warrantyFilter, setWarrantyFilter] = useState<WarrantyFilter>(null);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const { data: allItems = [], isLoading } = useItems({
     ...(filterLocationId ? { locationId: filterLocationId } : {}),
@@ -106,6 +109,10 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
   const loc = filterLocationId ? locations.find((l) => l.id === filterLocationId) : null;
   const label = filterLabelId ? labels.find((l) => l.id === filterLabelId) : null;
   const crumbs = loc ? getLocationChain(locations, loc.id) : [];
+
+  const printItems = selected.size > 0 ? items.filter((i) => selected.has(i.id)) : items;
+  const getLocationName = (item: Item) =>
+    locations.find((l) => l.id === item.location_id)?.name ?? null;
 
   if (isLoading)
     return (
@@ -186,7 +193,12 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           <Button variant="default" size="sm" leftSection={<IconDownload size={14} />}>
             Export
           </Button>
-          <Button variant="default" size="sm" leftSection={<IconPrinter size={14} />}>
+          <Button
+            variant="default"
+            size="sm"
+            leftSection={<IconPrinter size={14} />}
+            onClick={() => setPrintOpen(true)}
+          >
             Print labels
           </Button>
           <Button
@@ -567,6 +579,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
               size="sm"
               style={{ color: '#fff' }}
               leftSection={<IconPrinter size={14} />}
+              onClick={() => setPrintOpen(true)}
             >
               Print labels
             </Button>
@@ -584,6 +597,19 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           </Group>
         </div>
       )}
+
+      <Modal
+        opened={printOpen}
+        onClose={() => setPrintOpen(false)}
+        title="Print item labels"
+        size="lg"
+      >
+        <ItemLabelsPrintView
+          items={printItems}
+          getLocationName={getLocationName}
+          onPrint={() => window.print()}
+        />
+      </Modal>
     </Stack>
   );
 }

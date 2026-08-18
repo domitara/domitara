@@ -11,10 +11,12 @@ import {
   Center,
   Select,
   Tooltip,
+  Modal,
 } from '@mantine/core';
 import { IconPrinter, IconQrcode, IconRefresh, IconSearch } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useItems } from '../api/queries';
+import { useItems, useLocations, useGenerateMissingAssetIds } from '../api/queries';
+import { ItemLabelsPrintView } from '../components/ItemLabelsPrintView';
 import type { Item } from '../api/types';
 
 function QrPlaceholder({ value }: { value: string | null }) {
@@ -41,8 +43,11 @@ function QrPlaceholder({ value }: { value: string | null }) {
 export function AssetIDsScreen() {
   const navigate = useNavigate();
   const { data: items = [], isLoading } = useItems();
+  const { data: locations = [] } = useLocations();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'with-id' | 'without-id'>('all');
+  const [printOpen, setPrintOpen] = useState(false);
+  const generateMissing = useGenerateMissingAssetIds();
 
   const filtered = items.filter((item) => {
     if (filter === 'with-id') return item.asset_id !== null;
@@ -79,6 +84,9 @@ export function AssetIDsScreen() {
 
   const selectedCount = filtered.filter((i) => selected.has(i.id)).length;
   const withoutId = items.filter((i) => i.asset_id === null).length;
+  const printItems = filtered.filter((i) => selected.has(i.id));
+  const getLocationName = (item: Item) =>
+    locations.find((l) => l.id === item.location_id)?.name ?? null;
 
   if (isLoading)
     return (
@@ -103,12 +111,23 @@ export function AssetIDsScreen() {
         <Group gap={8}>
           {withoutId > 0 && (
             <Tooltip label="Auto-assign IDs to all items missing one">
-              <Button size="sm" variant="default" leftSection={<IconRefresh size={14} />}>
+              <Button
+                size="sm"
+                variant="default"
+                leftSection={<IconRefresh size={14} />}
+                loading={generateMissing.isPending}
+                onClick={() => generateMissing.mutate()}
+              >
                 Generate missing
               </Button>
             </Tooltip>
           )}
-          <Button size="sm" leftSection={<IconPrinter size={14} />} disabled={selectedCount === 0}>
+          <Button
+            size="sm"
+            leftSection={<IconPrinter size={14} />}
+            disabled={selectedCount === 0}
+            onClick={() => setPrintOpen(true)}
+          >
             Print {selectedCount > 0 ? `(${selectedCount})` : 'selected'}
           </Button>
         </Group>
@@ -177,6 +196,19 @@ export function AssetIDsScreen() {
           ))
         )}
       </Paper>
+
+      <Modal
+        opened={printOpen}
+        onClose={() => setPrintOpen(false)}
+        title="Print asset ID labels"
+        size="lg"
+      >
+        <ItemLabelsPrintView
+          items={printItems}
+          getLocationName={getLocationName}
+          onPrint={() => window.print()}
+        />
+      </Modal>
     </div>
   );
 }

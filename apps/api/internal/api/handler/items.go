@@ -399,6 +399,45 @@ func (h *Handler) DeleteItem(ctx context.Context, input *ItemIDInput) (*struct{}
 	return nil, nil
 }
 
+// GenerateAssetIDsBody reports how many items in the active home were assigned an asset ID.
+type GenerateAssetIDsBody struct {
+	Updated int `json:"updated"`
+}
+
+// GenerateAssetIDsOutput is the response body for GenerateMissingAssetIDs.
+type GenerateAssetIDsOutput struct{ Body GenerateAssetIDsBody }
+
+// GenerateMissingAssetIDs assigns a generated asset ID to every full-tier item in the
+// active home that doesn't have one yet.
+func (h *Handler) GenerateMissingAssetIDs(ctx context.Context, _ *struct{}) (*GenerateAssetIDsOutput, error) {
+	if _, err := apimw.RequireAuth(ctx); err != nil {
+		return nil, err
+	}
+	homeID := apimw.GetActiveHome(ctx)
+	if homeID == "" {
+		return nil, huma.NewError(http.StatusBadRequest, "X-Active-Home header required")
+	}
+	ids, err := h.q.ListItemIDsMissingAssetID(ctx, homeID)
+	if err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to list items")
+	}
+	updated := 0
+	for _, id := range ids {
+		for attempt := 0; attempt < 5; attempt++ {
+			assetID := generateAssetID()
+			err := h.q.SetItemAssetID(ctx, store.SetItemAssetIDParams{ID: id, AssetID: &assetID})
+			if err == nil {
+				updated++
+				break
+			}
+			if !isUniqueViolation(err, "items_asset_id_key") {
+				return nil, huma.NewError(http.StatusInternalServerError, "failed to assign asset ID")
+			}
+		}
+	}
+	return &GenerateAssetIDsOutput{Body: GenerateAssetIDsBody{Updated: updated}}, nil
+}
+
 // insertCustomFields writes the given custom field values for itemID, defaulting
 // an empty ValueType to "text" and preserving the given order via sort_order.
 func insertCustomFields(ctx context.Context, qtx *store.Queries, itemID string, fields []CustomFieldInput) error {
