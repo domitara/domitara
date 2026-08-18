@@ -27,12 +27,10 @@ COPY apps/api/ ./
 COPY --from=web-builder /workspace/apps/api/internal/web/dist ./internal/web/dist
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X github.com/domitara/domitara/apps/api/internal/version.Version=${VERSION}" -o /bin/server ./cmd/server
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/backfillthumbnails ./cmd/backfillthumbnails
 
 # ---- Stage 3: Final ----
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=api-builder /bin/server /server
-COPY --from=api-builder /bin/backfillthumbnails /backfillthumbnails
 EXPOSE 8080
 ENTRYPOINT ["/server"]
