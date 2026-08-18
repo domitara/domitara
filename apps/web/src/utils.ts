@@ -44,6 +44,11 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+/** The domitara:// deep link the Android app registers to open an item directly. */
+export function itemDeepLink(itemId: string): string {
+  return `domitara://items/${itemId}`;
+}
+
 /** Turns a user-entered custom field name into a stable, unique-ish storage key. */
 export function slugify(label: string): string {
   const slug = label

@@ -99,6 +99,7 @@ type Querier interface {
 	ListHomePhotos(ctx context.Context, homeID string) ([]ListHomePhotosRow, error)
 	ListHomesForUser(ctx context.Context, userID int64) ([]ListHomesForUserRow, error)
 	ListItemDocuments(ctx context.Context, itemID string) ([]ItemDocument, error)
+	ListItemIDsMissingAssetID(ctx context.Context, homeID string) ([]string, error)
 	ListItemPhotos(ctx context.Context, itemID string) ([]ListItemPhotosRow, error)
 	ListLabelsByHome(ctx context.Context, homeID string) ([]ListLabelsByHomeRow, error)
 	ListLocationsByHome(ctx context.Context, homeID string) ([]ListLocationsByHomeRow, error)
@@ -110,6 +111,7 @@ type Querier interface {
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
 	RevokeRefreshToken(ctx context.Context, id int64) error
 	RevokeRefreshTokenByHash(ctx context.Context, tokenHash string) error
+	SetItemAssetID(ctx context.Context, arg SetItemAssetIDParams) error
 	SetItemPhotoCover(ctx context.Context, arg SetItemPhotoCoverParams) error
 	SnoozeReminder(ctx context.Context, arg SnoozeReminderParams) (int64, error)
 	UpdateBreaker(ctx context.Context, arg UpdateBreakerParams) (ElectricalBreaker, error)

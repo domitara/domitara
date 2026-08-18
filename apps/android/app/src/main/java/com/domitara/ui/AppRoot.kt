@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -47,7 +48,7 @@ private sealed interface SessionState {
 }
 
 @Composable
-fun AppRoot() {
+fun AppRoot(pendingItemId: String? = null, onDeepLinkConsumed: () -> Unit = {}) {
     val container = LocalAppContainer.current
     val state by remember {
         container.session.map<Session?, SessionState> { SessionState.Ready(it) }
@@ -56,7 +57,8 @@ fun AppRoot() {
     when (val s = state) {
         SessionState.Loading -> Box(Modifier.fillMaxSize()) { LoadingState() }
         is SessionState.Ready ->
-            if (s.session == null) LoginScreen() else MainScaffold()
+            if (s.session == null) LoginScreen()
+            else MainScaffold(pendingItemId = pendingItemId, onDeepLinkConsumed = onDeepLinkConsumed)
     }
 }
 
@@ -72,7 +74,7 @@ private val tabs = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainScaffold() {
+private fun MainScaffold(pendingItemId: String? = null, onDeepLinkConsumed: () -> Unit = {}) {
     RequestNotificationPermission()
 
     val navController = rememberNavController()
@@ -81,6 +83,15 @@ private fun MainScaffold() {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    LaunchedEffect(pendingItemId) {
+        if (pendingItemId != null) {
+            navController.navigate(Routes.itemDetail(pendingItemId)) {
+                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+            }
+            onDeepLinkConsumed()
+        }
+    }
 
     // Single entry point for every top-level destination (bottom bar + drawer).
     // Popping to the start destination keeps these screens as siblings rather than

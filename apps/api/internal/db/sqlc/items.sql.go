@@ -201,6 +201,44 @@ func (q *Queries) InsertItemLabel(ctx context.Context, arg InsertItemLabelParams
 	return err
 }
 
+const listItemIDsMissingAssetID = `-- name: ListItemIDsMissingAssetID :many
+SELECT id FROM items WHERE home_id = $1 AND tier != 'quick' AND asset_id IS NULL
+`
+
+func (q *Queries) ListItemIDsMissingAssetID(ctx context.Context, homeID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listItemIDsMissingAssetID, homeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setItemAssetID = `-- name: SetItemAssetID :exec
+UPDATE items SET asset_id = $2, updated_at = NOW() WHERE id = $1
+`
+
+type SetItemAssetIDParams struct {
+	ID      string  `json:"id"`
+	AssetID *string `json:"asset_id"`
+}
+
+func (q *Queries) SetItemAssetID(ctx context.Context, arg SetItemAssetIDParams) error {
+	_, err := q.db.Exec(ctx, setItemAssetID, arg.ID, arg.AssetID)
+	return err
+}
+
 const updateItem = `-- name: UpdateItem :exec
 UPDATE items SET name=$2, description=$3, location_id=$4, status=$5,
                  manufacturer=$6, model=$7, serial=$8,

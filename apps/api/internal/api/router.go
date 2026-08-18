@@ -139,6 +139,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/items/{id}", Summary: "Get item", Security: bearerAuth}, h.GetItem)
 	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/items/{id}", Summary: "Update item", Security: bearerAuth}, h.UpdateItem)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/items/{id}", Summary: "Delete item", DefaultStatus: 204, Security: bearerAuth}, h.DeleteItem)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/items/generate-asset-ids", Summary: "Generate missing asset IDs", Security: bearerAuth}, h.GenerateMissingAssetIDs)
 
 	// Maintenance schedules (must come before /maintenance/{id} to avoid path conflicts)
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/maintenance/schedules", Summary: "List maintenance schedules", Security: bearerAuth}, h.ListSchedules)

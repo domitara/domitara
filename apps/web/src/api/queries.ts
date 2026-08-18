@@ -207,6 +207,14 @@ export function useDeleteItem() {
   });
 }
 
+export function useGenerateMissingAssetIds() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ updated: number }>('/items/generate-asset-ids', {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: itemKeys.all }),
+  });
+}
+
 // --- Maintenance ---
 export const maintenanceKeys = {
   all: ['maintenance'] as const,
