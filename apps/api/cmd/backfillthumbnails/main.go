@@ -1,6 +1,11 @@
 // Command backfillthumbnails generates thumbnails for item and home photos
 // that were uploaded before thumbnail generation existed (thumbnail_path is
 // still NULL). Safe to re-run — it only touches rows missing a thumbnail.
+//
+// Set REGENERATE_ALL=1 to instead regenerate every photo's thumbnail,
+// overwriting existing ones — useful after a thumbnail-generation bug fix
+// (e.g. the EXIF-orientation fix) to correct thumbnails that already exist
+// but were produced wrong.
 package main
 
 import (
@@ -27,6 +32,13 @@ func main() {
 		uploadDir = "./data/uploads"
 	}
 
+	regenAll := os.Getenv("REGENERATE_ALL") == "1" || os.Getenv("REGENERATE_ALL") == "true"
+	itemWhere, homeWhere := "WHERE thumbnail_path IS NULL", "WHERE thumbnail_path IS NULL"
+	if regenAll {
+		log.Println("REGENERATE_ALL set — regenerating every photo's thumbnail, not just missing ones")
+		itemWhere, homeWhere = "", ""
+	}
+
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
@@ -35,13 +47,13 @@ func main() {
 	defer pool.Close()
 
 	itemDone, itemFailed := backfill(ctx, pool, uploadDir,
-		`SELECT id, content_type, file_path FROM item_photos WHERE thumbnail_path IS NULL`,
+		`SELECT id, content_type, file_path FROM item_photos `+itemWhere,
 		`UPDATE item_photos SET thumbnail_path = $1 WHERE id = $2`,
 	)
 	log.Printf("item photos: %d thumbnails generated, %d failed", itemDone, itemFailed)
 
 	homeDone, homeFailed := backfill(ctx, pool, uploadDir,
-		`SELECT id, content_type, file_path FROM home_photos WHERE thumbnail_path IS NULL`,
+		`SELECT id, content_type, file_path FROM home_photos `+homeWhere,
 		`UPDATE home_photos SET thumbnail_path = $1 WHERE id = $2`,
 	)
 	log.Printf("home photos: %d thumbnails generated, %d failed", homeDone, homeFailed)
