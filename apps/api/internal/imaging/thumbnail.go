@@ -2,6 +2,7 @@
 package imaging
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -23,21 +24,29 @@ const MaxDim = 800
 // dimension exceeds MaxDim (smaller originals are left at their native
 // size), and writes a JPEG encoding to dstPath. contentType must be one of
 // "image/jpeg", "image/png", or "image/webp".
+//
+// For JPEGs, the source's EXIF Orientation tag (phones store portrait
+// photos as landscape pixel data plus a tag telling viewers how to rotate
+// it) is read and applied before resizing, since image/jpeg.Decode ignores
+// it and the re-encoded thumbnail would otherwise come out sideways even
+// though the original displays correctly.
 func GenerateThumbnail(srcPath, dstPath, contentType string) error {
-	f, err := os.Open(srcPath)
+	data, err := os.ReadFile(srcPath)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = f.Close() }()
 
 	var src image.Image
 	switch contentType {
 	case "image/jpeg":
-		src, err = jpeg.Decode(f)
+		src, err = jpeg.Decode(bytes.NewReader(data))
+		if err == nil {
+			src = applyOrientation(src, jpegOrientation(data))
+		}
 	case "image/png":
-		src, err = png.Decode(f)
+		src, err = png.Decode(bytes.NewReader(data))
 	case "image/webp":
-		src, err = webp.Decode(f)
+		src, err = webp.Decode(bytes.NewReader(data))
 	default:
 		return fmt.Errorf("unsupported content type %q", contentType)
 	}
