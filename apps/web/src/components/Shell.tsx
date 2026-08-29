@@ -22,6 +22,7 @@ import {
   IconQrcode,
   IconMapPin,
   IconTag,
+  IconPaint,
   IconSettings,
   IconBell,
   IconHelp,
@@ -451,6 +452,13 @@ function Sidebar() {
             </div>
           </div>
         )}
+
+        <NavItem
+          icon={<IconPaint size={18} />}
+          label="Paint colors"
+          active={isActive('/paint-colors')}
+          onClick={() => navigate({ to: '/paint-colors' })}
+        />
 
         {isAdmin && (
           <NavItem

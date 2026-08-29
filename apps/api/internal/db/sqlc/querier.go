@@ -27,6 +27,7 @@ type Querier interface {
 	CountLabelsByHome(ctx context.Context, homeID string) (int64, error)
 	CountLocationChildren(ctx context.Context, parentID *string) (int64, error)
 	CountLocationsByHome(ctx context.Context, homeID string) (int64, error)
+	CountPaintColorUsage(ctx context.Context, paintColorID string) (int64, error)
 	CountSubpanels(ctx context.Context, parentPanelID *string) (int64, error)
 	CreateBreaker(ctx context.Context, arg CreateBreakerParams) (ElectricalBreaker, error)
 	CreateFirstHome(ctx context.Context, name string) (string, error)
@@ -40,8 +41,10 @@ type Querier interface {
 	CreateItemPhoto(ctx context.Context, arg CreateItemPhotoParams) (CreateItemPhotoRow, error)
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (CreateLabelRow, error)
 	CreateLocation(ctx context.Context, arg CreateLocationParams) (CreateLocationRow, error)
+	CreateLocationPaint(ctx context.Context, arg CreateLocationPaintParams) (string, error)
 	CreateMaintenanceLog(ctx context.Context, arg CreateMaintenanceLogParams) (CreateMaintenanceLogRow, error)
 	CreateMaintenanceSchedule(ctx context.Context, arg CreateMaintenanceScheduleParams) (CreateMaintenanceScheduleRow, error)
+	CreatePaintColor(ctx context.Context, arg CreatePaintColorParams) (CreatePaintColorRow, error)
 	CreatePanel(ctx context.Context, arg CreatePanelParams) (ElectricalPanel, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -59,8 +62,10 @@ type Querier interface {
 	DeleteItemPhoto(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteLocation(ctx context.Context, id string) error
+	DeleteLocationPaint(ctx context.Context, id string) error
 	DeleteMaintenanceLog(ctx context.Context, id string) error
 	DeleteMaintenanceSchedule(ctx context.Context, id string) error
+	DeletePaintColor(ctx context.Context, id string) error
 	DeletePanel(ctx context.Context, id string) error
 	DeleteReminderByKey(ctx context.Context, key string) error
 	DeleteUser(ctx context.Context, id int64) error
@@ -78,7 +83,9 @@ type Querier interface {
 	GetItemPhotoFilePath(ctx context.Context, arg GetItemPhotoFilePathParams) (GetItemPhotoFilePathRow, error)
 	GetLabel(ctx context.Context, id string) (GetLabelRow, error)
 	GetLocation(ctx context.Context, id string) (GetLocationRow, error)
+	GetLocationPaint(ctx context.Context, id string) (GetLocationPaintRow, error)
 	GetMaxGridCell(ctx context.Context, locationID *string) (GetMaxGridCellRow, error)
+	GetPaintColor(ctx context.Context, id string) (GetPaintColorRow, error)
 	GetPanel(ctx context.Context, id string) (ElectricalPanel, error)
 	GetPanelHomeID(ctx context.Context, id string) (string, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
@@ -91,6 +98,7 @@ type Querier interface {
 	InsertItemLabel(ctx context.Context, arg InsertItemLabelParams) error
 	ListAllLabels(ctx context.Context) ([]ListAllLabelsRow, error)
 	ListAllLocations(ctx context.Context) ([]ListAllLocationsRow, error)
+	ListAllPaintColors(ctx context.Context) ([]ListAllPaintColorsRow, error)
 	ListBreakers(ctx context.Context, panelID string) ([]ElectricalBreaker, error)
 	ListFloorPlanAreas(ctx context.Context, homeID string) ([]FloorPlanArea, error)
 	ListFloorPlanShapes(ctx context.Context, homeID string) ([]FloorPlanShape, error)
@@ -102,11 +110,15 @@ type Querier interface {
 	ListItemIDsMissingAssetID(ctx context.Context, homeID string) ([]string, error)
 	ListItemPhotos(ctx context.Context, itemID string) ([]ListItemPhotosRow, error)
 	ListLabelsByHome(ctx context.Context, homeID string) ([]ListLabelsByHomeRow, error)
+	ListLocationPaint(ctx context.Context, locationID string) ([]ListLocationPaintRow, error)
 	ListLocationsByHome(ctx context.Context, homeID string) ([]ListLocationsByHomeRow, error)
 	ListMaintenanceSchedules(ctx context.Context, homeID string) ([]ListMaintenanceSchedulesRow, error)
+	ListPaintColorsByHome(ctx context.Context, homeID string) ([]ListPaintColorsByHomeRow, error)
 	ListPanels(ctx context.Context, homeID string) ([]ElectricalPanel, error)
 	ListReminders(ctx context.Context, userID int64) ([]ListRemindersRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	LocationHomeID(ctx context.Context, id string) (string, error)
+	PaintColorHomeID(ctx context.Context, id string) (string, error)
 	PromoteOldestPhotoToCover(ctx context.Context, itemID string) error
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
 	RevokeRefreshToken(ctx context.Context, id int64) error
@@ -127,7 +139,9 @@ type Querier interface {
 	UpdateItemPhotoPath(ctx context.Context, arg UpdateItemPhotoPathParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
 	UpdateLocation(ctx context.Context, arg UpdateLocationParams) error
+	UpdateLocationPaint(ctx context.Context, arg UpdateLocationPaintParams) error
 	UpdateMaintenanceSchedule(ctx context.Context, arg UpdateMaintenanceScheduleParams) (UpdateMaintenanceScheduleRow, error)
+	UpdatePaintColor(ctx context.Context, arg UpdatePaintColorParams) error
 	UpdatePanel(ctx context.Context, arg UpdatePanelParams) (ElectricalPanel, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateUserPasswordHash(ctx context.Context, arg UpdateUserPasswordHashParams) error

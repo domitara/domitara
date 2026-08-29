@@ -34,6 +34,7 @@ import com.domitara.ui.common.Avatar
 import com.domitara.ui.common.BoltIcon
 import com.domitara.ui.common.BuildingIcon
 import com.domitara.ui.common.ClipboardIcon
+import com.domitara.ui.common.PaintIcon
 import com.domitara.ui.common.QrCodeIcon
 
 private data class MenuEntry(val label: String, val route: String, val icon: ImageVector)
@@ -42,6 +43,7 @@ private val entries = listOf(
     MenuEntry("Home", Routes.HOME_DETAIL, BuildingIcon),
     MenuEntry("Maintenance", Routes.MAINTENANCE, ClipboardIcon),
     MenuEntry("Electrical Panels", Routes.PANELS, BoltIcon),
+    MenuEntry("Paint Colors", Routes.PAINT_COLORS, PaintIcon),
     MenuEntry("Asset IDs", Routes.ASSET_IDS, QrCodeIcon),
 )
 

@@ -95,3 +95,12 @@ val BoltIcon: ImageVector by lazy {
             "13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z",
     )
 }
+
+/** Paint roller / bucket — Paint colors (web: IconPaint). Material "format_paint". */
+val PaintIcon: ImageVector by lazy {
+    namedVector(
+        "Paint",
+        "M18 4V3c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h12c.55 0 1-.45 " +
+            "1-1V6h1v4H9v11c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-9h6V4h-4z",
+    )
+}

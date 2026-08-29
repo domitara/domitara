@@ -19,6 +19,12 @@ import type {
   CreateLocationInput,
   UpdateLocationInput,
   CreateLabelInput,
+  PaintColor,
+  CreatePaintColorInput,
+  UpdatePaintColorInput,
+  LocationPaint,
+  CreateLocationPaintInput,
+  UpdateLocationPaintInput,
   CreateUserInput,
   CreateMaintenanceInput,
   Home,
@@ -136,6 +142,93 @@ export function useDeleteLabel() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/labels/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: labelKeys.all }),
+  });
+}
+
+// --- Paint colors ---
+export const paintColorKeys = {
+  all: ['paint-colors'] as const,
+  byId: (id: string) => ['paint-colors', id] as const,
+};
+export const locationPaintKeys = {
+  byLocation: (locationId: string) => ['location-paint', locationId] as const,
+};
+
+export function usePaintColors() {
+  return useQuery({
+    queryKey: paintColorKeys.all,
+    queryFn: () => api.get<PaintColor[]>('/paint-colors'),
+  });
+}
+
+export function useCreatePaintColor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreatePaintColorInput) => api.post<PaintColor>('/paint-colors', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: paintColorKeys.all }),
+  });
+}
+
+export function useUpdatePaintColor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdatePaintColorInput }) =>
+      api.put<PaintColor>(`/paint-colors/${id}`, body),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: paintColorKeys.byId(id) });
+      qc.invalidateQueries({ queryKey: paintColorKeys.all });
+    },
+  });
+}
+
+export function useDeletePaintColor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/paint-colors/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: paintColorKeys.all }),
+  });
+}
+
+export function useLocationPaint(locationId: string) {
+  return useQuery({
+    queryKey: locationPaintKeys.byLocation(locationId),
+    queryFn: () => api.get<LocationPaint[]>(`/locations/${locationId}/paint`),
+    enabled: !!locationId,
+  });
+}
+
+export function useCreateLocationPaint(locationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateLocationPaintInput) =>
+      api.post<LocationPaint>(`/locations/${locationId}/paint`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: locationPaintKeys.byLocation(locationId) });
+      qc.invalidateQueries({ queryKey: paintColorKeys.all });
+    },
+  });
+}
+
+export function useUpdateLocationPaint(locationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateLocationPaintInput }) =>
+      api.put<LocationPaint>(`/location-paint/${id}`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: locationPaintKeys.byLocation(locationId) });
+      qc.invalidateQueries({ queryKey: paintColorKeys.all });
+    },
+  });
+}
+
+export function useDeleteLocationPaint(locationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/location-paint/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: locationPaintKeys.byLocation(locationId) });
+      qc.invalidateQueries({ queryKey: paintColorKeys.all });
+    },
   });
 }
 

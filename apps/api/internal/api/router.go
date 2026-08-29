@@ -133,6 +133,18 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/labels/{id}", Summary: "Update label", Security: bearerAuth}, h.UpdateLabel)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/labels/{id}", Summary: "Delete label", DefaultStatus: 204, Security: bearerAuth}, h.DeleteLabel)
 
+	// Paint colors
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/paint-colors", Summary: "List paint colors", Security: bearerAuth}, h.ListPaintColors)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/paint-colors", Summary: "Create paint color", DefaultStatus: 201, Security: bearerAuth}, h.CreatePaintColor)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/paint-colors/{id}", Summary: "Update paint color", Security: bearerAuth}, h.UpdatePaintColor)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/paint-colors/{id}", Summary: "Delete paint color", DefaultStatus: 204, Security: bearerAuth}, h.DeletePaintColor)
+
+	// Location paint assignments
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/locations/{id}/paint", Summary: "List location paint", Security: bearerAuth}, h.ListLocationPaint)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/locations/{id}/paint", Summary: "Assign paint to location surface", DefaultStatus: 201, Security: bearerAuth}, h.CreateLocationPaint)
+	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/location-paint/{id}", Summary: "Update location paint", Security: bearerAuth}, h.UpdateLocationPaint)
+	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/location-paint/{id}", Summary: "Delete location paint", DefaultStatus: 204, Security: bearerAuth}, h.DeleteLocationPaint)
+
 	// Items
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/items", Summary: "List items", Security: bearerAuth}, h.ListItems)
 	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/items", Summary: "Create item", DefaultStatus: 201, Security: bearerAuth}, h.CreateItem)

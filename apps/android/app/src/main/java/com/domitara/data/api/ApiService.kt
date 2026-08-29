@@ -7,6 +7,7 @@ import com.domitara.data.dto.CreateItemInput
 import com.domitara.data.dto.CreateLabelInput
 import com.domitara.data.dto.CreateLocationInput
 import com.domitara.data.dto.CreateMaintenanceInput
+import com.domitara.data.dto.CreatePaintColorInput
 import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
 import com.domitara.data.dto.DashboardStats
@@ -22,8 +23,10 @@ import com.domitara.data.dto.ItemDocument
 import com.domitara.data.dto.ItemPhoto
 import com.domitara.data.dto.Label
 import com.domitara.data.dto.Location
+import com.domitara.data.dto.LocationPaint
 import com.domitara.data.dto.MaintenanceLog
 import com.domitara.data.dto.MaintenanceSchedule
+import com.domitara.data.dto.PaintColor
 import com.domitara.data.dto.Reminder
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
@@ -215,6 +218,15 @@ interface ApiService {
 
     @POST("labels")
     suspend fun createLabel(@Body body: CreateLabelInput): Label
+
+    @GET("paint-colors")
+    suspend fun listPaintColors(): List<PaintColor>
+
+    @POST("paint-colors")
+    suspend fun createPaintColor(@Body body: CreatePaintColorInput): PaintColor
+
+    @GET("locations/{locationId}/paint")
+    suspend fun listLocationPaint(@Path("locationId") locationId: String): List<LocationPaint>
 
     // Maintenance logs & schedules (home scope comes from the X-Active-Home header)
     @GET("maintenance")

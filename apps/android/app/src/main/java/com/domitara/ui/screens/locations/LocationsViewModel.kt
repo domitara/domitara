@@ -6,6 +6,7 @@ import com.domitara.data.api.toUserMessage
 import com.domitara.data.dto.CreateLocationInput
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Location
+import com.domitara.data.dto.LocationPaint
 import com.domitara.data.dto.LocationType
 import com.domitara.data.repository.DataRepository
 import com.domitara.ui.common.Async
@@ -30,6 +31,9 @@ class LocationsViewModel(
 
     private val _items = MutableStateFlow<Async<List<Item>>>(Async.Loading)
     val items: StateFlow<Async<List<Item>>> = _items.asStateFlow()
+
+    private val _paint = MutableStateFlow<Async<List<LocationPaint>>>(Async.Loading)
+    val paint: StateFlow<Async<List<LocationPaint>>> = _paint.asStateFlow()
 
     private val _actionError = MutableStateFlow<String?>(null)
     val actionError: StateFlow<String?> = _actionError.asStateFlow()
@@ -61,11 +65,17 @@ class LocationsViewModel(
     fun select(location: Location) {
         _selected.value = location
         _items.value = Async.Loading
+        _paint.value = Async.Loading
         val includeQuick = location.locationType == LocationType.CONTAINER
         viewModelScope.launch {
             runCatching { repo.listItems(locationId = location.id, includeQuick = includeQuick) }
                 .onSuccess { _items.value = Async.Success(it) }
                 .onFailure { _items.value = Async.Failure(it.toUserMessage("Failed to load items")) }
+        }
+        viewModelScope.launch {
+            runCatching { repo.listLocationPaint(location.id) }
+                .onSuccess { _paint.value = Async.Success(it) }
+                .onFailure { _paint.value = Async.Failure(it.toUserMessage("Failed to load paint")) }
         }
     }
 

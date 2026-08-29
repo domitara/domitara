@@ -32,6 +32,7 @@ import { getDescendants } from '../utils';
 import { ItemCard } from './AllItemsScreen';
 import { NewLocationModal } from '../components/NewLocationModal';
 import { LocationGrid } from '../components/LocationGrid';
+import { LocationPaintPanel } from '../components/LocationPaintPanel';
 import type { Location } from '../api/types';
 
 export function LocationsScreen() {
@@ -349,6 +350,8 @@ export function LocationsScreen() {
                   </div>
                 )}
               </Paper>
+
+              <LocationPaintPanel locationId={activeLoc.id} />
             </>
           ) : (
             <Paper

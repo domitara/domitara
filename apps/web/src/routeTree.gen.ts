@@ -17,6 +17,7 @@ import { Route as AuthSettingsRouteImport } from './routes/_auth/settings';
 import { Route as AuthMaintenanceRouteImport } from './routes/_auth/maintenance';
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard';
 import { Route as AuthProfileIndexRouteImport } from './routes/_auth/profile/index';
+import { Route as AuthPaintColorsIndexRouteImport } from './routes/_auth/paint-colors/index';
 import { Route as AuthLocationsIndexRouteImport } from './routes/_auth/locations/index';
 import { Route as AuthLabelsIndexRouteImport } from './routes/_auth/labels/index';
 import { Route as AuthItemsIndexRouteImport } from './routes/_auth/items/index';
@@ -66,6 +67,11 @@ const AuthDashboardRoute = AuthDashboardRouteImport.update({
 const AuthProfileIndexRoute = AuthProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
+  getParentRoute: () => AuthRoute,
+} as any);
+const AuthPaintColorsIndexRoute = AuthPaintColorsIndexRouteImport.update({
+  id: '/paint-colors/',
+  path: '/paint-colors/',
   getParentRoute: () => AuthRoute,
 } as any);
 const AuthLocationsIndexRoute = AuthLocationsIndexRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/items/': typeof AuthItemsIndexRoute;
   '/labels/': typeof AuthLabelsIndexRoute;
   '/locations/': typeof AuthLocationsIndexRoute;
+  '/paint-colors/': typeof AuthPaintColorsIndexRoute;
   '/profile/': typeof AuthProfileIndexRoute;
   '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute;
 }
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/items': typeof AuthItemsIndexRoute;
   '/labels': typeof AuthLabelsIndexRoute;
   '/locations': typeof AuthLocationsIndexRoute;
+  '/paint-colors': typeof AuthPaintColorsIndexRoute;
   '/profile': typeof AuthProfileIndexRoute;
   '/items/$itemId/edit': typeof AuthItemsItemIdEditRoute;
 }
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/_auth/items/': typeof AuthItemsIndexRoute;
   '/_auth/labels/': typeof AuthLabelsIndexRoute;
   '/_auth/locations/': typeof AuthLocationsIndexRoute;
+  '/_auth/paint-colors/': typeof AuthPaintColorsIndexRoute;
   '/_auth/profile/': typeof AuthProfileIndexRoute;
   '/_auth/items/$itemId_/edit': typeof AuthItemsItemIdEditRoute;
 }
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/items/'
     | '/labels/'
     | '/locations/'
+    | '/paint-colors/'
     | '/profile/'
     | '/items/$itemId/edit';
   fileRoutesByTo: FileRoutesByTo;
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/items'
     | '/labels'
     | '/locations'
+    | '/paint-colors'
     | '/profile'
     | '/items/$itemId/edit';
   id:
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_auth/items/'
     | '/_auth/labels/'
     | '/_auth/locations/'
+    | '/_auth/paint-colors/'
     | '/_auth/profile/'
     | '/_auth/items/$itemId_/edit';
   fileRoutesById: FileRoutesById;
@@ -313,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/profile';
       fullPath: '/profile/';
       preLoaderRoute: typeof AuthProfileIndexRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    '/_auth/paint-colors/': {
+      id: '/_auth/paint-colors/';
+      path: '/paint-colors';
+      fullPath: '/paint-colors/';
+      preLoaderRoute: typeof AuthPaintColorsIndexRouteImport;
       parentRoute: typeof AuthRoute;
     };
     '/_auth/locations/': {
@@ -409,6 +428,7 @@ interface AuthRouteChildren {
   AuthItemsIndexRoute: typeof AuthItemsIndexRoute;
   AuthLabelsIndexRoute: typeof AuthLabelsIndexRoute;
   AuthLocationsIndexRoute: typeof AuthLocationsIndexRoute;
+  AuthPaintColorsIndexRoute: typeof AuthPaintColorsIndexRoute;
   AuthProfileIndexRoute: typeof AuthProfileIndexRoute;
   AuthItemsItemIdEditRoute: typeof AuthItemsItemIdEditRoute;
 }
@@ -427,6 +447,7 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthItemsIndexRoute: AuthItemsIndexRoute,
   AuthLabelsIndexRoute: AuthLabelsIndexRoute,
   AuthLocationsIndexRoute: AuthLocationsIndexRoute,
+  AuthPaintColorsIndexRoute: AuthPaintColorsIndexRoute,
   AuthProfileIndexRoute: AuthProfileIndexRoute,
   AuthItemsItemIdEditRoute: AuthItemsItemIdEditRoute,
 };

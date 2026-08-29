@@ -13,6 +13,7 @@ import com.domitara.data.dto.CreateItemInput
 import com.domitara.data.dto.CreateLabelInput
 import com.domitara.data.dto.CreateLocationInput
 import com.domitara.data.dto.CreateMaintenanceInput
+import com.domitara.data.dto.CreatePaintColorInput
 import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
 import com.domitara.data.dto.HomeDocumentType
@@ -316,6 +317,9 @@ class DataRepository(
     suspend fun createLocation(body: CreateLocationInput) = call { it.createLocation(body) }
     suspend fun listLabels() = call { it.listLabels() }
     suspend fun createLabel(body: CreateLabelInput) = call { it.createLabel(body) }
+    suspend fun listPaintColors() = call { it.listPaintColors() }
+    suspend fun createPaintColor(body: CreatePaintColorInput) = call { it.createPaintColor(body) }
+    suspend fun listLocationPaint(locationId: String) = call { it.listLocationPaint(locationId) }
 
     // Maintenance logs & schedules (scoped to the active home via X-Active-Home header)
     suspend fun listMaintenance(itemId: String? = null) = call { it.listMaintenance(itemId) }

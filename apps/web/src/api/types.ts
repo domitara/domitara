@@ -172,6 +172,68 @@ export interface CreateLabelInput {
   color?: string;
 }
 
+export type PaintSurface = 'walls' | 'ceiling' | 'trim' | 'doors' | 'accent';
+
+export interface PaintColor {
+  id: string;
+  name: string;
+  color: string;
+  brand: string | null;
+  color_code: string | null;
+  sheen: string | null;
+  notes: string | null;
+  location_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePaintColorInput {
+  name: string;
+  color?: string;
+  brand?: string;
+  color_code?: string;
+  sheen?: string;
+  notes?: string;
+}
+
+export interface UpdatePaintColorInput {
+  name: string;
+  color: string;
+  brand?: string;
+  color_code?: string;
+  sheen?: string;
+  notes?: string;
+}
+
+export interface LocationPaint {
+  id: string;
+  location_id: string;
+  paint_color_id: string;
+  surface: PaintSurface;
+  surface_note: string | null;
+  painted_on: string | null;
+  coats: number | null;
+  notes: string | null;
+  paint_name: string;
+  paint_color: string;
+  paint_brand: string | null;
+  paint_color_code: string | null;
+  paint_sheen: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateLocationPaintInput {
+  paint_color_id: string;
+  surface: PaintSurface;
+  surface_note?: string;
+  painted_on?: string;
+  coats?: number;
+  notes?: string;
+}
+
+export type UpdateLocationPaintInput = CreateLocationPaintInput;
+
 export interface ItemPhoto {
   id: string;
   item_id: string;

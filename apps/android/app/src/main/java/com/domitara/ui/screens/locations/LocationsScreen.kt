@@ -1,5 +1,6 @@
 package com.domitara.ui.screens.locations
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -41,11 +43,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.domitara.data.dto.Item
 import com.domitara.data.dto.Location
+import com.domitara.data.dto.LocationPaint
 import com.domitara.data.dto.LocationType
+import com.domitara.data.dto.PaintSurface
 import com.domitara.di.appViewModel
 import com.domitara.ui.common.ActionErrorHost
 import com.domitara.ui.common.Async
@@ -53,6 +58,7 @@ import com.domitara.ui.common.EmptyState
 import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LoadingState
 import com.domitara.ui.common.indentedLocationLabel
+import com.domitara.ui.common.parseHexColor
 import com.domitara.ui.common.sortedWithDepth
 import com.domitara.ui.screens.items.ItemRow
 
@@ -191,6 +197,7 @@ private fun LocationRow(
 @Composable
 private fun LocationDetail(location: Location, vm: LocationsViewModel) {
     val itemsState by vm.items.collectAsStateWithLifecycle()
+    val paintState by vm.paint.collectAsStateWithLifecycle()
     val locationsState by vm.locations.collectAsStateWithLifecycle()
     val allLocations = (locationsState as? Async.Success)?.data ?: emptyList()
     val subLocations = allLocations.filter { it.parentId == location.id }
@@ -316,6 +323,88 @@ private fun LocationDetail(location: Location, vm: LocationsViewModel) {
                             }
                         }
                 }
+            }
+
+            item {
+                Text(
+                    "Paint",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            when (val s = paintState) {
+                Async.Loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp)) { LoadingState() } }
+                is Async.Failure -> item { ErrorState(s.message) }
+                is Async.Success ->
+                    if (s.data.isEmpty()) {
+                        item {
+                            Text(
+                                "No paint recorded for this location.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    } else {
+                        items(s.data, key = { "paint-${it.id}" }) { row ->
+                            PaintAssignmentRow(row)
+                            HorizontalDivider()
+                        }
+                    }
+            }
+        }
+    }
+}
+
+private fun surfaceLabel(surface: PaintSurface): String = when (surface) {
+    PaintSurface.WALLS -> "Walls"
+    PaintSurface.CEILING -> "Ceiling"
+    PaintSurface.TRIM -> "Trim"
+    PaintSurface.DOORS -> "Doors"
+    PaintSurface.ACCENT -> "Accent"
+}
+
+@Composable
+private fun PaintAssignmentRow(row: LocationPaint) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(20.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(parseHexColor(row.paintColor))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp)),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            val head = buildString {
+                append(surfaceLabel(row.surface))
+                if (row.surface == PaintSurface.ACCENT && !row.surfaceNote.isNullOrBlank()) {
+                    append(" · ")
+                    append(row.surfaceNote)
+                }
+            }
+            Text(head, style = MaterialTheme.typography.titleMedium)
+            val sub = listOfNotNull(
+                row.paintName,
+                row.paintBrand,
+                row.paintColorCode,
+                row.paintSheen,
+                row.paintedOn?.let { "painted $it" },
+                row.coats?.let { "$it coat${if (it == 1) "" else "s"}" },
+            ).joinToString(" · ")
+            Text(
+                sub,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!row.notes.isNullOrBlank()) {
+                Text(
+                    row.notes,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

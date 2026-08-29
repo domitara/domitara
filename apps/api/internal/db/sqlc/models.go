@@ -201,6 +201,19 @@ type Location struct {
 	GridCols     pgtype.Int4        `json:"grid_cols"`
 }
 
+type LocationPaint struct {
+	ID           string             `json:"id"`
+	LocationID   string             `json:"location_id"`
+	PaintColorID string             `json:"paint_color_id"`
+	Surface      string             `json:"surface"`
+	SurfaceNote  *string            `json:"surface_note"`
+	PaintedOn    *time.Time         `json:"painted_on"`
+	Coats        pgtype.Int4        `json:"coats"`
+	Notes        *string            `json:"notes"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type MaintenanceLog struct {
 	ID          string             `json:"id"`
 	HomeID      *string            `json:"home_id"`
@@ -227,6 +240,19 @@ type MaintenanceSchedule struct {
 	CreatedBy       pgtype.Int8        `json:"created_by"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PaintColor struct {
+	ID        string             `json:"id"`
+	HomeID    string             `json:"home_id"`
+	Name      string             `json:"name"`
+	Color     string             `json:"color"`
+	Brand     *string            `json:"brand"`
+	ColorCode *string            `json:"color_code"`
+	Sheen     *string            `json:"sheen"`
+	Notes     *string            `json:"notes"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type RefreshToken struct {
