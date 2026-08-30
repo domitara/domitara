@@ -37,6 +37,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useItems, useLabels, useLocations } from '../api/queries';
 import { getLocationChain, formatCurrency } from '../utils';
 import { ItemLabelsPrintView } from '../components/ItemLabelsPrintView';
+import { ItemGridSizeSlider } from '../components/ItemGridSizeSlider';
 import type { Item, ItemStatus } from '../api/types';
 
 interface AllItemsScreenProps {
@@ -289,6 +290,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
             </Button>
           )}
           <Group gap={8} ml="auto">
+            {view === 'grid' && <ItemGridSizeSlider />}
             <Button variant="default" size="sm" leftSection={<IconSortAscending size={14} />}>
               Recently added
             </Button>
