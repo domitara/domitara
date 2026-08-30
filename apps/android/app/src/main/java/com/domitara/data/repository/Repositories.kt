@@ -17,12 +17,14 @@ import com.domitara.data.dto.CreatePaintColorInput
 import com.domitara.data.dto.CreatePanelInput
 import com.domitara.data.dto.CreateScheduleInput
 import com.domitara.data.dto.HomeDocumentType
+import com.domitara.data.dto.LocationPaintInput
 import com.domitara.data.dto.LoginRequest
 import com.domitara.data.dto.RefreshTokenRequest
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
 import com.domitara.data.dto.UpdateDocumentTypeInput
 import com.domitara.data.dto.UpdateMeInput
+import com.domitara.data.dto.UpdatePaintColorInput
 import com.domitara.data.dto.UpdateScheduleInput
 import com.domitara.data.session.ActiveHomeStore
 import com.domitara.data.session.Session
@@ -315,11 +317,22 @@ class DataRepository(
         call { it.deleteItemDocument(itemId, documentId) }
     suspend fun listLocations() = call { it.listLocations() }
     suspend fun createLocation(body: CreateLocationInput) = call { it.createLocation(body) }
+    suspend fun updateLocation(id: String, body: CreateLocationInput) =
+        call { it.updateLocation(id, body) }
+    suspend fun deleteLocation(id: String) = call { it.deleteLocation(id) }
     suspend fun listLabels() = call { it.listLabels() }
     suspend fun createLabel(body: CreateLabelInput) = call { it.createLabel(body) }
     suspend fun listPaintColors() = call { it.listPaintColors() }
     suspend fun createPaintColor(body: CreatePaintColorInput) = call { it.createPaintColor(body) }
+    suspend fun updatePaintColor(id: String, body: UpdatePaintColorInput) =
+        call { it.updatePaintColor(id, body) }
+    suspend fun deletePaintColor(id: String) = call { it.deletePaintColor(id) }
     suspend fun listLocationPaint(locationId: String) = call { it.listLocationPaint(locationId) }
+    suspend fun createLocationPaint(locationId: String, body: LocationPaintInput) =
+        call { it.createLocationPaint(locationId, body) }
+    suspend fun updateLocationPaint(id: String, body: LocationPaintInput) =
+        call { it.updateLocationPaint(id, body) }
+    suspend fun deleteLocationPaint(id: String) = call { it.deleteLocationPaint(id) }
 
     // Maintenance logs & schedules (scoped to the active home via X-Active-Home header)
     suspend fun listMaintenance(itemId: String? = null) = call { it.listMaintenance(itemId) }

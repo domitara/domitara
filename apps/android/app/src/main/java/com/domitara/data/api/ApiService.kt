@@ -24,6 +24,7 @@ import com.domitara.data.dto.ItemPhoto
 import com.domitara.data.dto.Label
 import com.domitara.data.dto.Location
 import com.domitara.data.dto.LocationPaint
+import com.domitara.data.dto.LocationPaintInput
 import com.domitara.data.dto.MaintenanceLog
 import com.domitara.data.dto.MaintenanceSchedule
 import com.domitara.data.dto.PaintColor
@@ -31,6 +32,7 @@ import com.domitara.data.dto.Reminder
 import com.domitara.data.dto.SnoozeInput
 import com.domitara.data.dto.UpdateBreakerInput
 import com.domitara.data.dto.UpdateDocumentTypeInput
+import com.domitara.data.dto.UpdatePaintColorInput
 import com.domitara.data.dto.UpdateScheduleInput
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -213,6 +215,12 @@ interface ApiService {
     @POST("locations")
     suspend fun createLocation(@Body body: CreateLocationInput): Location
 
+    @PUT("locations/{id}")
+    suspend fun updateLocation(@Path("id") id: String, @Body body: CreateLocationInput): Location
+
+    @DELETE("locations/{id}")
+    suspend fun deleteLocation(@Path("id") id: String)
+
     @GET("labels")
     suspend fun listLabels(): List<Label>
 
@@ -225,8 +233,26 @@ interface ApiService {
     @POST("paint-colors")
     suspend fun createPaintColor(@Body body: CreatePaintColorInput): PaintColor
 
+    @PUT("paint-colors/{id}")
+    suspend fun updatePaintColor(@Path("id") id: String, @Body body: UpdatePaintColorInput): PaintColor
+
+    @DELETE("paint-colors/{id}")
+    suspend fun deletePaintColor(@Path("id") id: String)
+
     @GET("locations/{locationId}/paint")
     suspend fun listLocationPaint(@Path("locationId") locationId: String): List<LocationPaint>
+
+    @POST("locations/{locationId}/paint")
+    suspend fun createLocationPaint(
+        @Path("locationId") locationId: String,
+        @Body body: LocationPaintInput,
+    ): LocationPaint
+
+    @PUT("location-paint/{id}")
+    suspend fun updateLocationPaint(@Path("id") id: String, @Body body: LocationPaintInput): LocationPaint
+
+    @DELETE("location-paint/{id}")
+    suspend fun deleteLocationPaint(@Path("id") id: String)
 
     // Maintenance logs & schedules (home scope comes from the X-Active-Home header)
     @GET("maintenance")

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,13 +42,12 @@ import com.domitara.data.dto.PaintColor
 import com.domitara.di.appViewModel
 import com.domitara.ui.common.ActionErrorHost
 import com.domitara.ui.common.Async
-import com.domitara.ui.common.ColorDot
 import com.domitara.ui.common.EmptyState
 import com.domitara.ui.common.ErrorState
 import com.domitara.ui.common.LoadingState
 import com.domitara.ui.common.parseHexColor
 
-private val PAINT_SWATCHES = listOf(
+internal val PAINT_SWATCHES = listOf(
     "#e7e5e4", "#d6d3cd", "#c9c6bd", "#b7b0a3", "#a8a29e",
     "#8d8478", "#6b7280", "#4b5563", "#f5f5f4", "#1f2937",
 )
@@ -58,6 +58,8 @@ fun PaintColorsScreen() {
     val state by vm.colors.collectAsStateWithLifecycle()
     val actionError by vm.actionError.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<PaintColor?>(null) }
+    var deleting by remember { mutableStateOf<PaintColor?>(null) }
 
     ActionErrorHost(actionError, vm::clearActionError) {
         Column(Modifier.fillMaxSize()) {
@@ -83,7 +85,11 @@ fun PaintColorsScreen() {
                     } else {
                         LazyColumn(Modifier.fillMaxSize()) {
                             items(s.data, key = { it.id }) { color ->
-                                PaintColorRow(color)
+                                PaintColorRow(
+                                    color = color,
+                                    onEdit = { editing = color },
+                                    onDelete = { deleting = color },
+                                )
                                 HorizontalDivider()
                             }
                         }
@@ -93,22 +99,63 @@ fun PaintColorsScreen() {
     }
 
     if (showAdd) {
-        AddPaintColorDialog(
+        PaintColorDialog(
+            initial = null,
             onDismiss = { showAdd = false },
-            onCreate = { name, hex, brand, code, sheen, notes ->
+            onSubmit = { name, hex, brand, code, sheen, notes ->
                 vm.createPaintColor(name, hex, brand, code, sheen, notes)
                 showAdd = false
             },
         )
     }
+
+    editing?.let { color ->
+        PaintColorDialog(
+            initial = color,
+            onDismiss = { editing = null },
+            onSubmit = { name, hex, brand, code, sheen, notes ->
+                vm.updatePaintColor(color.id, name, hex, brand, code, sheen, notes)
+                editing = null
+            },
+        )
+    }
+
+    deleting?.let { color ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete paint color?") },
+            text = {
+                Text(
+                    if (color.locationCount > 0) {
+                        "\"${color.name}\" is used on ${color.locationCount} location surface" +
+                            "${if (color.locationCount == 1) "" else "s"}. Those assignments will be " +
+                            "removed. This cannot be undone."
+                    } else {
+                        "\"${color.name}\" will be permanently deleted. This cannot be undone."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { vm.deletePaintColor(color.id); deleting = null }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+        )
+    }
 }
 
 @Composable
-private fun PaintColorRow(color: PaintColor) {
+private fun PaintColorRow(
+    color: PaintColor,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .clickable(onClick = onEdit)
+            .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -135,13 +182,26 @@ private fun PaintColorRow(color: PaintColor) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = "Delete ${color.name}",
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 
+/**
+ * Add / edit dialog for a paint color. `initial` non-null puts it in edit mode.
+ * `onSubmit` receives (name, hex, brand, colorCode, sheen, notes) — callers map
+ * blanks to null.
+ */
 @Composable
-private fun AddPaintColorDialog(
+fun PaintColorDialog(
+    initial: PaintColor?,
     onDismiss: () -> Unit,
-    onCreate: (
+    onSubmit: (
         name: String,
         hex: String,
         brand: String,
@@ -150,16 +210,17 @@ private fun AddPaintColorDialog(
         notes: String,
     ) -> Unit,
 ) {
-    var name by remember { mutableStateOf("") }
-    var hex by remember { mutableStateOf(PAINT_SWATCHES[0]) }
-    var brand by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    var sheen by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var hex by remember { mutableStateOf(initial?.color ?: PAINT_SWATCHES[0]) }
+    var brand by remember { mutableStateOf(initial?.brand ?: "") }
+    var code by remember { mutableStateOf(initial?.colorCode ?: "") }
+    var sheen by remember { mutableStateOf(initial?.sheen ?: "") }
+    var notes by remember { mutableStateOf(initial?.notes ?: "") }
+    val isEdit = initial != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add paint color") },
+        title = { Text(if (isEdit) "Edit paint color" else "Add paint color") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -222,8 +283,10 @@ private fun AddPaintColorDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onCreate(name.ifBlank { "New paint color" }, hex, brand, code, sheen, notes) },
-            ) { Text("Create") }
+                onClick = {
+                    onSubmit(name.ifBlank { "New paint color" }, hex, brand, code, sheen, notes)
+                },
+            ) { Text(if (isEdit) "Save" else "Create") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
