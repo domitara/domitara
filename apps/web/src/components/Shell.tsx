@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai';
-import { spotlightOpenAtom, activeHomeIdAtom, homesAtom } from '../store/atoms';
+import { spotlightOpenAtom, activeHomeIdAtom, homesAtom, itemGridSizeAtom } from '../store/atoms';
 import {
   AppShell,
   Group,
@@ -55,6 +55,7 @@ export function DomitaraShell({ children }: ShellProps) {
   const [spotlightOpen, setSpotlightOpen] = useAtom(spotlightOpenAtom);
   const [activeHomeId, setActiveHomeId] = useAtom(activeHomeIdAtom);
   const setHomes = useSetAtom(homesAtom);
+  const itemGridSize = useAtomValue(itemGridSizeAtom);
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dark = colorScheme === 'dark';
   const navigate = useNavigate();
@@ -81,6 +82,11 @@ export function DomitaraShell({ children }: ShellProps) {
     void qc.invalidateQueries();
   };
 
+  // Publish the persisted item-grid card size to every `.item-card-grid` on the page.
+  useEffect(() => {
+    document.documentElement.style.setProperty('--item-card-min', `${itemGridSize}px`);
+  }, [itemGridSize]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -90,7 +96,7 @@ export function DomitaraShell({ children }: ShellProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [setSpotlightOpen]);
 
   return (
     <>
