@@ -190,6 +190,48 @@ data class Label(
 )
 
 @Serializable
+enum class PaintSurface {
+    @SerialName("walls") WALLS,
+    @SerialName("ceiling") CEILING,
+    @SerialName("trim") TRIM,
+    @SerialName("doors") DOORS,
+    @SerialName("accent") ACCENT,
+}
+
+@Serializable
+data class PaintColor(
+    val id: String,
+    val name: String,
+    val color: String,
+    val brand: String? = null,
+    val colorCode: String? = null,
+    val sheen: String? = null,
+    val notes: String? = null,
+    val locationCount: Int = 0,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+@Serializable
+data class LocationPaint(
+    val id: String,
+    val locationId: String,
+    val paintColorId: String,
+    val surface: PaintSurface,
+    val surfaceNote: String? = null,
+    val paintedOn: String? = null,
+    val coats: Int? = null,
+    val notes: String? = null,
+    val paintName: String,
+    val paintColor: String,
+    val paintBrand: String? = null,
+    val paintColorCode: String? = null,
+    val paintSheen: String? = null,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+@Serializable
 data class DashboardStats(
     val totalItems: Int,
     val totalLocations: Int,
@@ -438,6 +480,16 @@ data class CreateLocationInput(
 data class CreateLabelInput(
     val name: String,
     val color: String? = null,
+)
+
+@Serializable
+data class CreatePaintColorInput(
+    val name: String,
+    val color: String? = null,
+    val brand: String? = null,
+    val colorCode: String? = null,
+    val sheen: String? = null,
+    val notes: String? = null,
 )
 
 @Serializable

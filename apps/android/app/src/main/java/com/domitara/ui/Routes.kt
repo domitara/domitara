@@ -7,6 +7,7 @@ object Routes {
     const val SEARCH = "search"
     const val LOCATIONS = "locations"
     const val LABELS = "labels"
+    const val PAINT_COLORS = "paint_colors"
 
     const val HOME_DETAIL = "home_detail"
     const val PANELS = "panels"
