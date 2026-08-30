@@ -95,7 +95,7 @@ export function DomitaraShell({ children }: ShellProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [setSpotlightOpen]);
 
   return (
     <>
