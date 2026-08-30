@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.domitara.data.api.toUserMessage
 import com.domitara.data.dto.CreatePaintColorInput
 import com.domitara.data.dto.PaintColor
+import com.domitara.data.dto.UpdatePaintColorInput
 import com.domitara.data.repository.DataRepository
 import com.domitara.ui.common.Async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,6 +62,42 @@ class PaintColorsViewModel(
             }
                 .onSuccess { load() }
                 .onFailure { _actionError.value = it.toUserMessage("Couldn't create paint color") }
+        }
+    }
+
+    fun updatePaintColor(
+        id: String,
+        name: String,
+        color: String,
+        brand: String?,
+        colorCode: String?,
+        sheen: String?,
+        notes: String?,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                repo.updatePaintColor(
+                    id,
+                    UpdatePaintColorInput(
+                        name = name,
+                        color = color,
+                        brand = brand?.ifBlank { null },
+                        colorCode = colorCode?.ifBlank { null },
+                        sheen = sheen?.ifBlank { null },
+                        notes = notes?.ifBlank { null },
+                    ),
+                )
+            }
+                .onSuccess { load() }
+                .onFailure { _actionError.value = it.toUserMessage("Couldn't update paint color") }
+        }
+    }
+
+    fun deletePaintColor(id: String) {
+        viewModelScope.launch {
+            runCatching { repo.deletePaintColor(id) }
+                .onSuccess { load() }
+                .onFailure { _actionError.value = it.toUserMessage("Couldn't delete paint color") }
         }
     }
 }

@@ -14,6 +14,7 @@ import {
   Switch,
   Select,
   Modal,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -32,13 +33,24 @@ import {
   IconDotsVertical,
   IconFolderOpen,
   IconTrash,
+  IconEdit,
 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useItems, useLabels, useLocations } from '../api/queries';
+import { useItems, useLabels, useLocations, useLocationPaint } from '../api/queries';
 import { getLocationChain, formatCurrency } from '../utils';
 import { ItemLabelsPrintView } from '../components/ItemLabelsPrintView';
+import { LocationPaintPanel } from '../components/LocationPaintPanel';
+import { NewLocationModal } from '../components/NewLocationModal';
 import { ItemGridSizeSlider } from '../components/ItemGridSizeSlider';
-import type { Item, ItemStatus } from '../api/types';
+import type { Item, ItemStatus, PaintSurface } from '../api/types';
+
+const SURFACE_LABELS: Record<PaintSurface, string> = {
+  walls: 'Walls',
+  ceiling: 'Ceiling',
+  trim: 'Trim',
+  doors: 'Doors',
+  accent: 'Accent',
+};
 
 interface AllItemsScreenProps {
   filterLocationId?: string;
@@ -72,6 +84,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
   const [insuredFilter, setInsuredFilter] = useState<InsuredFilter>(null);
   const [warrantyFilter, setWarrantyFilter] = useState<WarrantyFilter>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [editLocOpen, setEditLocOpen] = useState(false);
 
   const { data: allItems = [], isLoading } = useItems({
     ...(filterLocationId ? { locationId: filterLocationId } : {}),
@@ -81,6 +94,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
   });
   const { data: locations = [] } = useLocations();
   const { data: labels = [] } = useLabels();
+  const { data: paintRows = [] } = useLocationPaint(filterLocationId ?? '');
 
   const items = useMemo(() => {
     let xs = allItems;
@@ -189,8 +203,55 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           <Text c="dimmed" size="sm" mt={4}>
             {items.length} items
           </Text>
+          {loc && paintRows.length > 0 && (
+            <Group gap={6} mt={8}>
+              {paintRows.map((row) => (
+                <Tooltip
+                  key={row.id}
+                  label={`${SURFACE_LABELS[row.surface]} · ${row.paint_name}${
+                    row.paint_color_code ? ` (${row.paint_color_code})` : ''
+                  }`}
+                  withArrow
+                >
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '2px 8px 2px 4px',
+                      border: '1px solid var(--dt-border)',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      color: 'var(--dt-fg-2)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        background: row.paint_color,
+                        border: '1px solid var(--dt-gray-3)',
+                      }}
+                    />
+                    {SURFACE_LABELS[row.surface]}
+                  </span>
+                </Tooltip>
+              ))}
+            </Group>
+          )}
         </div>
         <Group gap={8}>
+          {loc && (
+            <Button
+              variant="default"
+              size="sm"
+              leftSection={<IconEdit size={14} />}
+              onClick={() => setEditLocOpen(true)}
+            >
+              Edit location
+            </Button>
+          )}
           <Button variant="default" size="sm" leftSection={<IconDownload size={14} />}>
             Export
           </Button>
@@ -544,6 +605,8 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
         </Paper>
       )}
 
+      {loc && <LocationPaintPanel locationId={loc.id} />}
+
       {selected.size > 0 && (
         <div className="bulk-bar">
           <Text size="sm" fw={600}>
@@ -612,6 +675,15 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
           onPrint={() => window.print()}
         />
       </Modal>
+
+      {loc && (
+        <NewLocationModal
+          key={loc.id}
+          opened={editLocOpen}
+          onClose={() => setEditLocOpen(false)}
+          location={loc}
+        />
+      )}
     </Stack>
   );
 }

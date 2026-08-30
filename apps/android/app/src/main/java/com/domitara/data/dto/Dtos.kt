@@ -493,6 +493,27 @@ data class CreatePaintColorInput(
 )
 
 @Serializable
+data class UpdatePaintColorInput(
+    val name: String,
+    val color: String,
+    val brand: String? = null,
+    val colorCode: String? = null,
+    val sheen: String? = null,
+    val notes: String? = null,
+)
+
+/** Body for assigning or updating paint on a location surface. */
+@Serializable
+data class LocationPaintInput(
+    val paintColorId: String,
+    val surface: PaintSurface,
+    val surfaceNote: String? = null,
+    val paintedOn: String? = null,
+    val coats: Int? = null,
+    val notes: String? = null,
+)
+
+@Serializable
 data class CreateItemInput(
     val name: String,
     val description: String? = null,
