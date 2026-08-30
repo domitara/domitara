@@ -17,3 +17,11 @@
 # OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# Room (used internally by WorkManager's WorkDatabase) instantiates its
+# generated *_Impl classes via reflection (RoomDatabase.getGeneratedImplementation),
+# so R8 can't see the constructor is used and strips it in minified release
+# builds, crashing at startup with NoSuchMethodException: ..._Impl.<init>.
+-keep class * extends androidx.room.RoomDatabase {
+    <init>();
+}

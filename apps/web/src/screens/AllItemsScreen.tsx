@@ -41,6 +41,7 @@ import { getLocationChain, formatCurrency } from '../utils';
 import { ItemLabelsPrintView } from '../components/ItemLabelsPrintView';
 import { LocationPaintPanel } from '../components/LocationPaintPanel';
 import { NewLocationModal } from '../components/NewLocationModal';
+import { ItemGridSizeSlider } from '../components/ItemGridSizeSlider';
 import type { Item, ItemStatus, PaintSurface } from '../api/types';
 
 const SURFACE_LABELS: Record<PaintSurface, string> = {
@@ -350,6 +351,7 @@ export function AllItemsScreen({ filterLocationId, filterLabelId }: AllItemsScre
             </Button>
           )}
           <Group gap={8} ml="auto">
+            {view === 'grid' && <ItemGridSizeSlider />}
             <Button variant="default" size="sm" leftSection={<IconSortAscending size={14} />}>
               Recently added
             </Button>
