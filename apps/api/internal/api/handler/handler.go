@@ -24,11 +24,12 @@ type Handler struct {
 	jwtSecret     string
 	secureCookies bool
 	uploadDir     string
+	tasks         ScheduledTasks
 }
 
 // New constructs a Handler with the given dependencies.
-func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string, secureCookies bool, uploadDir string) *Handler {
-	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret, secureCookies: secureCookies, uploadDir: uploadDir}
+func New(q *store.Queries, pool *pgxpool.Pool, jwtSecret string, secureCookies bool, uploadDir string, tasks ScheduledTasks) *Handler {
+	return &Handler{q: q, pool: pool, jwtSecret: jwtSecret, secureCookies: secureCookies, uploadDir: uploadDir, tasks: tasks}
 }
 
 func (h *Handler) setAuthCookies(w http.ResponseWriter, token string, role string) {

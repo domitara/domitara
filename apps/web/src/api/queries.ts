@@ -14,6 +14,7 @@ import type {
   DashboardStats,
   SystemStatus,
   User,
+  ScheduledTask,
   CreateItemInput,
   UpdateItemInput,
   CreateLocationInput,
@@ -439,7 +440,10 @@ export function useSnoozeReminder() {
 }
 
 // --- Admin ---
-export const adminKeys = { users: ['admin', 'users'] as const };
+export const adminKeys = {
+  users: ['admin', 'users'] as const,
+  scheduledTasks: ['admin', 'scheduled-tasks'] as const,
+};
 
 export function useAdminUsers() {
   return useQuery({
@@ -461,6 +465,24 @@ export function useAdminDeleteUser() {
   return useMutation({
     mutationFn: (id: number) => api.delete(`/admin/users/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.users }),
+  });
+}
+
+export function useAdminScheduledTasks() {
+  return useQuery({
+    queryKey: adminKeys.scheduledTasks,
+    queryFn: () => api.get<ScheduledTask[]>('/admin/scheduled-tasks'),
+    // Poll while a task is running so the row updates when it finishes.
+    refetchInterval: (query) => (query.state.data?.some((t) => t.running) ? 1500 : false),
+  });
+}
+
+export function useAdminRunScheduledTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api.post<void>(`/admin/scheduled-tasks/${encodeURIComponent(name)}/run`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.scheduledTasks }),
   });
 }
 

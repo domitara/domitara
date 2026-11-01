@@ -3,8 +3,10 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -72,24 +74,118 @@ var definitions = []reminderDef{
 	},
 }
 
+// ErrUnknownTask is returned by RunNow for a task name that isn't registered.
+var ErrUnknownTask = errors.New("unknown scheduled task")
+
+// ErrAlreadyRunning is returned by RunNow when the task is already executing.
+var ErrAlreadyRunning = errors.New("task is already running")
+
+const taskTimeout = 10 * time.Minute
+
+type task struct {
+	name        string
+	description string
+	interval    string // human-readable cadence
+	spec        string // cron spec
+	fn          func(ctx context.Context) error
+	entryID     cron.EntryID
+
+	mu        sync.Mutex
+	running   bool
+	ran       bool
+	lastStart time.Time
+	lastTook  time.Duration
+	lastErr   error
+}
+
+// begin marks the task running; it reports false if it already was.
+func (t *task) begin() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.running {
+		return false
+	}
+	t.running = true
+	return true
+}
+
+func (t *task) end(start time.Time, took time.Duration, err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.running = false
+	t.ran = true
+	t.lastStart = start
+	t.lastTook = took
+	t.lastErr = err
+}
+
+// TaskStatus is a point-in-time view of a scheduled task.
+type TaskStatus struct {
+	Name           string
+	Description    string
+	Interval       string
+	Schedule       string
+	Running        bool
+	LastRunAt      *time.Time
+	LastDurationMs *int64
+	LastStatus     string // "", "success" or "error"
+	LastError      string
+	NextRunAt      *time.Time
+}
+
 // Scheduler runs reminder-generation jobs on a cron schedule.
 type Scheduler struct {
-	pool *pgxpool.Pool
-	c    *cron.Cron
+	pool  *pgxpool.Pool
+	c     *cron.Cron
+	tasks []*task
 }
 
 // New creates a Scheduler backed by the given connection pool.
 func New(pool *pgxpool.Pool) *Scheduler {
-	return &Scheduler{pool: pool, c: cron.New()}
+	s := &Scheduler{pool: pool, c: cron.New()}
+	s.tasks = []*task{
+		{
+			name:        "system-reminders",
+			description: "Creates onboarding and housekeeping reminders (add items, add photos, insure high-value items) and clears them once resolved.",
+			interval:    "Hourly",
+			spec:        "@hourly",
+			fn:          s.runSystemReminders,
+		},
+		{
+			name:        "maintenance-reminders",
+			description: "Creates due-soon (7 days) and overdue reminders for maintenance schedules.",
+			interval:    "Hourly",
+			spec:        "@hourly",
+			fn:          s.runScheduleReminders,
+		},
+		{
+			name:        "warranty-reminders",
+			description: "Creates expiring-soon (30 days) and expired reminders for item warranties.",
+			interval:    "Hourly",
+			spec:        "@hourly",
+			fn:          s.runWarrantyReminders,
+		},
+	}
+	return s
 }
 
-// Start runs the reminder job once immediately and then daily.
+// Start registers every task on its schedule, then runs each once immediately.
 func (s *Scheduler) Start() {
-	go s.run()
-	if _, err := s.c.AddFunc("@daily", s.run); err != nil {
-		log.Printf("scheduler: register daily job: %v", err)
+	for _, t := range s.tasks {
+		t := t
+		id, err := s.c.AddFunc(t.spec, func() { s.execute(t) })
+		if err != nil {
+			log.Printf("scheduler: register %s: %v", t.name, err)
+			continue
+		}
+		t.entryID = id
 	}
 	s.c.Start()
+	go func() {
+		for _, t := range s.tasks {
+			s.execute(t)
+		}
+	}()
 }
 
 // Stop halts the cron scheduler.
@@ -97,30 +193,127 @@ func (s *Scheduler) Stop() {
 	s.c.Stop()
 }
 
-func (s *Scheduler) run() {
-	ctx := context.Background()
+// Tasks returns the current status of every registered task.
+func (s *Scheduler) Tasks() []TaskStatus {
+	out := make([]TaskStatus, 0, len(s.tasks))
+	for _, t := range s.tasks {
+		st := TaskStatus{
+			Name: t.name, Description: t.description, Interval: t.interval, Schedule: t.spec,
+		}
+		if t.entryID != 0 {
+			if next := s.c.Entry(t.entryID).Next; !next.IsZero() {
+				st.NextRunAt = &next
+			}
+		}
+		t.mu.Lock()
+		st.Running = t.running
+		if t.ran {
+			started := t.lastStart
+			ms := t.lastTook.Milliseconds()
+			st.LastRunAt = &started
+			st.LastDurationMs = &ms
+			if t.lastErr != nil {
+				st.LastStatus = "error"
+				st.LastError = t.lastErr.Error()
+			} else {
+				st.LastStatus = "success"
+			}
+		}
+		t.mu.Unlock()
+		out = append(out, st)
+	}
+	return out
+}
 
+// RunNow starts the named task in the background. It returns ErrUnknownTask or
+// ErrAlreadyRunning without starting anything.
+func (s *Scheduler) RunNow(name string) error {
+	for _, t := range s.tasks {
+		if t.name != name {
+			continue
+		}
+		if !t.begin() {
+			return ErrAlreadyRunning
+		}
+		go s.runBegun(t)
+		return nil
+	}
+	return ErrUnknownTask
+}
+
+// execute runs a task unless it is already running (e.g. a manual run overlaps the cron tick).
+func (s *Scheduler) execute(t *task) {
+	if !t.begin() {
+		log.Printf("scheduler: %s already running, skipping", t.name)
+		return
+	}
+	s.runBegun(t)
+}
+
+func (s *Scheduler) runBegun(t *task) {
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), taskTimeout)
+	defer cancel()
+	err := safeRun(ctx, t.fn)
+	t.end(start, time.Since(start), err)
+	if err != nil {
+		log.Printf("scheduler: %s finished with errors: %v", t.name, err)
+	}
+}
+
+func safeRun(ctx context.Context, fn func(context.Context) error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+	return fn(ctx)
+}
+
+// syncErrors gathers per-row failures so a run can report them without aborting.
+type syncErrors struct {
+	n     int
+	first error
+}
+
+func (e *syncErrors) add(err error) {
+	if err == nil {
+		return
+	}
+	e.n++
+	if e.first == nil {
+		e.first = err
+	}
+}
+
+func (e *syncErrors) err() error {
+	if e.n == 0 {
+		return nil
+	}
+	return fmt.Errorf("%d sync error(s), first: %w", e.n, e.first)
+}
+
+func (s *Scheduler) runSystemReminders(ctx context.Context) error {
 	rows, err := s.pool.Query(ctx, `SELECT id FROM users`)
 	if err != nil {
-		log.Printf("scheduler: list users: %v", err)
-		return
+		return fmt.Errorf("list users: %w", err)
 	}
 	var userIDs []int64
 	for rows.Next() {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
-			log.Printf("scheduler: scan user: %v", err)
 			rows.Close()
-			return
+			return fmt.Errorf("scan user: %w", err)
 		}
 		userIDs = append(userIDs, id)
 	}
 	rows.Close()
 
+	var errs syncErrors
 	for _, def := range definitions {
 		active, err := def.check(ctx, s.pool)
 		if err != nil {
-			log.Printf("scheduler: check %s: %v", def.key, err)
+			errs.add(fmt.Errorf("check %s: %w", def.key, err))
 			continue
 		}
 
@@ -139,15 +332,16 @@ func (s *Scheduler) run() {
 			}
 			if err != nil {
 				log.Printf("scheduler: sync reminder %s for user %d: %v", def.key, uid, err)
+				errs.add(err)
 			}
 		}
 	}
-
-	s.runScheduleReminders(ctx)
-	s.runWarrantyReminders(ctx)
+	return errs.err()
 }
 
-func (s *Scheduler) runScheduleReminders(ctx context.Context) {
+func (s *Scheduler) runScheduleReminders(ctx context.Context) error {
+	var errs syncErrors
+
 	type schedRow struct {
 		id        string
 		homeID    string
@@ -162,16 +356,14 @@ func (s *Scheduler) runScheduleReminders(ctx context.Context) {
 		LEFT JOIN items i ON i.id = ms.item_id
 	`)
 	if err != nil {
-		log.Printf("scheduler: list schedules: %v", err)
-		return
+		return fmt.Errorf("list schedules: %w", err)
 	}
 	var schedules []schedRow
 	for rows.Next() {
 		var sc schedRow
 		if err := rows.Scan(&sc.id, &sc.homeID, &sc.title, &sc.itemName, &sc.nextDueAt); err != nil {
-			log.Printf("scheduler: scan schedule: %v", err)
 			rows.Close()
-			return
+			return fmt.Errorf("scan schedule: %w", err)
 		}
 		schedules = append(schedules, sc)
 	}
@@ -179,17 +371,15 @@ func (s *Scheduler) runScheduleReminders(ctx context.Context) {
 
 	memberRows, err := s.pool.Query(ctx, `SELECT home_id, user_id FROM home_members`)
 	if err != nil {
-		log.Printf("scheduler: list home members: %v", err)
-		return
+		return fmt.Errorf("list home members: %w", err)
 	}
 	homeMembers := map[string][]int64{}
 	for memberRows.Next() {
 		var homeID string
 		var userID int64
 		if err := memberRows.Scan(&homeID, &userID); err != nil {
-			log.Printf("scheduler: scan member: %v", err)
 			memberRows.Close()
-			return
+			return fmt.Errorf("scan member: %w", err)
 		}
 		homeMembers[homeID] = append(homeMembers[homeID], userID)
 	}
@@ -247,6 +437,7 @@ func (s *Scheduler) runScheduleReminders(ctx context.Context) {
 			}
 			if execErr != nil {
 				log.Printf("scheduler: sync schedule reminder %s for user %d: %v", key, uid, execErr)
+				errs.add(execErr)
 			}
 		}
 	}
@@ -261,10 +452,14 @@ func (s *Scheduler) runScheduleReminders(ctx context.Context) {
 		  )
 	`); err != nil {
 		log.Printf("scheduler: cleanup orphan schedule reminders: %v", err)
+		errs.add(err)
 	}
+	return errs.err()
 }
 
-func (s *Scheduler) runWarrantyReminders(ctx context.Context) {
+func (s *Scheduler) runWarrantyReminders(ctx context.Context) error {
+	var errs syncErrors
+
 	type itemRow struct {
 		id                string
 		homeID            string
@@ -278,16 +473,14 @@ func (s *Scheduler) runWarrantyReminders(ctx context.Context) {
 		WHERE warranty_expires_at IS NOT NULL
 	`)
 	if err != nil {
-		log.Printf("scheduler: list items with warranty expiration: %v", err)
-		return
+		return fmt.Errorf("list items with warranty expiration: %w", err)
 	}
 	var items []itemRow
 	for rows.Next() {
 		var it itemRow
 		if err := rows.Scan(&it.id, &it.homeID, &it.name, &it.warrantyExpiresAt); err != nil {
-			log.Printf("scheduler: scan item: %v", err)
 			rows.Close()
-			return
+			return fmt.Errorf("scan item: %w", err)
 		}
 		items = append(items, it)
 	}
@@ -295,17 +488,15 @@ func (s *Scheduler) runWarrantyReminders(ctx context.Context) {
 
 	memberRows, err := s.pool.Query(ctx, `SELECT home_id, user_id FROM home_members`)
 	if err != nil {
-		log.Printf("scheduler: list home members: %v", err)
-		return
+		return fmt.Errorf("list home members: %w", err)
 	}
 	homeMembers := map[string][]int64{}
 	for memberRows.Next() {
 		var homeID string
 		var userID int64
 		if err := memberRows.Scan(&homeID, &userID); err != nil {
-			log.Printf("scheduler: scan member: %v", err)
 			memberRows.Close()
-			return
+			return fmt.Errorf("scan member: %w", err)
 		}
 		homeMembers[homeID] = append(homeMembers[homeID], userID)
 	}
@@ -355,6 +546,7 @@ func (s *Scheduler) runWarrantyReminders(ctx context.Context) {
 			}
 			if execErr != nil {
 				log.Printf("scheduler: sync warranty reminder %s for user %d: %v", key, uid, execErr)
+				errs.add(execErr)
 			}
 		}
 	}
@@ -369,5 +561,7 @@ func (s *Scheduler) runWarrantyReminders(ctx context.Context) {
 		  )
 	`); err != nil {
 		log.Printf("scheduler: cleanup orphan warranty reminders: %v", err)
+		errs.add(err)
 	}
+	return errs.err()
 }

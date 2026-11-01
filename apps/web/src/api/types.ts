@@ -545,3 +545,16 @@ export interface UpdateFloorPlanShapeInput {
   color?: string;
   geometry?: FloorPlanGeometry | null;
 }
+
+export interface ScheduledTask {
+  name: string;
+  description: string;
+  interval: string;
+  schedule: string;
+  running: boolean;
+  last_run_at?: string;
+  last_duration_ms?: number;
+  last_status?: 'success' | 'error';
+  last_error?: string;
+  next_run_at?: string;
+}
