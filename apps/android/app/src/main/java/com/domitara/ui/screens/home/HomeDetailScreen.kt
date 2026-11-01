@@ -78,6 +78,7 @@ import com.domitara.ui.common.rememberPhotoCapture
 import com.domitara.ui.common.formatBytes
 import com.domitara.ui.common.formatCurrency
 import com.domitara.ui.common.parseHexColor
+import com.domitara.ui.common.rememberDocumentOpener
 import com.domitara.ui.common.shortDate
 
 private val TABS = listOf("Details", "Photos", "Documents", "Members", "Floor Plans")
@@ -301,6 +302,8 @@ private fun DocumentsTab(vm: HomeDetailViewModel) {
     var uploadError by remember { mutableStateOf<String?>(null) }
     var docToDelete by remember { mutableStateOf<HomeDocument?>(null) }
 
+    val openDocument = rememberDocumentOpener { uploadError = it }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             uploadError = null
@@ -333,7 +336,10 @@ private fun DocumentsTab(vm: HomeDetailViewModel) {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             s.data.forEach { doc: HomeDocument ->
                                 Row(
-                                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { openDocument(doc.url, doc.filename, doc.contentType) }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(Modifier.weight(1f)) {
@@ -603,12 +609,25 @@ private fun InviteDialog(onDismiss: () -> Unit, onInvite: (String, (String) -> U
 @Composable
 private fun FloorPlansTab(vm: HomeDetailViewModel) {
     val state by vm.areas.collectAsStateWithLifecycle()
+    val docsState by vm.documents.collectAsStateWithLifecycle()
+    val shapes by vm.shapes.collectAsStateWithLifecycle()
+    val plans = (docsState as? Async.Success)?.data
+        ?.filter { it.documentType == HomeDocumentType.FLOOR_PLAN }.orEmpty()
+    if (plans.isNotEmpty()) {
+        FloorPlanViewer(
+            plans,
+            (state as? Async.Success)?.data.orEmpty(),
+            shapes,
+            onSetFloor = vm::updateDocumentFloorLevel,
+        )
+        return
+    }
     when (val s = state) {
         Async.Loading -> LoadingState()
         is Async.Failure -> ErrorState(s.message)
         is Async.Success ->
             if (s.data.isEmpty()) {
-                EmptyState("No floor plan areas")
+                EmptyState("No floor plans", "Upload a document with type Floor Plan from the Documents tab.")
             } else {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     s.data.forEach { area: FloorPlanArea ->

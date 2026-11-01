@@ -165,6 +165,12 @@ data class UpdateDocumentTypeInput(
     val documentType: HomeDocumentType? = null,
 )
 
+/** Request body for PATCH .../documents/{id}/floor-level. Null (omitted) clears the floor. */
+@Serializable
+data class UpdateFloorLevelInput(
+    val floorLevel: Int? = null,
+)
+
 @Serializable
 data class Location(
     val id: String,
@@ -345,6 +351,27 @@ data class FloorPlanArea(
     val name: String,
     val color: String,
     val documentId: String? = null,
+    val geometry: FloorPlanGeometry? = null,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+/** Polygon in coordinates normalized to the floor plan image (0..1 on both axes). */
+@Serializable
+data class FloorPlanGeometry(
+    val type: String = "Polygon",
+    val coordinates: List<List<Double>> = emptyList(),
+)
+
+@Serializable
+data class FloorPlanShape(
+    val id: String,
+    val homeId: String,
+    val documentId: String? = null,
+    val itemId: String? = null,
+    val label: String? = null,
+    val color: String,
+    val geometry: FloorPlanGeometry? = null,
     val createdAt: String,
     val updatedAt: String,
 )
@@ -543,3 +570,17 @@ data class CreateItemInput(
  */
 @Serializable
 data class ApiError(val error: String? = null, val title: String? = null, val detail: String? = null)
+
+/** A location surface a paint color is assigned to, as listed from the paint color. */
+@Serializable
+data class PaintColorAssignment(
+    val id: String,
+    val locationId: String,
+    val locationName: String,
+    val paintColorId: String,
+    val surface: PaintSurface,
+    val surfaceNote: String? = null,
+    val paintedOn: String? = null,
+    val coats: Int? = null,
+    val notes: String? = null,
+)

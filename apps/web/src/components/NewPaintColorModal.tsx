@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { useCreatePaintColor, useUpdatePaintColor } from '../api/queries';
 import type { PaintColor } from '../api/types';
+import { PaintColorSurfaces } from './PaintColorSurfaces';
 
 // Neutral / earth-tone starting points — most interior paint lands in this range.
 const PAINT_SWATCHES = [
@@ -136,6 +137,7 @@ export function NewPaintColorModal({ opened, onClose, paintColor }: Props) {
           onChange={(e) => setNotes(e.currentTarget.value)}
           rows={2}
         />
+        {isEdit && paintColor && <PaintColorSurfaces paintColorId={paintColor.id} />}
         {error && (
           <Text size="sm" c="red">
             {error}

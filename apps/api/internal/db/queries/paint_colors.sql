@@ -74,3 +74,12 @@ WHERE id = $1;
 
 -- name: DeleteLocationPaint :exec
 DELETE FROM location_paint WHERE id = $1;
+
+-- name: ListPaintColorAssignments :many
+SELECT lp.id, lp.location_id, lp.paint_color_id, lp.surface, lp.surface_note,
+       lp.painted_on, lp.coats, lp.notes, lp.created_at, lp.updated_at,
+       l.name AS location_name
+FROM location_paint lp
+JOIN locations l ON l.id = lp.location_id
+WHERE lp.paint_color_id = $1
+ORDER BY l.name, lp.surface;

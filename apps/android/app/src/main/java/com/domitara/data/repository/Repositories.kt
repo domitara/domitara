@@ -216,6 +216,11 @@ class DataRepository(
 
     val token: String? get() = tokenHolder.session?.token
 
+    /** Seeds the in-memory session when it hasn't been populated yet (background workers). */
+    fun ensureSession(session: Session) {
+        if (tokenHolder.session == null) tokenHolder.session = session
+    }
+
     private suspend fun <T> call(block: suspend (ApiService) -> T): T = withContext(Dispatchers.IO) {
         try {
             block(service())
@@ -251,6 +256,8 @@ class DataRepository(
         call { it.deleteHomeDocument(homeId, docId) }
     suspend fun updateHomeDocumentType(homeId: String, docId: String, documentType: HomeDocumentType?) =
         call { it.updateHomeDocumentType(homeId, docId, UpdateDocumentTypeInput(documentType)) }
+    suspend fun updateHomeDocumentFloorLevel(homeId: String, docId: String, floorLevel: Int?) =
+        call { it.updateHomeDocumentFloorLevel(homeId, docId, com.domitara.data.dto.UpdateFloorLevelInput(floorLevel)) }
 
     /**
      * Reads a picked content [uri] into a multipart part. The server detects the
@@ -274,6 +281,7 @@ class DataRepository(
     suspend fun removeHomeMember(homeId: String, userId: Long) =
         call { it.removeHomeMember(homeId, userId) }
     suspend fun listFloorPlanAreas(homeId: String) = call { it.listFloorPlanAreas(homeId) }
+    suspend fun listFloorPlanShapes(homeId: String) = call { it.listFloorPlanShapes(homeId) }
     suspend fun createFloorPlanArea(homeId: String, name: String, color: String?) =
         call { it.createFloorPlanArea(homeId, CreateFloorPlanAreaInput(name, color)) }
 
@@ -327,6 +335,7 @@ class DataRepository(
     suspend fun updatePaintColor(id: String, body: UpdatePaintColorInput) =
         call { it.updatePaintColor(id, body) }
     suspend fun deletePaintColor(id: String) = call { it.deletePaintColor(id) }
+    suspend fun listPaintColorAssignments(id: String) = call { it.listPaintColorAssignments(id) }
     suspend fun listLocationPaint(locationId: String) = call { it.listLocationPaint(locationId) }
     suspend fun createLocationPaint(locationId: String, body: LocationPaintInput) =
         call { it.createLocationPaint(locationId, body) }

@@ -234,6 +234,21 @@ export interface CreateLocationPaintInput {
 
 export type UpdateLocationPaintInput = CreateLocationPaintInput;
 
+/** A location surface a paint color is assigned to (as listed from the paint color). */
+export interface PaintColorAssignment {
+  id: string;
+  location_id: string;
+  location_name: string;
+  paint_color_id: string;
+  surface: PaintSurface;
+  surface_note: string | null;
+  painted_on: string | null;
+  coats: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ItemPhoto {
   id: string;
   item_id: string;

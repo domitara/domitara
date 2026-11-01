@@ -483,7 +483,6 @@ private fun LocationDetail(location: Location, vm: LocationsViewModel) {
 
     if (showNewColor) {
         PaintColorDialog(
-            initial = null,
             onDismiss = { showNewColor = false },
             onSubmit = { name, hex, brand, code, sheen, notes ->
                 vm.createPaintColor(name, hex, brand, code, sheen, notes)

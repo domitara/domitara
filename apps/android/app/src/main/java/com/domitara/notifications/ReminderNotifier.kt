@@ -33,15 +33,22 @@ object ReminderNotifier {
         context.getSystemService<NotificationManager>()?.createNotificationChannel(channel)
     }
 
-    /** Posts a notification for [reminder]. Silently no-ops if the POST_NOTIFICATIONS
-     *  permission hasn't been granted (Android 13+). */
-    fun notify(context: Context, reminder: Reminder) {
+    /** True if a notification can actually be shown right now (permission granted on
+     *  Android 13+, and notifications not switched off for the app). */
+    fun canNotify(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            return
+            return false
         }
+        return NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    /** Posts a notification for [reminder]. Returns false (nothing shown) when
+     *  notifications aren't currently allowed, so callers don't record it as delivered. */
+    fun notify(context: Context, reminder: Reminder): Boolean {
+        if (!canNotify(context)) return false
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -59,10 +66,17 @@ object ReminderNotifier {
             .setContentText(reminder.body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(reminder.body))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
 
-        NotificationManagerCompat.from(context).notify(reminder.id.hashCode(), notification)
+        return try {
+            NotificationManagerCompat.from(context).notify(reminder.id.hashCode(), notification)
+            true
+        } catch (e: SecurityException) {
+            false
+        }
     }
 }

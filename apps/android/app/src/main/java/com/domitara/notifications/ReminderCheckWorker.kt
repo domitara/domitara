@@ -23,7 +23,10 @@ class ReminderCheckWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        if (sessionStore.current() == null) return Result.success()
+        // A cold worker start can run before AppContainer's session collector has
+        // populated the in-memory token, which would surface as a bogus "unauthorized".
+        val session = sessionStore.current() ?: return Result.success()
+        dataRepository.ensureSession(session)
 
         val reminders = try {
             dataRepository.listReminders()
@@ -33,16 +36,19 @@ class ReminderCheckWorker(
             return Result.retry()
         }
 
-        val activeIds = reminders.map { it.id }.toSet()
         val alreadyNotified = notifiedReminderStore.notifiedIds()
 
-        reminders.filter { it.id !in alreadyNotified }
-            .forEach { ReminderNotifier.notify(applicationContext, it) }
+        // Only ids we actually posted (or posted before) count as notified. If
+        // notifications are blocked, nothing is recorded, so the reminder still
+        // fires on a later run once the user grants permission.
+        val delivered = reminders.filter { it.id in alreadyNotified }.map { it.id }.toMutableSet()
+        reminders.filter { it.id !in alreadyNotified }.forEach {
+            if (ReminderNotifier.notify(applicationContext, it)) delivered += it.id
+        }
 
-        // The active set becomes the new notified set: still-active ids stay
-        // marked notified, and ids that dropped out (dismissed/snoozed/resolved)
-        // are forgotten so the reminder notifies again if it resurfaces later.
-        notifiedReminderStore.setNotifiedIds(activeIds)
+        // Ids that dropped out of the active set (dismissed/snoozed/resolved) are
+        // forgotten so the reminder notifies again if it resurfaces later.
+        notifiedReminderStore.setNotifiedIds(delivered)
 
         return Result.success()
     }

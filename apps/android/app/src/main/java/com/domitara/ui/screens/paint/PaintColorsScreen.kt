@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,12 +56,17 @@ internal val PAINT_SWATCHES = listOf(
 )
 
 @Composable
-fun PaintColorsScreen() {
+fun PaintColorsScreen(onEditColor: (String) -> Unit) {
     val vm = appViewModel { PaintColorsViewModel(it.dataRepository, it.activeHomeId) }
     val state by vm.colors.collectAsStateWithLifecycle()
     val actionError by vm.actionError.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<PaintColor?>(null) }
+
+    // Refresh after returning from the edit page.
+    LifecycleResumeEffect(Unit) {
+        vm.load()
+        onPauseOrDispose {}
+    }
     var deleting by remember { mutableStateOf<PaintColor?>(null) }
 
     ActionErrorHost(actionError, vm::clearActionError) {
@@ -87,7 +95,7 @@ fun PaintColorsScreen() {
                             items(s.data, key = { it.id }) { color ->
                                 PaintColorRow(
                                     color = color,
-                                    onEdit = { editing = color },
+                                    onEdit = { onEditColor(color.id) },
                                     onDelete = { deleting = color },
                                 )
                                 HorizontalDivider()
@@ -100,22 +108,10 @@ fun PaintColorsScreen() {
 
     if (showAdd) {
         PaintColorDialog(
-            initial = null,
             onDismiss = { showAdd = false },
             onSubmit = { name, hex, brand, code, sheen, notes ->
                 vm.createPaintColor(name, hex, brand, code, sheen, notes)
                 showAdd = false
-            },
-        )
-    }
-
-    editing?.let { color ->
-        PaintColorDialog(
-            initial = color,
-            onDismiss = { editing = null },
-            onSubmit = { name, hex, brand, code, sheen, notes ->
-                vm.updatePaintColor(color.id, name, hex, brand, code, sheen, notes)
-                editing = null
             },
         )
     }
@@ -192,14 +188,91 @@ private fun PaintColorRow(
     }
 }
 
+/** Editable field state shared by the add dialog and the edit page. */
+class PaintColorFormState(initial: PaintColor?) {
+    var name by mutableStateOf(initial?.name ?: "")
+    var hex by mutableStateOf(initial?.color ?: PAINT_SWATCHES[0])
+    var brand by mutableStateOf(initial?.brand ?: "")
+    var code by mutableStateOf(initial?.colorCode ?: "")
+    var sheen by mutableStateOf(initial?.sheen ?: "")
+    var notes by mutableStateOf(initial?.notes ?: "")
+}
+
+@Composable
+fun PaintColorFormFields(form: PaintColorFormState) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = form.name,
+            onValueChange = { form.name = it },
+            label = { Text("Name") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text("Swatch color", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PAINT_SWATCHES.forEach { swatch ->
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(parseHexColor(swatch))
+                        .border(
+                            width = if (form.hex == swatch) 2.dp else 1.dp,
+                            color = if (form.hex == swatch) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .clickable { form.hex = swatch },
+                )
+            }
+        }
+        OutlinedTextField(
+            value = form.hex,
+            onValueChange = { form.hex = it },
+            label = { Text("Hex") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = form.brand,
+            onValueChange = { form.brand = it },
+            label = { Text("Brand") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = form.code,
+            onValueChange = { form.code = it },
+            label = { Text("Color code") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = form.sheen,
+            onValueChange = { form.sheen = it },
+            label = { Text("Sheen / finish") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = form.notes,
+            onValueChange = { form.notes = it },
+            label = { Text("Notes") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 /**
- * Add / edit dialog for a paint color. `initial` non-null puts it in edit mode.
+ * Add dialog for a paint color (editing happens on [PaintColorEditScreen]).
  * `onSubmit` receives (name, hex, brand, colorCode, sheen, notes) — callers map
  * blanks to null.
  */
 @Composable
 fun PaintColorDialog(
-    initial: PaintColor?,
     onDismiss: () -> Unit,
     onSubmit: (
         name: String,
@@ -210,83 +283,24 @@ fun PaintColorDialog(
         notes: String,
     ) -> Unit,
 ) {
-    var name by remember { mutableStateOf(initial?.name ?: "") }
-    var hex by remember { mutableStateOf(initial?.color ?: PAINT_SWATCHES[0]) }
-    var brand by remember { mutableStateOf(initial?.brand ?: "") }
-    var code by remember { mutableStateOf(initial?.colorCode ?: "") }
-    var sheen by remember { mutableStateOf(initial?.sheen ?: "") }
-    var notes by remember { mutableStateOf(initial?.notes ?: "") }
-    val isEdit = initial != null
-
+    val form = remember { PaintColorFormState(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEdit) "Edit paint color" else "Add paint color") },
+        title = { Text("Add paint color") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    singleLine = true,
-                )
-                Text("Swatch color", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PAINT_SWATCHES.forEach { swatch ->
-                        Box(
-                            modifier = Modifier
-                                .size(26.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(parseHexColor(swatch))
-                                .border(
-                                    width = if (hex == swatch) 2.dp else 1.dp,
-                                    color = if (hex == swatch) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        Color.Transparent
-                                    },
-                                    shape = RoundedCornerShape(4.dp),
-                                )
-                                .clickable { hex = swatch },
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = hex,
-                    onValueChange = { hex = it },
-                    label = { Text("Hex") },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = brand,
-                    onValueChange = { brand = it },
-                    label = { Text("Brand") },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it },
-                    label = { Text("Color code") },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = sheen,
-                    onValueChange = { sheen = it },
-                    label = { Text("Sheen / finish") },
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes") },
-                )
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                PaintColorFormFields(form)
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onSubmit(name.ifBlank { "New paint color" }, hex, brand, code, sheen, notes)
+                    onSubmit(
+                        form.name.ifBlank { "New paint color" },
+                        form.hex, form.brand, form.code, form.sheen, form.notes,
+                    )
                 },
-            ) { Text(if (isEdit) "Save" else "Create") }
+            ) { Text("Create") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

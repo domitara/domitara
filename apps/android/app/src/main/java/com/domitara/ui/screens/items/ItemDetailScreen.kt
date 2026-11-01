@@ -407,10 +407,9 @@ private fun DocumentsSection(
     onUpload: (Uri, (String) -> Unit) -> Unit,
     onDelete: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val container = LocalAppContainer.current
     var uploadError by remember { mutableStateOf<String?>(null) }
     var docToDelete by remember { mutableStateOf<ItemDocument?>(null) }
+    val openDocument = com.domitara.ui.common.rememberDocumentOpener { uploadError = it }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -455,10 +454,7 @@ private fun DocumentsSection(
                         state.data.forEach { doc ->
                             DocumentRow(
                                 doc = doc,
-                                onOpen = {
-                                    val url = container.dataRepository.absoluteUrl(doc.url)
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                },
+                                onOpen = { openDocument(doc.url, doc.filename, doc.contentType) },
                                 onDelete = { docToDelete = doc },
                             )
                         }

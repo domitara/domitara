@@ -331,8 +331,8 @@ func (h *Handler) CreateLocationPaint(ctx context.Context, input *CreateLocation
 		Notes:        input.Body.Notes,
 	})
 	if err != nil {
-		if isUniqueViolation(err, "location_paint_loc_surface_uniq") {
-			return nil, huma.NewError(http.StatusConflict, "this location already has a paint color for that surface")
+		if isLocationPaintConflict(err) {
+			return nil, huma.NewError(http.StatusConflict, "this location already has that paint assigned for that surface")
 		}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to assign paint")
 	}
@@ -372,8 +372,8 @@ func (h *Handler) UpdateLocationPaint(ctx context.Context, input *UpdateLocation
 		Coats:        toNullInt4(input.Body.Coats),
 		Notes:        input.Body.Notes,
 	}); err != nil {
-		if isUniqueViolation(err, "location_paint_loc_surface_uniq") {
-			return nil, huma.NewError(http.StatusConflict, "this location already has a paint color for that surface")
+		if isLocationPaintConflict(err) {
+			return nil, huma.NewError(http.StatusConflict, "this location already has that paint assigned for that surface")
 		}
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to update paint assignment")
 	}
@@ -393,4 +393,59 @@ func (h *Handler) DeleteLocationPaint(ctx context.Context, input *LocationPaintI
 		return nil, huma.NewError(http.StatusInternalServerError, "failed to delete paint assignment")
 	}
 	return nil, nil
+}
+
+// ---- paint color assignments ----
+
+// PaintColorAssignmentRow is a location-surface assignment of a paint color,
+// including the location's name for display on the paint color itself.
+type PaintColorAssignmentRow struct {
+	ID           string    `json:"id"`
+	LocationID   string    `json:"location_id"`
+	LocationName string    `json:"location_name"`
+	PaintColorID string    `json:"paint_color_id"`
+	Surface      string    `json:"surface"`
+	SurfaceNote  *string   `json:"surface_note"`
+	PaintedOn    *string   `json:"painted_on"`
+	Coats        *int      `json:"coats"`
+	Notes        *string   `json:"notes"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// PaintColorAssignmentsOutput is the response body listing a paint color's assignments.
+type PaintColorAssignmentsOutput struct{ Body []PaintColorAssignmentRow }
+
+// ListPaintColorAssignments returns every location surface a paint color is assigned to.
+func (h *Handler) ListPaintColorAssignments(ctx context.Context, input *PaintColorIDInput) (*PaintColorAssignmentsOutput, error) {
+	if _, err := apimw.RequireAuth(ctx); err != nil {
+		return nil, err
+	}
+	paintHome, err := h.q.PaintColorHomeID(ctx, input.ID)
+	if err != nil {
+		return nil, huma.NewError(http.StatusNotFound, "paint color not found")
+	}
+	if active := apimw.GetActiveHome(ctx); active != "" && active != paintHome {
+		return nil, huma.NewError(http.StatusNotFound, "paint color not found")
+	}
+	rows, err := h.q.ListPaintColorAssignments(ctx, input.ID)
+	if err != nil {
+		return nil, huma.NewError(http.StatusInternalServerError, "failed to list paint assignments")
+	}
+	out := []PaintColorAssignmentRow{}
+	for _, r := range rows {
+		out = append(out, PaintColorAssignmentRow{
+			ID: r.ID, LocationID: r.LocationID, LocationName: r.LocationName,
+			PaintColorID: r.PaintColorID, Surface: r.Surface, SurfaceNote: r.SurfaceNote,
+			PaintedOn: pgNullDateStr(r.PaintedOn), Coats: fromNullInt4(r.Coats), Notes: r.Notes,
+			CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+		})
+	}
+	return &PaintColorAssignmentsOutput{Body: out}, nil
+}
+
+// isLocationPaintConflict reports whether err violates either location_paint uniqueness rule.
+func isLocationPaintConflict(err error) bool {
+	return isUniqueViolation(err, "location_paint_loc_surface_uniq") ||
+		isUniqueViolation(err, "location_paint_accent_uniq")
 }

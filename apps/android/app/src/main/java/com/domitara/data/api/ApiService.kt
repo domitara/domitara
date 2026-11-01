@@ -104,6 +104,13 @@ interface ApiService {
         @Body body: UpdateDocumentTypeInput,
     )
 
+    @PATCH("homes/{homeId}/documents/{docId}/floor-level")
+    suspend fun updateHomeDocumentFloorLevel(
+        @Path("homeId") homeId: String,
+        @Path("docId") docId: String,
+        @Body body: com.domitara.data.dto.UpdateFloorLevelInput,
+    )
+
     @GET("homes/{homeId}/members")
     suspend fun listHomeMembers(@Path("homeId") homeId: String): List<HomeMember>
 
@@ -118,6 +125,9 @@ interface ApiService {
 
     @GET("homes/{homeId}/floor-plan-areas")
     suspend fun listFloorPlanAreas(@Path("homeId") homeId: String): List<FloorPlanArea>
+
+    @GET("homes/{homeId}/floor-plan-shapes")
+    suspend fun listFloorPlanShapes(@Path("homeId") homeId: String): List<com.domitara.data.dto.FloorPlanShape>
 
     @POST("homes/{homeId}/floor-plan-areas")
     suspend fun createFloorPlanArea(
@@ -238,6 +248,9 @@ interface ApiService {
 
     @DELETE("paint-colors/{id}")
     suspend fun deletePaintColor(@Path("id") id: String)
+
+    @GET("paint-colors/{id}/locations")
+    suspend fun listPaintColorAssignments(@Path("id") id: String): List<com.domitara.data.dto.PaintColorAssignment>
 
     @GET("locations/{locationId}/paint")
     suspend fun listLocationPaint(@Path("locationId") locationId: String): List<LocationPaint>
