@@ -104,3 +104,8 @@ val PaintIcon: ImageVector by lazy {
             "1-1V6h1v4H9v11c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-9h6V4h-4z",
     )
 }
+
+/** Expand corners — full-screen viewer. Material "fullscreen". */
+val FullscreenIcon: ImageVector by lazy {
+    namedVector("Fullscreen", "M7 14H5v5h5v-2H7v-3z M5 10h2V7h3V5H5v5z M17 17h-3v2h5v-5h-2v3z M14 5v2h3v3h2V5h-5z")
+}

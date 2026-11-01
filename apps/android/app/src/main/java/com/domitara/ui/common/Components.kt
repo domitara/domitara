@@ -228,18 +228,25 @@ fun LabelChip(name: String, color: Color) {
     }
 }
 
-/** Full-screen, tap-to-dismiss image viewer used by home and item photo galleries. */
+/**
+ * Full-screen image viewer used by photo galleries and image documents.
+ * Pinch to zoom, drag to pan, double-tap to toggle zoom; close button or back to dismiss.
+ */
 @Composable
 fun PhotoViewerDialog(url: String, description: String?, onDismiss: () -> Unit) {
     val container = LocalAppContainer.current
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().clickable(onClick = onDismiss).background(Color.Black.copy(alpha = 0.9f))) {
+    val zoom = rememberZoomState(url)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.95f))) {
             AsyncImage(
                 model = url,
                 imageLoader = container.imageLoader,
                 contentDescription = description,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(16.dp).align(Alignment.Center),
+                modifier = Modifier.fillMaxSize().zoomable(zoom).align(Alignment.Center),
             )
             IconButton(
                 onClick = onDismiss,
