@@ -147,22 +147,22 @@ func New(pool *pgxpool.Pool) *Scheduler {
 		{
 			name:        "system-reminders",
 			description: "Creates onboarding and housekeeping reminders (add items, add photos, insure high-value items) and clears them once resolved.",
-			interval:    "Daily at midnight",
-			spec:        "@daily",
+			interval:    "Hourly",
+			spec:        "@hourly",
 			fn:          s.runSystemReminders,
 		},
 		{
 			name:        "maintenance-reminders",
 			description: "Creates due-soon (7 days) and overdue reminders for maintenance schedules.",
-			interval:    "Daily at midnight",
-			spec:        "@daily",
+			interval:    "Hourly",
+			spec:        "@hourly",
 			fn:          s.runScheduleReminders,
 		},
 		{
 			name:        "warranty-reminders",
 			description: "Creates expiring-soon (30 days) and expired reminders for item warranties.",
-			interval:    "Daily at midnight",
-			spec:        "@daily",
+			interval:    "Hourly",
+			spec:        "@hourly",
 			fn:          s.runWarrantyReminders,
 		},
 	}
