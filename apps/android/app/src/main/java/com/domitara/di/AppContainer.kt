@@ -17,6 +17,8 @@ import com.domitara.data.session.SessionStore
 import com.domitara.notifications.ReminderCheckWorker
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -79,6 +81,22 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
     val imageLoader: ImageLoader = ImageLoader.Builder(context.applicationContext)
         .okHttpClient(client)
         .build()
+
+    /** Downloads a protected server file (bearer-authenticated) into the cache so an
+     *  external viewer can open it via FileProvider. */
+    suspend fun downloadDocument(path: String, filename: String): java.io.File =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val dir = java.io.File(appContext.cacheDir, "docs").apply { mkdirs() }
+            val safe = filename.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val out = java.io.File(dir, "${path.hashCode().toUInt()}_$safe")
+            val request = okhttp3.Request.Builder().url(dataRepository.absoluteUrl(path)).build()
+            client.newCall(request).execute().use { r ->
+                if (!r.isSuccessful) throw java.io.IOException("Download failed (${r.code})")
+                val body = r.body ?: throw java.io.IOException("Empty response")
+                body.byteStream().use { input -> out.outputStream().use { input.copyTo(it) } }
+            }
+            out
+        }
 
     /** Live session, drives the auth gate in the navigation root. */
     val session: Flow<Session?> = sessionStore.session
@@ -149,11 +167,25 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
             .enqueueUniquePeriodicWork(REMINDER_CHECK_WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
+    /** Runs one reminder check right away (e.g. just after notification permission is granted). */
+    fun checkRemindersNow() {
+        if (tokenHolder.session == null) return
+        WorkManager.getInstance(appContext).enqueueUniqueWork(
+            REMINDER_CHECK_NOW_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<ReminderCheckWorker>()
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .build(),
+        )
+    }
+
     private fun cancelReminderChecks() {
         WorkManager.getInstance(appContext).cancelUniqueWork(REMINDER_CHECK_WORK_NAME)
+        WorkManager.getInstance(appContext).cancelUniqueWork(REMINDER_CHECK_NOW_WORK_NAME)
     }
 
     private companion object {
         const val REMINDER_CHECK_WORK_NAME = "reminder_check"
+        const val REMINDER_CHECK_NOW_WORK_NAME = "reminder_check_now"
     }
 }

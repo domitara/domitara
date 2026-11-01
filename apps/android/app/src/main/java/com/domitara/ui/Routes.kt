@@ -9,6 +9,9 @@ object Routes {
     const val LABELS = "labels"
     const val PAINT_COLORS = "paint_colors"
 
+    const val PAINT_COLOR_EDIT = "paint_color_edit/{paintColorId}"
+    fun paintColorEdit(id: String) = "paint_color_edit/$id"
+
     const val HOME_DETAIL = "home_detail"
     const val PANELS = "panels"
     const val MAINTENANCE = "maintenance"

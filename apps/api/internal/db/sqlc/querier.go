@@ -113,6 +113,7 @@ type Querier interface {
 	ListLocationPaint(ctx context.Context, locationID string) ([]ListLocationPaintRow, error)
 	ListLocationsByHome(ctx context.Context, homeID string) ([]ListLocationsByHomeRow, error)
 	ListMaintenanceSchedules(ctx context.Context, homeID string) ([]ListMaintenanceSchedulesRow, error)
+	ListPaintColorAssignments(ctx context.Context, paintColorID string) ([]ListPaintColorAssignmentsRow, error)
 	ListPaintColorsByHome(ctx context.Context, homeID string) ([]ListPaintColorsByHomeRow, error)
 	ListPanels(ctx context.Context, homeID string) ([]ElectricalPanel, error)
 	ListReminders(ctx context.Context, userID int64) ([]ListRemindersRow, error)

@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.domitara.di.LocalAppContainer
 
 /**
  * Requests the POST_NOTIFICATIONS runtime permission once, on first
@@ -19,7 +20,11 @@ import androidx.core.content.ContextCompat
 @Composable
 fun RequestNotificationPermission() {
     val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val container = LocalAppContainer.current
+    // The first periodic run usually fires before the user answers the prompt, so check again on grant.
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) container.checkRemindersNow()
+    }
 
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

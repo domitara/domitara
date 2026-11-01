@@ -138,6 +138,7 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/paint-colors", Summary: "Create paint color", DefaultStatus: 201, Security: bearerAuth}, h.CreatePaintColor)
 	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/paint-colors/{id}", Summary: "Update paint color", Security: bearerAuth}, h.UpdatePaintColor)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/paint-colors/{id}", Summary: "Delete paint color", DefaultStatus: 204, Security: bearerAuth}, h.DeletePaintColor)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/paint-colors/{id}/locations", Summary: "List paint color assignments", Security: bearerAuth}, h.ListPaintColorAssignments)
 
 	// Location paint assignments
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/locations/{id}/paint", Summary: "List location paint", Security: bearerAuth}, h.ListLocationPaint)

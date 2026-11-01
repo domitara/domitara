@@ -45,7 +45,10 @@ class HomeDetailViewModel(private val container: AppContainer) : ViewModel() {
     private val _areas = MutableStateFlow<Async<List<FloorPlanArea>>>(Async.Loading)
     val areas: StateFlow<Async<List<FloorPlanArea>>> = _areas.asStateFlow()
 
-    private val _uploadingPhoto = MutableStateFlow(false)
+    private val _shapes = MutableStateFlow<List<com.domitara.data.dto.FloorPlanShape>>(emptyList())
+    val shapes: StateFlow<List<com.domitara.data.dto.FloorPlanShape>> = _shapes.asStateFlow()
+
+    private val _uploadingPhoto =MutableStateFlow(false)
     val uploadingPhoto: StateFlow<Boolean> = _uploadingPhoto.asStateFlow()
 
     private val _uploadingDocument = MutableStateFlow(false)
@@ -117,6 +120,9 @@ class HomeDetailViewModel(private val container: AppContainer) : ViewModel() {
             runCatching { repo.listFloorPlanAreas(homeId) }
                 .onSuccess { _areas.value = Async.Success(it) }
                 .onFailure { _areas.value = Async.Failure(msg(it)) }
+        }
+        viewModelScope.launch {
+            _shapes.value = runCatching { repo.listFloorPlanShapes(homeId) }.getOrDefault(emptyList())
         }
     }
 

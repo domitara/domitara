@@ -17,6 +17,7 @@ import com.domitara.ui.screens.items.ItemDetailScreen
 import com.domitara.ui.screens.labels.LabelsScreen
 import com.domitara.ui.screens.locations.LocationsScreen
 import com.domitara.ui.screens.maintenance.MaintenanceScreen
+import com.domitara.ui.screens.paint.PaintColorEditScreen
 import com.domitara.ui.screens.paint.PaintColorsScreen
 import com.domitara.ui.screens.panels.ElectricalPanelsScreen
 import com.domitara.ui.screens.profile.ProfileScreen
@@ -53,7 +54,18 @@ fun AppNavHost(navController: NavHostController) {
 
         composable(Routes.HOME_DETAIL) { HomeDetailScreen() }
         composable(Routes.PANELS) { ElectricalPanelsScreen() }
-        composable(Routes.PAINT_COLORS) { PaintColorsScreen() }
+        composable(Routes.PAINT_COLORS) {
+            PaintColorsScreen(onEditColor = { navController.navigate(Routes.paintColorEdit(it)) })
+        }
+        composable(
+            route = Routes.PAINT_COLOR_EDIT,
+            arguments = listOf(navArgument("paintColorId") { type = NavType.StringType }),
+        ) { entry ->
+            PaintColorEditScreen(
+                paintColorId = entry.arguments?.getString("paintColorId").orEmpty(),
+                onBack = { navController.popBackStack() },
+            )
+        }
         composable(Routes.MAINTENANCE) { MaintenanceScreen() }
         composable(Routes.ASSET_IDS) { AssetIdsScreen() }
         composable(Routes.PROFILE) { ProfileScreen() }

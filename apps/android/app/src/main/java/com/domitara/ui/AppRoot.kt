@@ -157,6 +157,7 @@ private fun titleFor(route: String?): String = when (route) {
     Routes.HOME_DETAIL -> "Home"
     Routes.PANELS -> "Electrical Panels"
     Routes.PAINT_COLORS -> "Paint Colors"
+    Routes.PAINT_COLOR_EDIT -> "Edit Paint Color"
     Routes.MAINTENANCE -> "Maintenance"
     Routes.ASSET_IDS -> "Asset IDs"
     Routes.PROFILE -> "Profile & Settings"

@@ -1,0 +1,158 @@
+package com.domitara.ui.screens.home
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.domitara.data.dto.FloorPlanArea
+import com.domitara.data.dto.FloorPlanGeometry
+import com.domitara.data.dto.FloorPlanShape
+import com.domitara.data.dto.HomeDocument
+import com.domitara.di.LocalAppContainer
+import com.domitara.ui.common.parseHexColor
+
+private fun floorLabel(level: Int?): String = when (level) {
+    null -> "Unassigned"
+    0 -> "Basement"
+    else -> "Floor $level"
+}
+
+/**
+ * Read-only floor plan viewer: floor selector, the plan image with electrical zones
+ * and home-layout shapes drawn over it (pinch to zoom, drag to pan).
+ */
+@Composable
+fun FloorPlanViewer(
+    plans: List<HomeDocument>,
+    areas: List<FloorPlanArea>,
+    shapes: List<FloorPlanShape>,
+) {
+    val container = LocalAppContainer.current
+    val sorted = remember(plans) { plans.sortedWith(compareBy(nullsLast()) { it.floorLevel }) }
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    val active = sorted.firstOrNull { it.id == selectedId } ?: sorted.first()
+    var showZones by remember { mutableStateOf(true) }
+    var showShapes by remember { mutableStateOf(true) }
+    var aspect by remember(active.id) { mutableFloatStateOf(1f) }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        if (sorted.size > 1) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                sorted.forEach { doc ->
+                    FilterChip(
+                        selected = doc.id == active.id,
+                        onClick = { selectedId = doc.id },
+                        label = { Text(floorLabel(doc.floorLevel)) },
+                    )
+                }
+            }
+        }
+        Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = showZones, onCheckedChange = { showZones = it })
+            Text("  Electrical zones   ", style = MaterialTheme.typography.bodySmall)
+            Switch(checked = showShapes, onCheckedChange = { showShapes = it })
+            Text("  Layout", style = MaterialTheme.typography.bodySmall)
+        }
+
+        var scale by remember(active.id) { mutableFloatStateOf(1f) }
+        var offset by remember(active.id) { mutableStateOf(Offset.Zero) }
+        val measurer = rememberTextMeasurer()
+        val zones = areas.filter { it.documentId == active.id && it.geometry != null }
+        val layout = shapes.filter { it.documentId == active.id && it.geometry != null }
+
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspect)
+                .clipToBounds()
+                .pointerInput(active.id) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(1f, 6f)
+                        offset = if (scale == 1f) Offset.Zero else offset + pan
+                    }
+                }
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                },
+        ) {
+            AsyncImage(
+                model = container.dataRepository.absoluteUrl(active.url),
+                imageLoader = container.imageLoader,
+                contentDescription = active.filename,
+                contentScale = ContentScale.FillBounds,
+                onSuccess = { state ->
+                    val d = state.result.drawable
+                    if (d.intrinsicWidth > 0 && d.intrinsicHeight > 0) {
+                        aspect = d.intrinsicWidth.toFloat() / d.intrinsicHeight
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+            Canvas(Modifier.fillMaxSize()) {
+                fun draw(geometry: FloorPlanGeometry?, color: Color, fillAlpha: Float, label: String?) {
+                    val pts = geometry?.coordinates?.filter { it.size >= 2 } ?: return
+                    if (pts.size < 3) return
+                    val px = pts.map { Offset(it[0].toFloat() * size.width, it[1].toFloat() * size.height) }
+                    val path = Path().apply {
+                        moveTo(px[0].x, px[0].y)
+                        px.drop(1).forEach { lineTo(it.x, it.y) }
+                        close()
+                    }
+                    drawPath(path, color.copy(alpha = fillAlpha))
+                    drawPath(path, color, style = Stroke(width = 2.dp.toPx() / scale))
+                    if (!label.isNullOrBlank()) {
+                        val center = Offset(px.map { it.x }.average().toFloat(), px.map { it.y }.average().toFloat())
+                        val text = measurer.measure(
+                            label,
+                            TextStyle(color = Color.White, fontSize = (12 / scale).sp),
+                        )
+                        drawText(text, topLeft = Offset(center.x - text.size.width / 2f, center.y - text.size.height / 2f))
+                    }
+                }
+                if (showZones) zones.forEach { draw(it.geometry, parseHexColor(it.color), 0.33f, it.name) }
+                if (showShapes) layout.forEach { draw(it.geometry, parseHexColor(it.color), 0.4f, it.label) }
+            }
+        }
+    }
+}

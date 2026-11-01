@@ -23,6 +23,7 @@ import type {
   CreatePaintColorInput,
   UpdatePaintColorInput,
   LocationPaint,
+  PaintColorAssignment,
   CreateLocationPaintInput,
   UpdateLocationPaintInput,
   CreateUserInput,
@@ -186,6 +187,38 @@ export function useDeletePaintColor() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/paint-colors/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: paintColorKeys.all }),
+  });
+}
+
+export function usePaintColorAssignments(paintColorId: string | undefined) {
+  return useQuery({
+    queryKey: [...paintColorKeys.byId(paintColorId ?? ''), 'locations'] as const,
+    queryFn: () => api.get<PaintColorAssignment[]>(`/paint-colors/${paintColorId}/locations`),
+    enabled: !!paintColorId,
+  });
+}
+
+/** Assigns a paint color to a surface of any location (used from the paint color's edit view). */
+export function useAssignPaintToLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ locationId, body }: { locationId: string; body: CreateLocationPaintInput }) =>
+      api.post<LocationPaint>(`/locations/${locationId}/paint`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: paintColorKeys.all });
+      qc.invalidateQueries({ queryKey: ['location-paint'] });
+    },
+  });
+}
+
+export function useRemovePaintAssignment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (assignmentId: string) => api.delete(`/location-paint/${assignmentId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: paintColorKeys.all });
+      qc.invalidateQueries({ queryKey: ['location-paint'] });
+    },
   });
 }
 

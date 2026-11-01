@@ -333,6 +333,62 @@ func (q *Queries) ListLocationPaint(ctx context.Context, locationID string) ([]L
 	return items, nil
 }
 
+const listPaintColorAssignments = `-- name: ListPaintColorAssignments :many
+SELECT lp.id, lp.location_id, lp.paint_color_id, lp.surface, lp.surface_note,
+       lp.painted_on, lp.coats, lp.notes, lp.created_at, lp.updated_at,
+       l.name AS location_name
+FROM location_paint lp
+JOIN locations l ON l.id = lp.location_id
+WHERE lp.paint_color_id = $1
+ORDER BY l.name, lp.surface
+`
+
+type ListPaintColorAssignmentsRow struct {
+	ID           string             `json:"id"`
+	LocationID   string             `json:"location_id"`
+	PaintColorID string             `json:"paint_color_id"`
+	Surface      string             `json:"surface"`
+	SurfaceNote  *string            `json:"surface_note"`
+	PaintedOn    *time.Time         `json:"painted_on"`
+	Coats        pgtype.Int4        `json:"coats"`
+	Notes        *string            `json:"notes"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	LocationName string             `json:"location_name"`
+}
+
+func (q *Queries) ListPaintColorAssignments(ctx context.Context, paintColorID string) ([]ListPaintColorAssignmentsRow, error) {
+	rows, err := q.db.Query(ctx, listPaintColorAssignments, paintColorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPaintColorAssignmentsRow
+	for rows.Next() {
+		var i ListPaintColorAssignmentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.LocationID,
+			&i.PaintColorID,
+			&i.Surface,
+			&i.SurfaceNote,
+			&i.PaintedOn,
+			&i.Coats,
+			&i.Notes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.LocationName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPaintColorsByHome = `-- name: ListPaintColorsByHome :many
 SELECT pc.id, pc.name, pc.color, pc.brand, pc.color_code, pc.sheen, pc.notes,
        COUNT(lp.id) AS location_count, pc.created_at, pc.updated_at

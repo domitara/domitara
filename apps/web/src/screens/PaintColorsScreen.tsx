@@ -21,8 +21,9 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { usePaintColors, useDeletePaintColor } from '../api/queries';
+import { usePaintColors, useDeletePaintColor, usePaintColorAssignments } from '../api/queries';
 import { NewPaintColorModal } from '../components/NewPaintColorModal';
+import { surfaceLabel } from '../components/PaintColorSurfaces';
 import type { PaintColor } from '../api/types';
 
 export function PaintColorsScreen() {
@@ -46,6 +47,7 @@ export function PaintColorsScreen() {
   );
 
   const activeColor = active ? colors.find((c) => c.id === active) : null;
+  const { data: assignments = [] } = usePaintColorAssignments(activeColor?.id);
 
   const confirmDelete = (color: PaintColor) =>
     modals.openConfirmModal({
@@ -227,6 +229,18 @@ export function PaintColorsScreen() {
                 {detailLine('Color code', activeColor.color_code)}
                 {detailLine('Sheen', activeColor.sheen)}
                 {detailLine('Notes', activeColor.notes)}
+                {assignments.length > 0 && (
+                  <div>
+                    <Text size="sm" c="dimmed">
+                      Used on:
+                    </Text>
+                    {assignments.map((a) => (
+                      <Text size="sm" key={a.id}>
+                        {a.location_name} · {surfaceLabel(a.surface, a.surface_note)}
+                      </Text>
+                    ))}
+                  </div>
+                )}
               </Stack>
             </Paper>
           ) : (
