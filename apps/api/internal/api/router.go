@@ -25,9 +25,9 @@ import (
 var bearerAuth = []map[string][]string{{"bearer": {}}}
 
 // NewRouter builds the application HTTP handler with all middleware and routes registered.
-func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
+func NewRouter(pool *pgxpool.Pool, cfg *config.Config, tasks handler.ScheduledTasks) http.Handler {
 	q := store.New(pool)
-	h := handler.New(q, pool, cfg.JWTSecret, cfg.SecureCookies, cfg.UploadDir)
+	h := handler.New(q, pool, cfg.JWTSecret, cfg.SecureCookies, cfg.UploadDir, tasks)
 
 	r := chi.NewRouter()
 
@@ -174,6 +174,8 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/admin/users", Summary: "Create user (admin)", Security: bearerAuth}, h.AdminCreateUser)
 	huma.Register(api, huma.Operation{Method: http.MethodPut, Path: "/api/v1/admin/users/{id}", Summary: "Update user (admin)", Security: bearerAuth}, h.AdminUpdateUser)
 	huma.Register(api, huma.Operation{Method: http.MethodDelete, Path: "/api/v1/admin/users/{id}", Summary: "Delete user (admin)", DefaultStatus: 204, Security: bearerAuth}, h.AdminDeleteUser)
+	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/admin/scheduled-tasks", Summary: "List scheduled tasks (admin)", Security: bearerAuth}, h.AdminListScheduledTasks)
+	huma.Register(api, huma.Operation{Method: http.MethodPost, Path: "/api/v1/admin/scheduled-tasks/{name}/run", Summary: "Run scheduled task now (admin)", DefaultStatus: 204, Security: bearerAuth}, h.AdminRunScheduledTask)
 
 	// Homes
 	huma.Register(api, huma.Operation{Method: http.MethodGet, Path: "/api/v1/homes", Summary: "List homes", Security: bearerAuth}, h.ListHomes)

@@ -41,7 +41,7 @@ func main() {
 	sched.Start()
 	defer sched.Stop()
 
-	router := api.NewRouter(pool, cfg)
+	router := api.NewRouter(pool, cfg, sched)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
