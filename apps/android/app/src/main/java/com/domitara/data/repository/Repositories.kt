@@ -256,6 +256,8 @@ class DataRepository(
         call { it.deleteHomeDocument(homeId, docId) }
     suspend fun updateHomeDocumentType(homeId: String, docId: String, documentType: HomeDocumentType?) =
         call { it.updateHomeDocumentType(homeId, docId, UpdateDocumentTypeInput(documentType)) }
+    suspend fun updateHomeDocumentFloorLevel(homeId: String, docId: String, floorLevel: Int?) =
+        call { it.updateHomeDocumentFloorLevel(homeId, docId, com.domitara.data.dto.UpdateFloorLevelInput(floorLevel)) }
 
     /**
      * Reads a picked content [uri] into a multipart part. The server detects the

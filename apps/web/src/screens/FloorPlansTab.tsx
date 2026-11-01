@@ -146,7 +146,7 @@ export function FloorPlansTab({ homeId }: { homeId: string }) {
       {/* Controls bar */}
       <Paper p="sm" withBorder radius="md">
         <Group gap="md" wrap="wrap" justify="space-between">
-          <Group gap="md" wrap="wrap">
+          <Group gap="md" wrap="wrap" align="flex-end">
             {/* Floor switcher */}
             {switcherData.length > 1 && (
               <SegmentedControl
@@ -161,6 +161,8 @@ export function FloorPlansTab({ homeId }: { homeId: string }) {
             {activeDoc && (
               <Select
                 size="xs"
+                label="Floor shown in this plan"
+                description="Choose which floor this image is, so it appears in the switcher"
                 placeholder="Set floor level"
                 data={[{ value: '', label: 'Unassigned' }, ...FLOOR_LEVEL_OPTIONS]}
                 value={activeDoc.floor_level !== null ? String(activeDoc.floor_level) : ''}
@@ -170,7 +172,7 @@ export function FloorPlansTab({ homeId }: { homeId: string }) {
                     floorLevel: v ? Number(v) : null,
                   })
                 }
-                w={140}
+                w={220}
               />
             )}
           </Group>

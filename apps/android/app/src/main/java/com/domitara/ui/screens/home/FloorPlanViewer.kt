@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,6 +64,7 @@ fun FloorPlanViewer(
     plans: List<HomeDocument>,
     areas: List<FloorPlanArea>,
     shapes: List<FloorPlanShape>,
+    onSetFloor: (docId: String, level: Int?) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val sorted = remember(plans) { plans.sortedWith(compareBy(nullsLast()) { it.floorLevel }) }
@@ -71,17 +75,30 @@ fun FloorPlanViewer(
     var aspect by remember(active.id) { mutableFloatStateOf(1f) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        if (sorted.size > 1) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                sorted.forEach { doc ->
-                    FilterChip(
-                        selected = doc.id == active.id,
-                        onClick = { selectedId = doc.id },
-                        label = { Text(floorLabel(doc.floorLevel)) },
-                    )
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            sorted.forEach { doc ->
+                FilterChip(
+                    selected = doc.id == active.id,
+                    onClick = { selectedId = doc.id },
+                    label = { Text(floorLabel(doc.floorLevel)) },
+                )
+            }
+        }
+        var floorMenu by remember { mutableStateOf(false) }
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("This plan shows:", style = MaterialTheme.typography.bodySmall)
+            Box(Modifier.padding(start = 8.dp)) {
+                OutlinedButton(onClick = { floorMenu = true }) { Text(floorLabel(active.floorLevel)) }
+                DropdownMenu(expanded = floorMenu, onDismissRequest = { floorMenu = false }) {
+                    (listOf<Int?>(null) + (0..4).toList()).forEach { level ->
+                        DropdownMenuItem(
+                            text = { Text(floorLabel(level)) },
+                            onClick = { floorMenu = false; onSetFloor(active.id, level) },
+                        )
+                    }
                 }
             }
         }

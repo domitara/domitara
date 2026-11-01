@@ -165,6 +165,12 @@ data class UpdateDocumentTypeInput(
     val documentType: HomeDocumentType? = null,
 )
 
+/** Request body for PATCH .../documents/{id}/floor-level. Null (omitted) clears the floor. */
+@Serializable
+data class UpdateFloorLevelInput(
+    val floorLevel: Int? = null,
+)
+
 @Serializable
 data class Location(
     val id: String,

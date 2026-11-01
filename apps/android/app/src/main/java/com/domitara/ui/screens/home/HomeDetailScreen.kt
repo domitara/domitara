@@ -614,7 +614,12 @@ private fun FloorPlansTab(vm: HomeDetailViewModel) {
     val plans = (docsState as? Async.Success)?.data
         ?.filter { it.documentType == HomeDocumentType.FLOOR_PLAN }.orEmpty()
     if (plans.isNotEmpty()) {
-        FloorPlanViewer(plans, (state as? Async.Success)?.data.orEmpty(), shapes)
+        FloorPlanViewer(
+            plans,
+            (state as? Async.Success)?.data.orEmpty(),
+            shapes,
+            onSetFloor = vm::updateDocumentFloorLevel,
+        )
         return
     }
     when (val s = state) {

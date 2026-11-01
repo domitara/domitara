@@ -199,6 +199,21 @@ class HomeDetailViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    fun updateDocumentFloorLevel(docId: String, floorLevel: Int?) {
+        val homeId = _selected.value?.id ?: return
+        viewModelScope.launch {
+            runCatching { repo.updateHomeDocumentFloorLevel(homeId, docId, floorLevel) }
+                .onSuccess {
+                    (_documents.value as? Async.Success)?.let { cur ->
+                        _documents.value = Async.Success(
+                            cur.data.map { if (it.id == docId) it.copy(floorLevel = floorLevel) else it },
+                        )
+                    }
+                }
+                .onFailure { _actionError.value = msg(it) }
+        }
+    }
+
     fun addMember(email: String, onResult: (String?) -> Unit) {
         val homeId = _selected.value?.id ?: return
         viewModelScope.launch {

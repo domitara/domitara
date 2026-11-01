@@ -104,6 +104,13 @@ interface ApiService {
         @Body body: UpdateDocumentTypeInput,
     )
 
+    @PATCH("homes/{homeId}/documents/{docId}/floor-level")
+    suspend fun updateHomeDocumentFloorLevel(
+        @Path("homeId") homeId: String,
+        @Path("docId") docId: String,
+        @Body body: com.domitara.data.dto.UpdateFloorLevelInput,
+    )
+
     @GET("homes/{homeId}/members")
     suspend fun listHomeMembers(@Path("homeId") homeId: String): List<HomeMember>
 
